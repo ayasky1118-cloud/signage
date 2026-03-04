@@ -1,0 +1,16 @@
+# 環境・秘密情報（コミットしない）
+.env
+.env.*
+!.env.example
+
+# Python 仮想環境
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# その他
+.DS_Store
+*.log
+node_modules/
