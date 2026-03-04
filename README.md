@@ -38,8 +38,8 @@ map_pj/
 │   └── requirements.txt
 │
 ├── docs/               # 手順書・仕様書
-│   ├── 0.環境構築ステップ.md
-│   ├── 1.Node・npm 環境確認.md
+│   ├── 101.環境構築ステップ.md
+│   ├── 102.Node・npm 環境確認.md
 │   └── ...（詳細は docs/README.md）
 │
 └── docker-compose.yml  # MySQL用（プロジェクトルートに配置予定）
@@ -51,7 +51,7 @@ map_pj/
 
 ### 初回セットアップ
 
-初めてプロジェクトを動かす場合は、[docs/0.環境構築ステップ.md](docs/0.環境構築ステップ.md) に従って以下を準備してください。
+初めてプロジェクトを動かす場合は、[docs/101.環境構築ステップ.md](docs/101.環境構築ステップ.md) に従って以下を準備してください。
 
 - Docker Desktop（MySQL用）
 - Node.js v18以上

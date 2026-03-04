@@ -82,7 +82,7 @@
     padding: 0.5rem 0;
 }
 #order-list-page .order-list-table { table-layout: fixed !important; width: 100% !important; }
-#order-list-page .order-list-table #col-order-no { width: 150px !important; }
+#order-list-page .order-list-table #col-order-no { width: calc(10ch + 2.5rem) !important; min-width: calc(10ch + 2.5rem) !important; }
 #order-list-page .order-list-table #col-name,
 #order-list-page .order-list-table #col-company { width: auto !important; }
 #order-list-page .order-list-table #col-design { width: 180px !important; min-width: 180px !important; max-width: 180px !important; }
@@ -98,16 +98,19 @@
     min-width: 155px !important;
     overflow: visible !important;
 }
-/* 枝番カラム：5つ/行で表示、右余白を詰める */
+/* 枝番カラム：flex で並べ、枝番間のピッチを確保 */
 #order-list-page .order-list-table td.col-action {
     white-space: normal !important;
     line-height: 1.6;
 }
-#order-list-page .order-list-table td.col-action a {
-    display: inline-block;
-    margin: 0 0 1px 0;
-    padding: 0;
+#order-list-page .order-list-table td.col-action .order-branch-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.4rem;
+    align-items: center;
 }
-#order-list-page .order-list-table td.col-action a + a {
-    margin-left: 1px;
+#order-list-page .order-list-table td.col-action .order-branch-links a {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
 }

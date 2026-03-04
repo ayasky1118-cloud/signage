@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # 追加したルーター（DB疎通確認用）
 from app.routers.company import router as company_router
+from app.routers.design_type import router as design_type_router
+from app.routers.order import router as order_router
 
 
 # =============================
@@ -26,13 +28,11 @@ app = FastAPI(
 # CORS設定
 # =============================
 # フロントエンド（Vue）からAPIを呼び出すために必要。
-# 開発中はローカルのみ許可するのが安全。
+# 開発中は localhost / 127.0.0.1 の任意ポートを許可（Vite が 5173〜5175 等を使うため）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # Vite標準
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=[],
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +43,9 @@ app.add_middleware(
 # =============================
 # /companies を有効化（DB疎通確認のため）
 app.include_router(company_router)
+app.include_router(design_type_router)
+# 注文一覧検索
+app.include_router(order_router)
 
 # =============================
 # ヘルスチェック用エンドポイント

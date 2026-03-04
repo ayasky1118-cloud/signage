@@ -5,7 +5,7 @@
  */
 import { watch } from "vue"
 import { useRoute } from "vue-router"
-import AppHeader from "./components/AppHeader.vue"
+import DefaultLayout from "./layouts/DefaultLayout.vue"
 
 const route = useRoute()
 
@@ -21,9 +21,5 @@ watch(
 </script>
 
 <template>
-  <!-- 全体レイアウト：ヘッダー + ルートに応じたページコンテンツ -->
-  <div class="min-h-screen bg-[#e2e8f0] text-slate-600">
-    <AppHeader />
-    <router-view />
-  </div>
+  <DefaultLayout />
 </template>

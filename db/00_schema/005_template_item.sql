@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS template_item
 (
-	template_item_id	BIGINT AUTO_INCREMENT PRIMARY KEY				COMMENT 'テンプレート項目ID'
+	template_item_id	BIGINT AUTO_INCREMENT							COMMENT 'テンプレート項目ID'
 ,	template_id			BIGINT NOT NULL									COMMENT 'テンプレートID'
 ,	item_name			VARCHAR(256) NOT NULL							COMMENT '項目名'
 ,	item_type			VARCHAR(50)  NOT NULL							COMMENT '項目種別'
@@ -11,10 +11,12 @@ CREATE TABLE IF NOT EXISTS template_item
 ,	created_by			BIGINT		NOT NULL							COMMENT '作成者'
 ,	updated_dt			DATETIME	NOT NULL DEFAULT CURRENT_TIMESTAMP	COMMENT '更新日時'
 ,	updated_by			BIGINT		NOT NULL							COMMENT '更新者'
+,	CONSTRAINT pk_template_item
+		PRIMARY KEY (template_item_id)
 ,	CONSTRAINT fk_template_item_template
 		FOREIGN KEY (template_id)
 		REFERENCES template(template_id)
 		ON DELETE CASCADE
-)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 COMMENT='テンプレート項目情報'
 ;

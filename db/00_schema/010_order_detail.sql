@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS order_detail
 (
-	order_detail_id		BIGINT AUTO_INCREMENT PRIMARY KEY				COMMENT '注文詳細ID'
+	order_detail_id		BIGINT AUTO_INCREMENT							COMMENT '注文詳細ID'
 ,	order_id			BIGINT NOT NULL									COMMENT '受注ID'
 ,	branch_no			VARCHAR(2) NOT NULL								COMMENT '枝番'
 ,	design_data			JSON											COMMENT 'デザイン編集データ'
@@ -13,11 +13,13 @@ CREATE TABLE IF NOT EXISTS order_detail
 ,	created_by			BIGINT		NOT NULL							COMMENT '作成者'
 ,	updated_dt			DATETIME	NOT NULL DEFAULT CURRENT_TIMESTAMP	COMMENT '更新日時'
 ,	updated_by			BIGINT		NOT NULL							COMMENT '更新者'
+,	CONSTRAINT pk_order_detail
+		PRIMARY KEY (order_detail_id)
 ,	CONSTRAINT fk_order_detail_order
 		FOREIGN KEY (order_id) REFERENCES order_main(order_id)
 		ON DELETE CASCADE
 ,	CONSTRAINT uq_order_detail_branch
 		UNIQUE (order_id, branch_no)
-)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 COMMENT='受注詳細情報'
 ;
