@@ -1,0 +1,95 @@
+/* ========================================
+   共通スタイル - 注文・看板管理システム
+   ======================================== */
+
+/* ブランドカラー（Tailwind CDN のカスタム色フォールバック） */
+:root {
+    --color-main: #003b82;
+    --color-sub-blue: #007cba;
+    --color-light-blue: #8ed1fc;
+    --color-cream: #fff5cb;
+    --color-neutral: #abb8c3;
+}
+
+.bg-main { background-color: var(--color-main) !important; }
+.text-main { color: var(--color-main) !important; }
+.bg-subBlue { background-color: var(--color-sub-blue) !important; }
+.hover\:bg-subBlue:hover { background-color: var(--color-sub-blue) !important; }
+.border-neutral { border-color: var(--color-neutral) !important; }
+.focus\:ring-lightBlue:focus { --tw-ring-color: var(--color-light-blue) !important; }
+
+/* 注文入力：新規/変更ラジオの選択・フォーカス表示 */
+.mode-radio-group input:focus {
+    outline: none;
+}
+/* 選択時：濃い青背景・白文字（Tailwind peer-checked のフォールバック） */
+.mode-radio-group input.peer:checked ~ span {
+    background-color: var(--color-main) !important;
+    color: white !important;
+}
+/* フォーカス時：ライトブルーの内側リング */
+.mode-radio-group .mode-radio-label:focus-within span {
+    box-shadow: inset 0 0 0 2px var(--color-light-blue);
+}
+
+/* 共通ヘッダー：メニューページではタイトル非表示・右寄せ */
+body.header-menu-only #app-header {
+    justify-content: flex-end;
+}
+body.header-menu-only .header-menu-link {
+    display: none;
+}
+
+/* ベース */
+body {
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* ボタン・リンクでキャレット・テキスト選択カーソルを防ぐ */
+a, button, [role="button"], input[type="button"], input[type="submit"] {
+    caret-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 表示エリアのカーソル点滅のみ防ぐ（文字選択は可能） */
+p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
+    caret-color: transparent;
+}
+
+/* 2行ヘッダー：改行位置を制御・データセルと左揃え */
+.header-2line {
+    display: block;
+    line-height: 1.25;
+    text-align: left;
+}
+
+/* カード用シャドウ */
+.card-shadow {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+}
+
+/* 青ヘッダーカード：上・左右のボーダー・シャドウ線を消す（青ヘッダーが端まで続く） */
+.card-header-full.card-shadow {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
+}
+
+
+/* メニューページ：選択肢ボタンの表示を確実にする（Tailwindカスタム色のフォールバック） */
+#menu-page .flex.flex-col.gap-3 > a {
+    background-color: #003b82;
+    color: white;
+    display: flex;
+    align-items: center;
+}
+#menu-page .flex.flex-col.gap-3 > a:hover {
+    background-color: #007cba;
+}
+#menu-page .flex.flex-col.gap-3 > a svg {
+    color: white;
+    flex-shrink: 0;
+}
+body {
+	font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji",
+	  "Segoe UI Emoji";
+  }

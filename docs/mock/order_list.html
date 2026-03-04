@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>看板情報一覧</title>
+    <script src="js/tailwind-config.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/order-list.css">
+</head>
+<body class="bg-[#e2e8f0] text-slate-600 min-h-screen">
+
+    <div id="header-placeholder"></div>
+    <script src="js/header-include.js"></script>
+
+    <main id="order-list-page" class="max-w-6xl mx-auto py-12 px-8">
+        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-4">
+            <div class="bg-main px-8 py-4">
+                <h2 class="text-base md:text-lg font-bold text-white tracking-tight">注文 / 看板情報一覧</h2>
+            </div>
+            <div class="px-6 pt-4 pb-6 md:px-8 md:pt-5 md:pb-7 min-w-0">
+                <div class="flex items-center justify-between gap-4 mb-2 text-main">
+                        <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
+                        <h3 class="font-bold text-base tracking-tight">検索条件</h3>
+                    </div>
+                    <button type="button" id="searchConditionToggle" class="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200" aria-expanded="true">
+                        <span id="searchConditionToggleIcon" class="inline-flex transition-transform duration-200">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </span>
+                        <span id="searchConditionToggleText">閉じる</span>
+                    </button>
+                </div>
+                <div id="searchConditionBody" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2 min-w-0">
+                    <div class="space-y-1.5 sm:col-span-3 min-w-0">
+                        <div class="flex flex-col lg:flex-row lg:items-end lg:gap-4 gap-2 min-w-0">
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                            <label class="text-xs font-bold text-slate-500 block">注文番号</label>
+                            <input type="text" id="inputOrderNo" class="w-full min-w-0 px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200">
+                            </div>
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <label class="text-xs font-bold text-slate-500 block">注文名</label>
+                                <input type="text" class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200">
+                            </div>
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <label class="text-xs font-bold text-slate-500 block">住所</label>
+                                <input type="text" class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200">
+                            </div>
+                            <div class="space-y-1.5 flex-1 min-w-0">
+                                <label class="text-xs font-bold text-slate-500 block">会社名</label>
+                                <input type="text" class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 sm:col-span-3 min-w-0">
+                        <div class="flex flex-col lg:flex-row lg:items-end gap-2 min-w-0">
+                            <div class="flex flex-1 flex-col gap-2 lg:flex-row lg:items-end min-w-0">
+                                <div class="space-y-1.5 shrink-0">
+                                    <label class="text-xs font-bold text-slate-500 block">デザイン種別</label>
+                                    <select class="w-40 md:w-48 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none">
+                                        <option value="">デザイン種別を選択</option>
+                                        <option value="ecosign">エコサイン</option>
+                                        <option value="550">550</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5 lg:ml-2 shrink-0">
+                                    <label class="text-xs font-bold text-slate-500 block">更新日</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" id="inputUpdateDateFrom" readonly placeholder="開始日" class="w-32 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer">
+                                        <span class="text-slate-400 shrink-0 text-xs">～</span>
+                                        <input type="text" id="inputUpdateDateTo" readonly placeholder="終了日" class="w-32 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer">
+                                    </div>
+                                </div>
+                                <div class="space-y-1.5 lg:ml-3 shrink-0">
+                                    <label class="text-xs font-bold text-slate-500 block">更新者</label>
+                                    <input type="text" class="w-36 md:w-40 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200" placeholder="更新者名を入力">
+                                </div>
+                            </div>
+                            <div class="space-y-1.5 flex-none">
+                                <label class="text-xs font-bold text-slate-500 block invisible select-none">検索</label>
+                                <button type="button" id="btnSearch" class="shrink-0 px-8 py-2 text-xs rounded-xl bg-main hover:bg-subBlue text-white font-bold shadow-md shadow-main/20 transition-all duration-200">
+                                    検索
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="orderListSection" class="hidden">
+        <div class="flex justify-end items-center gap-4 mb-2 pl-6 pr-6">
+            <span id="orderListCount" class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs">
+                <span class="text-slate-500 font-medium">該当</span>
+                <span id="orderListCountNum" class="font-bold text-main tabular-nums">0</span>
+                <span class="text-slate-500 font-medium">件</span>
+            </span>
+        </div>
+
+        <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="order-list-table w-full text-left">
+                    <colgroup>
+                        <col id="col-order-no">
+                        <col id="col-name">
+                        <col id="col-company">
+                        <col id="col-design">
+                        <col id="col-date">
+                        <col id="col-action">
+                    </colgroup>
+                    <thead>
+                    <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                            <th class="px-5 py-4 font-bold border-b border-slate-200 whitespace-nowrap">注文番号</th>
+                            <th class="px-5 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
+                                <span class="header-2line">注文名<br>住所</span>
+                            </th>
+                            <th class="px-5 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
+                                <span class="header-2line">会社名<br>担当者</span>
+                            </th>
+                            <th class="col-design px-4 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
+                                <span class="header-2line">テンプレート<br>デザイン種別</span>
+                            </th>
+                            <th class="col-date pl-6 pr-2 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
+                                <span class="header-2line">更新日<br>更新者</span>
+                            </th>
+                            <th class="col-action pl-5 pr-2 py-4 font-bold border-b border-slate-200 whitespace-nowrap">枝番</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderListTbody" class="divide-y divide-slate-100">
+                        <tr class="hover:bg-slate-100 transition-colors" data-order-no="ORD-2026-0001" data-order-name="サンプルビル外壁工事" data-address="東京都渋谷区恵比寿◯ー◯ー◯" data-company-name="株式会社◯◯◯◯" data-manager="テスト太郎" data-template="テストテンプレート①" data-design-type="ecosign" data-update-date="2026/02/26" data-updater="テスト更新者">
+                            <td class="px-5 py-2"><a href="order_main.html" class="order-main-link font-mono text-[12px] text-main hover:underline">ORD-2026-0001</a></td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">サンプルビル外壁工事</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">東京都渋谷区恵比寿◯ー◯ー◯</div>
+                            </td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">株式会社◯◯◯◯</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト太郎</div>
+                            </td>
+                            <td class="col-design px-4 py-2">
+                                <div class="text-slate-600 text-[12px]">テストテンプレート①</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">エコサイン</div>
+                            </td>
+                            <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
+                                <div>2026/02/26</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト更新者</div>
+                            </td>
+                            <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">01</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">02</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">03</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">04</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">05</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">06</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">07</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">08</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">09</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">10</a>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-100 transition-colors" data-order-no="ORD-2026-0002" data-order-name="○○駅前 再開発看板" data-address="東京都渋谷区恵比寿◯ー◯ー◯" data-company-name="株式会社◯◯◯◯" data-manager="テスト太郎" data-template="テストテンプレート②" data-design-type="550" data-update-date="2026/02/25" data-updater="テスト更新者">
+                            <td class="px-5 py-2"><a href="order_main.html" class="order-main-link font-mono text-[12px] text-main hover:underline">ORD-2026-0002</a></td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">○○駅前 再開発看板</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">東京都渋谷区恵比寿◯ー◯ー◯</div>
+                            </td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">株式会社◯◯◯◯</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト太郎</div>
+                            </td>
+                            <td class="col-design px-4 py-2">
+                                <div class="text-slate-600 text-[12px]">テストテンプレート②</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">550</div>
+                            </td>
+                            <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
+                                <div>2026/02/25</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト更新者</div>
+                            </td>
+                            <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">01</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">02</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">03</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">04</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">05</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">06</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">07</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">08</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">09</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">10</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">11</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">12</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">13</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">14</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">15</a>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-100 transition-colors" data-order-no="ORD-2026-0003" data-order-name="サンプル工事③" data-address="東京都渋谷区恵比寿◯ー◯ー◯" data-company-name="株式会社◯◯◯◯" data-manager="テスト太郎" data-template="テストテンプレート①" data-design-type="ecosign" data-update-date="2026/02/24" data-updater="テスト更新者">
+                            <td class="px-5 py-2"><a href="order_main.html" class="order-main-link font-mono text-[12px] text-main hover:underline">ORD-2026-0003</a></td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">サンプル工事③</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">東京都渋谷区恵比寿◯ー◯ー◯</div>
+                            </td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">株式会社◯◯◯◯</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト太郎</div>
+                            </td>
+                            <td class="col-design px-4 py-2">
+                                <div class="text-slate-600 text-[12px]">テストテンプレート①</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">エコサイン</div>
+                            </td>
+                            <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
+                                <div>2026/02/24</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト更新者</div>
+                            </td>
+                            <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">01</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">02</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">03</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">04</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">05</a>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-100 transition-colors" data-order-no="ORD-2026-0004" data-order-name="サンプル工事④" data-address="東京都渋谷区恵比寿◯ー◯ー◯" data-company-name="株式会社◯◯◯◯" data-manager="テスト太郎" data-template="テストテンプレート②" data-design-type="550" data-update-date="2026/02/23" data-updater="テスト更新者">
+                            <td class="px-5 py-2"><a href="order_main.html" class="order-main-link font-mono text-[12px] text-main hover:underline">ORD-2026-0004</a></td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">サンプル工事④</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">東京都渋谷区恵比寿◯ー◯ー◯</div>
+                            </td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">株式会社◯◯◯◯</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト太郎</div>
+                            </td>
+                            <td class="col-design px-4 py-2">
+                                <div class="text-slate-600 text-[12px]">テストテンプレート②</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">550</div>
+                            </td>
+                            <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
+                                <div>2026/02/23</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト更新者</div>
+                            </td>
+                            <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">01</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">02</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">03</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">04</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">05</a>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-slate-100 transition-colors" data-order-no="ORD-2026-0005" data-order-name="サンプル工事⑤" data-address="東京都渋谷区恵比寿◯ー◯ー◯" data-company-name="株式会社◯◯◯◯" data-manager="テスト太郎" data-template="テストテンプレート①" data-design-type="ecosign" data-update-date="2026/02/22" data-updater="テスト更新者">
+                            <td class="px-5 py-2"><a href="order_main.html" class="order-main-link font-mono text-[12px] text-main hover:underline">ORD-2026-0005</a></td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">サンプル工事⑤</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">東京都渋谷区恵比寿◯ー◯ー◯</div>
+                            </td>
+                            <td class="px-5 py-2">
+                                <div class="text-slate-600 font-semibold text-[12px]">株式会社◯◯◯◯</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト太郎</div>
+                            </td>
+                            <td class="col-design px-4 py-2">
+                                <div class="text-slate-600 text-[12px]">テストテンプレート①</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">エコサイン</div>
+                            </td>
+                            <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
+                                <div>2026/02/22</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 truncate">テスト更新者</div>
+                            </td>
+                            <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">01</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">02</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">03</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">04</a>
+                                <a href="order_detail.html?mode=edit" class="font-mono text-[12px] text-main hover:underline">05</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bg-slate-50 px-5 py-4 border-t border-slate-200">
+                <nav id="orderListPagination" class="flex w-full items-center">
+                    <div class="flex-1"></div>
+                    <div class="flex gap-3 items-center">
+                        <button type="button" id="orderListPaginationPrev" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-40">＜</button>
+                        <div id="orderListPaginationPages" class="flex gap-1.5"></div>
+                        <button type="button" id="orderListPaginationNext" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-40">＞</button>
+                    </div>
+                    <div class="flex-1 flex justify-end items-center min-w-0">
+                        <span id="orderListPaginationTotal" class="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-600 tabular-nums">
+                            <span id="orderListPaginationCurrent" class="text-slate-600">1</span>
+                            <span class="text-slate-400">/</span>
+                            <span id="orderListPaginationTotalNum">1</span>
+                        </span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+        </div>
+
+        <div class="mt-8 flex justify-start">
+            <a id="linkBack" href="#" class="inline-block px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200">戻る</a>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
+    <script src="js/app-config.js"></script>
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var orderNo = params.get('orderNo');
+            var searched = params.get('searched') === '1';
+            var inputOrderNo = document.getElementById('inputOrderNo');
+            if (orderNo != null && inputOrderNo) inputOrderNo.value = orderNo;
+
+            var matchedRows = [];
+            var currentPage = 1;
+            var paginationStartPage = null;
+
+            var PER_PAGE = 10;
+
+            function performSearch() {
+                var section = document.getElementById('orderListSection');
+                var countNumEl = document.getElementById('orderListCountNum');
+                var tbody = document.getElementById('orderListTbody');
+                if (!section || !countNumEl || !tbody) return;
+                var filterOrderNo = (inputOrderNo ? inputOrderNo.value : '').trim();
+                var rows = Array.from(tbody.querySelectorAll('tr[data-order-no]'));
+                matchedRows = rows.filter(function (row) {
+                    var rowOrderNo = (row.dataset.orderNo || '').trim();
+                    return !filterOrderNo || rowOrderNo === filterOrderNo;
+                });
+                currentPage = 1;
+                paginationStartPage = null;
+                countNumEl.textContent = matchedRows.length;
+                renderPage();
+                renderPagination();
+                section.classList.remove('hidden');
+            }
+
+            function renderPage() {
+                var tbody = document.getElementById('orderListTbody');
+                if (!tbody) return;
+                var rows = tbody.querySelectorAll('tr[data-order-no]');
+                var start = (currentPage - 1) * PER_PAGE;
+                var end = start + PER_PAGE;
+                rows.forEach(function (row) {
+                    var idx = matchedRows.indexOf(row);
+                    row.style.display = (idx >= 0 && idx >= start && idx < end) ? '' : 'none';
+                });
+            }
+
+            function renderPagination(direction) {
+                var prevBtn = document.getElementById('orderListPaginationPrev');
+                var nextBtn = document.getElementById('orderListPaginationNext');
+                var pagesEl = document.getElementById('orderListPaginationPages');
+                if (!pagesEl) return;
+                var totalPages = Math.ceil(matchedRows.length / PER_PAGE) || 1;
+                prevBtn.disabled = currentPage <= 1;
+                prevBtn.classList.toggle('opacity-50', currentPage <= 1);
+                prevBtn.classList.toggle('cursor-not-allowed', currentPage <= 1);
+                prevBtn.classList.toggle('pointer-events-none', currentPage <= 1);
+                nextBtn.disabled = currentPage >= totalPages;
+                nextBtn.classList.toggle('opacity-50', currentPage >= totalPages);
+                nextBtn.classList.toggle('cursor-not-allowed', currentPage >= totalPages);
+                nextBtn.classList.toggle('pointer-events-none', currentPage >= totalPages);
+                pagesEl.innerHTML = '';
+                var maxVisible = 5;
+                var startPage;
+                if (direction === 'next' && paginationStartPage != null) {
+                    startPage = Math.max(1, Math.min(paginationStartPage + 1, totalPages - maxVisible + 1), currentPage - maxVisible + 1);
+                } else if (direction === 'prev' && paginationStartPage != null) {
+                    startPage = Math.max(1, paginationStartPage - 1, currentPage - maxVisible + 1);
+                } else {
+                    startPage = Math.max(1, Math.min(currentPage - Math.floor((maxVisible - 1) / 2), totalPages - maxVisible + 1));
+                }
+                startPage = Math.max(1, Math.min(startPage, totalPages - maxVisible + 1));
+                var endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                paginationStartPage = startPage;
+                for (var i = startPage; i <= endPage; i++) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all duration-200 order-list-page-btn';
+                    btn.textContent = i;
+                    btn.dataset.page = i;
+                    if (i === currentPage) {
+                        btn.classList.add('bg-main', 'text-white', 'shadow-sm');
+                    } else {
+                        btn.classList.add('bg-white', 'border', 'border-slate-300', 'text-slate-600', 'hover:bg-slate-100');
+                    }
+                    btn.addEventListener('click', function () {
+                        currentPage = parseInt(this.dataset.page, 10);
+                        renderPage();
+                        renderPagination();
+                    });
+                    pagesEl.appendChild(btn);
+                }
+                var currentEl = document.getElementById('orderListPaginationCurrent');
+                var totalNumEl = document.getElementById('orderListPaginationTotalNum');
+                if (currentEl) currentEl.textContent = currentPage;
+                if (totalNumEl) totalNumEl.textContent = totalPages;
+            }
+
+            var pageEl = document.getElementById('order-list-page');
+            if (pageEl) {
+                pageEl.addEventListener('click', function (e) {
+                    if (e.target && e.target.id === 'btnSearch') {
+                        e.preventDefault();
+                        performSearch();
+                    }
+                });
+            }
+            document.getElementById('orderListPaginationPrev') && document.getElementById('orderListPaginationPrev').addEventListener('click', function () {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage();
+                    renderPagination('prev');
+                }
+            });
+            document.getElementById('orderListPaginationNext') && document.getElementById('orderListPaginationNext').addEventListener('click', function () {
+                var totalPages = Math.ceil(matchedRows.length / PER_PAGE) || 1;
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPage();
+                    renderPagination('next');
+                }
+            });
+
+            function restoreFromUrlAndSearch() {
+                var p = new URLSearchParams(window.location.search);
+                var on = p.get('orderNo');
+                var sch = p.get('searched') === '1';
+                if (on != null && inputOrderNo) inputOrderNo.value = on;
+                if (on != null || sch) performSearch();
+            }
+            // メニューからの遷移時（URLパラメータなし）は検索結果を表示せず、検索ボタン押下時のみ表示
+            if (orderNo != null || searched) performSearch();
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) {
+                    restoreFromUrlAndSearch();
+                }
+            });
+        })();
+        (function () {
+            if (typeof AppConfig === 'undefined') return;
+            var buildParams = AppConfig.buildOrderParams;
+            var replaceListUrl = AppConfig.replaceListUrlWithSearchState;
+
+            function attachListLinkClickHandler(link) {
+                link.addEventListener('click', function () {
+                    var inputOrderNo = document.getElementById('inputOrderNo');
+                    var currentOrderNo = (inputOrderNo && inputOrderNo.value ? inputOrderNo.value : '').trim();
+                    replaceListUrl(window.location.pathname, currentOrderNo);
+                });
+            }
+
+            function setupOrderLinks() {
+                document.querySelectorAll('td.col-action a[href*="order_detail"]').forEach(function (link) {
+                    var row = link.closest('tr');
+                    if (!row) return;
+                    var branch = (link.textContent && link.textContent.trim()) || (link.dataset && link.dataset.branch) || '';
+                    var params = buildParams(row, { itemCode: branch }, true);
+                    link.href = 'order_detail.html?' + params.toString();
+                    attachListLinkClickHandler(link);
+                });
+
+                document.querySelectorAll('.order-main-link').forEach(function (link) {
+                    var row = link.closest('tr');
+                    if (!row) return;
+                    var params = buildParams(row, null, false);
+                    link.href = 'order_main.html?' + params.toString();
+                    attachListLinkClickHandler(link);
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupOrderLinks);
+            } else {
+                setupOrderLinks();
+            }
+        })();
+        (function () {
+            var inputFrom = document.getElementById('inputUpdateDateFrom');
+            var inputTo = document.getElementById('inputUpdateDateTo');
+            if (typeof flatpickr !== 'undefined' && inputFrom && inputTo) {
+                flatpickr(inputFrom, {
+                    locale: flatpickr.l10ns && flatpickr.l10ns.ja ? flatpickr.l10ns.ja : 'default',
+                    dateFormat: 'Y/m/d',
+                    allowInput: false
+                });
+                flatpickr(inputTo, {
+                    locale: flatpickr.l10ns && flatpickr.l10ns.ja ? flatpickr.l10ns.ja : 'default',
+                    dateFormat: 'Y/m/d',
+                    allowInput: false
+                });
+            }
+        })();
+        (function () {
+            var toggle = document.getElementById('searchConditionToggle');
+            var body = document.getElementById('searchConditionBody');
+            var icon = document.getElementById('searchConditionToggleText');
+            var iconSym = document.getElementById('searchConditionToggleIcon');
+            if (toggle && body) {
+                toggle.addEventListener('click', function () {
+                    body.classList.toggle('hidden');
+                    var isHidden = body.classList.contains('hidden');
+                    if (icon) icon.textContent = isHidden ? '表示' : '閉じる';
+                    if (iconSym) {
+                        iconSym.classList.toggle('rotate-180', isHidden);
+                    }
+                    toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                });
+            }
+        })();
+        (function () {
+            var linkBack = document.getElementById('linkBack');
+            if (linkBack) linkBack.addEventListener('click', function (e) { e.preventDefault(); history.back(); });
+        })();
+    </script>
+</body>
+</html>

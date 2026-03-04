@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>看板情報入力 / 変更</title>
+    <script src="js/tailwind-config.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body class="bg-[#e2e8f0] text-slate-600 min-h-screen">
+
+    <div id="header-placeholder"></div>
+    <script src="js/header-include.js"></script>
+
+    <main id="order-detail-page" class="max-w-6xl mx-auto py-12 px-8">
+        <!-- ページタイトル + 注文情報（一覧と同じカードレイアウト） -->
+        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
+            <div class="bg-main px-8 py-4">
+                <h2 class="text-base font-bold text-white tracking-tight">看板情報入力 / 変更</h2>
+            </div>
+            <div class="px-6 pt-5 pb-6 md:px-8 md:pt-6 md:pb-7">
+                <div class="flex items-center justify-between gap-4 mb-4 text-main">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
+                        <h3 class="font-bold text-base tracking-tight">注文情報</h3>
+                    </div>
+                    <button type="button" id="orderInfoToggle" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200" aria-expanded="true">
+                        <span id="orderInfoToggleIcon" class="inline-flex transition-transform duration-200">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </span>
+                        <span id="orderInfoToggleText">閉じる</span>
+                    </button>
+                </div>
+                <div id="orderInfoBody" class="grid grid-cols-1 md:[grid-template-columns:380px_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm">
+                    <div class="space-y-1.5">
+                        <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                            <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                            注文番号
+                        </label>
+                        <div class="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3">
+                            <input type="text" id="inputOrderNo" class="w-[25ch] px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none text-slate-700 font-mono text-sm" placeholder="注文番号を入力してください">
+                            <button type="button" id="btnOrderSelect" class="px-4 md:px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-[11px] md:text-xs font-bold text-slate-700 shadow-sm transition-all duration-200">選択</button>
+                            <button type="button" id="btnOrderSearch" class="px-4 md:px-5 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-[11px] md:text-xs font-bold shadow-md shadow-main/20 transition-all duration-200">検索</button>
+                        </div>
+                    </div>
+                    <div class="space-y-1 md:pl-6">
+                        <div class="text-xs text-slate-400 font-semibold">注文名 / 住所</div>
+                        <div id="orderNameAddress" class="text-slate-700 font-semibold text-sm">-</div>
+                        <div id="orderNameAddressSub" class="text-[11px] text-slate-500 mt-0.5">-</div>
+                    </div>
+                    <div class="space-y-1 md:pl-6">
+                        <div class="text-xs text-slate-400 font-semibold">会社名 / 担当者</div>
+                        <div id="orderCompany" class="text-slate-700 font-semibold text-sm">-</div>
+                        <div id="orderCompanySub" class="text-[11px] text-slate-500 mt-0.5">-</div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="text-xs text-slate-400 font-semibold">テンプレート / デザイン種別</div>
+                        <div id="orderTemplateDesign" class="text-slate-700 text-sm">-</div>
+                        <div id="orderTemplateDesignSub" class="text-[11px] text-slate-500 mt-0.5">-</div>
+                    </div>
+                    <div class="space-y-1 md:pl-6">
+                        <div class="text-xs text-slate-400 font-semibold">更新日 / 更新者</div>
+                        <div id="orderUpdateDate" class="text-slate-700 font-semibold text-sm">-</div>
+                        <div id="orderUpdater" class="text-[11px] text-slate-500 mt-0.5">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 看板情報入力（メニュー新規時は非表示、検索で表示） -->
+        <section id="kanbanSection" class="bg-white rounded-2xl card-shadow border border-slate-200/80 mb-8">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
+                    <h3 class="text-base font-bold text-main tracking-tight">看板情報</h3>
+                </div>
+            </div>
+
+            <div class="px-6 pt-5 pb-6 space-y-6">
+                <!-- 枝番タブ -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-semibold text-slate-500">枝番選択</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="btnDeleteBranch" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200">
+                                削除
+                            </button>
+                            <button type="button" id="btnAddBranch" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                枝番を追加
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" id="btnPrevBranch" class="inline-flex items-center justify-center p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent" title="前の枝番へ">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <div id="branchTabContainer" class="flex flex-wrap gap-2">
+                        <div class="branch-tab-item inline-flex rounded-xl overflow-hidden bg-main">
+                            <button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm" data-branch="01">01</button>
+                        </div>
+                        <div class="branch-tab-item inline-flex rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                            <button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors duration-200" data-branch="02">02</button>
+                        </div>
+                        <div class="branch-tab-item inline-flex rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                            <button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors duration-200" data-branch="03">03</button>
+                        </div>
+                        <div class="branch-tab-item inline-flex rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                            <button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors duration-200" data-branch="04">04</button>
+                        </div>
+                        <div class="branch-tab-item inline-flex rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                            <button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors duration-200" data-branch="05">05</button>
+                        </div>
+                        </div>
+                        <button type="button" id="btnNextBranch" class="inline-flex items-center justify-center p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent" title="次の枝番へ">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 入力フォーム（枝番あり時のみ表示） -->
+                <div id="branchDetailSection" class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6">
+                    <div class="space-y-4">
+                        <div class="space-y-1.5">
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                                枝番
+                            </label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="text" id="activeBranchDisplay" value="01" maxlength="2" class="w-16 px-4 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 font-semibold" placeholder="枝番">
+                                <button type="button" id="btnSvgOutput" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200">
+                                    地図出力
+                                </button>
+                                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 cursor-pointer">
+                                    地図読込
+                                    <input type="file" id="inputSvgLoad" accept=".svg" class="sr-only">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-500">テンプレートプレビュー</label>
+                            <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
+                                <img src="assets/template-dummy.png" alt="テンプレートプレビュー" class="max-w-full max-h-full object-contain">
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-500">備考</label>
+                            <textarea id="branchMemoInput" class="w-full min-h-[56px] max-h-24 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none resize-y" placeholder="その他、看板に関する補足事項を入力してください" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- マップ・プレビューエリア（ダミー） -->
+                    <div class="space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <span class="text-xs font-bold text-slate-500">レイアウト / マッププレビュー</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" id="btnFullscreenEdit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-main hover:bg-subBlue border border-transparent shadow-sm transition-all duration-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                                    全画面で編集・操作する
+                                </button>
+                                <button type="button" id="btnPreview" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200">
+                                    全体プレビュー
+                                </button>
+                                <div class="flex items-center gap-1.5">
+                                    <select id="outputFormatSelect" class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none font-medium text-slate-700">
+                                        <option value="pdf">PDF</option>
+                                        <option value="png">PNG</option>
+                                        <option value="svg">SVG</option>
+                                    </select>
+                                    <button type="button" id="btnOutput" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-main hover:bg-subBlue border border-transparent shadow-sm transition-all duration-200">
+                                        出力
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative bg-slate-100 border border-dashed border-slate-300 rounded-xl aspect-square w-full flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-br from-main/3 via-subBlue/2 to-cream/20 pointer-events-none"></div>
+                            <div class="relative z-10 text-center space-y-2">
+                                <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-main text-white text-sm font-bold mb-1">A</div>
+                                <p class="text-sm font-semibold text-slate-700">ここに看板レイアウトのプレビューが入ります</p>
+                                <p class="text-xs text-slate-500">実装時は地図やレイアウト編集コンポーネントを埋め込んでください</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ボタン群 -->
+        <div class="relative flex flex-col sm:flex-row items-center gap-4 pt-2 pb-4">
+            <a id="linkBack" href="#" class="sm:absolute sm:left-0 px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200">
+                戻る
+            </a>
+            <div class="flex-1 flex justify-center">
+                <button type="button" id="btnRegister" class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-lg shadow-main/20 transition-all duration-200">
+                    登録
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 全画面編集モード（左パネル＋右マップ） -->
+    <div id="fullscreenEditOverlay" class="fixed inset-0 z-50 hidden flex flex-col bg-slate-100" aria-hidden="true">
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+            <!-- 左: 編集コントロールパネル -->
+            <aside id="mapEditPanel" class="w-[280px] min-w-[280px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
+                <div class="p-4 space-y-6">
+                    <!-- 編集モード開始/終了 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">編集モード開始/終了</span>
+                            <span class="text-slate-400 cursor-help" title="編集を終了して通常画面に戻ります">ⓘ</span>
+                        </div>
+                        <button type="button" id="btnCloseFullscreenEdit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white bg-main hover:bg-subBlue border border-transparent transition-all duration-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            閉じる
+                        </button>
+                    </div>
+                    <!-- ルート描画 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">ルート描画</span>
+                            <span class="text-slate-400 cursor-help" title="地図上に経路を描画します">ⓘ</span>
+                        </div>
+                        <input type="text" id="inputRouteStyle" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none" placeholder="赤・実線" value="赤・実線">
+                        <button type="button" id="btnRouteDraw" class="w-full px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">ルート描画</button>
+                    </div>
+                    <!-- テキスト配置 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">テキスト配置</span>
+                            <span class="text-slate-400 cursor-help" title="地図上にテキストを配置します">ⓘ</span>
+                        </div>
+                        <input type="text" id="inputTextContent" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none" placeholder="テキストを入力してください">
+                        <button type="button" id="btnTextAdd" class="w-full px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">テキスト追加モード</button>
+                    </div>
+                    <!-- 画像配置 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">画像配置</span>
+                            <span class="text-slate-400 cursor-help" title="地図上に画像を配置します">ⓘ</span>
+                        </div>
+                        <input type="text" id="inputImageType" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none" placeholder="信号機" value="信号機">
+                        <button type="button" id="btnImageAdd" class="w-full px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">画像追加モード</button>
+                    </div>
+                    <!-- 吹き出し配置 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">吹き出し配置</span>
+                            <span class="text-slate-400 cursor-help" title="地図上に吹き出しを配置します">ⓘ</span>
+                        </div>
+                        <input type="text" id="inputCalloutText" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none" placeholder="吹き出しテキストを入力してください">
+                        <button type="button" id="btnCalloutAdd" class="w-full px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">吹き出し追加モード</button>
+                    </div>
+                    <!-- アイテム選択 -->
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-slate-500">アイテム選択</span>
+                            <span class="text-slate-400 cursor-help" title="地図上のアイテムを選択・削除します">ⓘ</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="btnItemSelect" class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">アイテム選択モード</button>
+                            <button type="button" id="btnItemDelete" class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all duration-200">選択アイテムの削除</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            <!-- 右: マップ表示エリア -->
+            <div id="fullscreenMapArea" class="flex-1 min-w-0 relative bg-slate-200">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center space-y-2">
+                        <div class="inline-flex justify-center w-12 h-12 rounded-full bg-main/20 text-main">
+                            <svg class="w-6 h-6 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-600">マップ表示エリア</p>
+                        <p class="text-xs text-slate-500">実装時は MapLibre 等で地図を表示</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 必須項目未入力ダイアログ（検索時） -->
+    <div id="orderSearchValidationModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="orderSearchValidationModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="orderSearchValidationModalMessage">
+                <div class="px-8 pt-8 pb-6 text-center">
+                    <p id="orderSearchValidationModalMessage" class="text-sm text-slate-600">注文番号を入力してください。</p>
+                </div>
+                <div class="px-8 py-5 flex flex-nowrap justify-center">
+                    <button type="button" id="orderSearchValidationModalOk" class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登録確認モーダル -->
+    <div id="registerConfirmModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="registerConfirmModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="registerConfirmModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="registerConfirmModalTitle" class="text-base font-bold text-white tracking-tight">登録の確認</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p id="registerConfirmMessage" class="text-sm text-slate-600">この内容で登録してよろしいですか？</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+                    <button type="button" id="registerConfirmModalCancel" class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        キャンセル
+                    </button>
+                    <button type="button" id="registerConfirmModalOk" class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登録結果モーダル（メイン登録ボタン用） -->
+    <div id="registerResultModal" class="fixed inset-0 z-[60] hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="registerResultModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="registerResultModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="registerResultModalTitle" class="text-base font-bold text-white tracking-tight">処理結果</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p id="registerResultMessage" class="text-sm text-slate-600">登録が完了しました。</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
+                    <button type="button" id="registerResultModalOk" class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注文番号選択モーダル -->
+    <div id="orderNoSelectModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="orderNoSelectModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-5xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="orderNoSelectModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="orderNoSelectModalTitle" class="text-base font-bold text-white tracking-tight">注文番号を選択</h3>
+                </div>
+                <div class="px-8 py-6 max-h-[60vh] overflow-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
+                                <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">会社名<br>担当者</span></th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200 whitespace-normal min-w-[140px]"><span class="header-2line">テンプレート<br>デザイン種別</span></th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">更新日<br>更新者</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderNoSelectList" class="divide-y divide-slate-100">
+                            <!-- 選択肢はJSで生成 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
+                    <button type="button" id="orderNoSelectModalCancel" class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 枝番追加モーダル -->
+    <div id="branchAddModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="branchAddModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="branchAddModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="branchAddModalTitle" class="text-base font-bold text-white tracking-tight">枝番を追加</h3>
+                </div>
+                <div class="px-8 py-6 space-y-4">
+                    <div class="space-y-1.5">
+                        <label for="branchNoInput" class="block text-xs font-bold text-slate-500">枝番</label>
+                        <input type="text" id="branchNoInput" class="w-full px-4 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200" placeholder="例: 06">
+                    </div>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+                    <button type="button" id="branchAddModalCancel" class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        キャンセル
+                    </button>
+                    <button type="button" id="branchAddModalOk" class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 枝番切り替え確認モーダル（変更あり） -->
+    <div id="branchSwitchConfirmModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="branchSwitchConfirmModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="branchSwitchConfirmModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="branchSwitchConfirmModalTitle" class="text-base font-bold text-white tracking-tight">変更の確認</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p id="branchSwitchConfirmModalMessage" class="text-sm text-slate-600">変更が保存されていません。登録してから枝番を切り替えますか？</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+                    <button type="button" id="branchSwitchConfirmModalCancel" class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        キャンセル
+                    </button>
+                    <button type="button" id="branchSwitchConfirmModalDiscard" class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        破棄して切り替え
+                    </button>
+                    <button type="button" id="branchSwitchConfirmModalRegister" class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        登録して切り替え
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登録結果モーダル -->
+    <div id="branchRegisterResultModal" class="fixed inset-0 z-[60] hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="branchRegisterResultModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="branchRegisterResultModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="branchRegisterResultModalTitle" class="text-base font-bold text-white tracking-tight">処理結果</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p id="branchRegisterResultMessage" class="text-sm text-slate-600">登録が完了しました。</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
+                    <button type="button" id="branchRegisterResultModalOk" class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 既存枝番ダイアログ -->
+    <div id="branchExistsModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="branchExistsModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="branchExistsModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="branchExistsModalTitle" class="text-base font-bold text-white tracking-tight">枝番</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p class="text-sm text-slate-600">既に存在する枝番です</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
+                    <button type="button" id="branchExistsModalOk" class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 枝番削除確認モーダル -->
+    <div id="branchDeleteModal" class="fixed inset-0 z-50 hidden" aria-hidden="true">
+        <div class="fixed inset-0 bg-black/40" id="branchDeleteModalBackdrop"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="branchDeleteModalTitle">
+                <div class="px-6 py-3 bg-main">
+                    <h3 id="branchDeleteModalTitle" class="text-base font-bold text-white tracking-tight">枝番の削除</h3>
+                </div>
+                <div class="px-8 py-6">
+                    <p id="branchDeleteMessage" class="text-sm text-slate-600">枝番<span id="branchDeleteTargetNo"></span>を削除しますか？</p>
+                </div>
+                <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+                    <button type="button" id="branchDeleteModalCancel" class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap">
+                        キャンセル
+                    </button>
+                    <button type="button" id="branchDeleteModalOk" class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app-config.js"></script>
+    <script>
+        (function () {
+            var toggle = document.getElementById('orderInfoToggle');
+            var body = document.getElementById('orderInfoBody');
+            var text = document.getElementById('orderInfoToggleText');
+            var icon = document.getElementById('orderInfoToggleIcon');
+            if (toggle && body) {
+                toggle.addEventListener('click', function () {
+                    body.classList.toggle('hidden');
+                    var isHidden = body.classList.contains('hidden');
+                    if (text) text.textContent = isHidden ? '表示' : '閉じる';
+                    if (icon) {
+                        icon.classList.toggle('rotate-180', isHidden);
+                    }
+                    toggle.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                });
+            }
+
+            // 登録ボタン（URLのmodeで登録/変更を判定）※メニュー→新規、一覧→変更
+            var pageParams = new URLSearchParams(window.location.search);
+            var cameFromList = pageParams.get('mode') === 'edit';
+            var hasSearched = cameFromList;
+            var lastConfirmedOrderNo = '';
+            var lastAddedBranchNo = null;
+
+            function applyOrderInfoFromParams() {
+                if (!cameFromList) return;
+                var orderNo = pageParams.get('orderNo');
+                var orderName = pageParams.get('orderName');
+                var address = pageParams.get('address');
+                var companyName = pageParams.get('companyName');
+                var manager = pageParams.get('manager');
+                var designType = pageParams.get('designType');
+                var template = pageParams.get('template');
+                var updateDate = pageParams.get('updateDate');
+                var updater = pageParams.get('updater');
+                var itemCode = pageParams.get('itemCode');
+                var designLabel = designType === 'ecosign' ? 'エコサイン' : (designType === '550' ? '550' : designType || '-');
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                var orderNameAddress = document.getElementById('orderNameAddress');
+                var orderNameAddressSub = document.getElementById('orderNameAddressSub');
+                var orderCompany = document.getElementById('orderCompany');
+                var orderCompanySub = document.getElementById('orderCompanySub');
+                var orderTemplateDesign = document.getElementById('orderTemplateDesign');
+                var orderTemplateDesignSub = document.getElementById('orderTemplateDesignSub');
+                var orderUpdateDate = document.getElementById('orderUpdateDate');
+                var orderUpdater = document.getElementById('orderUpdater');
+                if (inputOrderNo) { inputOrderNo.value = orderNo || ''; lastConfirmedOrderNo = orderNo || ''; originalOrderNo = orderNo || ''; }
+                if (orderNameAddress) {
+                    orderNameAddress.textContent = orderName || '-';
+                    orderNameAddress.className = 'text-slate-700 font-semibold text-sm';
+                }
+                if (orderNameAddressSub) {
+                    orderNameAddressSub.textContent = address || '-';
+                    orderNameAddressSub.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (orderCompany) {
+                    orderCompany.textContent = companyName || '-';
+                    orderCompany.className = 'text-slate-700 font-semibold text-sm';
+                }
+                if (orderCompanySub) {
+                    orderCompanySub.textContent = manager || '-';
+                    orderCompanySub.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (orderTemplateDesign) {
+                    orderTemplateDesign.textContent = template || '-';
+                    orderTemplateDesign.className = 'text-slate-700 text-sm';
+                }
+                if (orderTemplateDesignSub) {
+                    orderTemplateDesignSub.textContent = designLabel;
+                    orderTemplateDesignSub.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (orderUpdateDate) orderUpdateDate.textContent = updateDate || '-';
+                if (orderUpdater) orderUpdater.textContent = updater || '-';
+                applyBranchTabsForOrder(orderNo || '', itemCode || '');
+            }
+
+            function getPageMode() {
+                return pageParams.get('mode') === 'edit' ? 'edit' : 'register';
+            }
+
+            function updateRegisterButton() {
+                var btn = document.getElementById('btnRegister');
+                if (!btn) return;
+                btn.textContent = getPageMode() === 'edit' ? '更新' : '登録';
+                var registerDisabled = !cameFromList && !hasSearched;
+                if (!registerDisabled && hasSearched) {
+                    var container = document.getElementById('branchTabContainer');
+                    var hasBranches = container && container.querySelector('.branch-tab-item');
+                    if (!hasBranches) registerDisabled = true;
+                }
+                btn.disabled = registerDisabled;
+                btn.classList.toggle('opacity-50', registerDisabled);
+                btn.classList.toggle('cursor-not-allowed', registerDisabled);
+                btn.classList.toggle('pointer-events-none', registerDisabled);
+            }
+
+            function setKanbanSectionVisibility() {
+                var section = document.getElementById('kanbanSection');
+                if (section) section.classList.toggle('hidden', !hasSearched);
+                updateRegisterButton();
+            }
+
+            function setOrderSelectSearchState() {
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                if (inputOrderNo) {
+                    inputOrderNo.readOnly = cameFromList;
+                    inputOrderNo.classList.toggle('bg-slate-50', cameFromList);
+                    inputOrderNo.classList.toggle('text-slate-500', cameFromList);
+                    inputOrderNo.classList.toggle('border-slate-200', cameFromList);
+                    inputOrderNo.classList.toggle('border-slate-300', !cameFromList);
+                    inputOrderNo.classList.toggle('text-slate-700', !cameFromList);
+                    inputOrderNo.classList.toggle('focus:ring-2', !cameFromList);
+                    inputOrderNo.classList.toggle('focus:ring-offset-2', !cameFromList);
+                    inputOrderNo.classList.toggle('focus:ring-lightBlue', !cameFromList);
+                }
+                var btnSelect = document.getElementById('btnOrderSelect');
+                var btnSearch = document.getElementById('btnOrderSearch');
+                var disableBoth = cameFromList;
+                if (btnSelect) {
+                    btnSelect.disabled = disableBoth;
+                    btnSelect.classList.toggle('opacity-50', disableBoth);
+                    btnSelect.classList.toggle('cursor-not-allowed', disableBoth);
+                    btnSelect.classList.toggle('pointer-events-none', disableBoth);
+                }
+                if (btnSearch) {
+                    btnSearch.disabled = disableBoth;
+                    btnSearch.classList.toggle('opacity-50', disableBoth);
+                    btnSearch.classList.toggle('cursor-not-allowed', disableBoth);
+                    btnSearch.classList.toggle('pointer-events-none', disableBoth);
+                }
+            }
+
+            var btnRegister = document.getElementById('btnRegister');
+            var registerConfirmModal = document.getElementById('registerConfirmModal');
+            var registerConfirmModalOk = document.getElementById('registerConfirmModalOk');
+            var registerConfirmModalCancel = document.getElementById('registerConfirmModalCancel');
+            var registerConfirmModalBackdrop = document.getElementById('registerConfirmModalBackdrop');
+
+            function openRegisterConfirmModal() {
+                if (registerConfirmModal) {
+                    var isEdit = getPageMode() === 'edit';
+                    var titleEl = document.getElementById('registerConfirmModalTitle');
+                    var msgEl = document.getElementById('registerConfirmMessage');
+                    if (titleEl) titleEl.textContent = isEdit ? '更新の確認' : '登録の確認';
+                    if (msgEl) msgEl.textContent = isEdit ? 'この内容で更新してよろしいですか？' : 'この内容で登録してよろしいですか？';
+                    registerConfirmModal.classList.remove('hidden');
+                    registerConfirmModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeRegisterConfirmModal() {
+                if (registerConfirmModal) {
+                    registerConfirmModal.classList.add('hidden');
+                    registerConfirmModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            var registerResultModal = document.getElementById('registerResultModal');
+            var registerResultModalOk = document.getElementById('registerResultModalOk');
+            var registerResultModalBackdrop = document.getElementById('registerResultModalBackdrop');
+
+            function updateUrlParams(data) {
+                if (!data || typeof AppConfig === 'undefined') return;
+                var params = AppConfig.buildOrderParams(data, data.itemCode ? { itemCode: data.itemCode } : null, true);
+                history.replaceState({}, '', window.location.pathname + '?' + params.toString());
+                pageParams = new URLSearchParams(window.location.search);
+                cameFromList = true;
+                setOrderSelectSearchState();
+            }
+
+            function switchToUpdateMode() {
+                var inputEl = document.getElementById('inputOrderNo');
+                var orderNo = lastConfirmedOrderNo || (inputEl && inputEl.value ? inputEl.value.trim() : '') || '';
+                var data = orderListData && orderListData.find(function (o) { return o.orderNo === orderNo; });
+                if (!data) data = orderListData && orderListData[0];
+                var params;
+                if (typeof AppConfig !== 'undefined' && AppConfig.buildOrderParams) {
+                    params = AppConfig.buildOrderParams(data || { orderNo: orderNo }, data && data.itemCode ? { itemCode: data.itemCode } : null, true);
+                } else {
+                    var p = new URLSearchParams();
+                    p.set('mode', 'edit');
+                    var keys = ['orderNo', 'orderName', 'address', 'companyName', 'manager', 'template', 'designType', 'updateDate', 'updater', 'itemCode'];
+                    if (data) {
+                        keys.forEach(function (k) { if (data[k]) p.set(k, data[k]); });
+                    } else if (orderNo) {
+                        p.set('orderNo', orderNo);
+                    }
+                    params = p;
+                }
+                history.replaceState({}, '', window.location.pathname + '?' + params.toString());
+                pageParams = new URLSearchParams(window.location.search);
+                hasSearched = true;
+                setOrderSelectSearchState();
+                setKanbanSectionVisibility();
+                updateRegisterButton();
+            }
+
+            function openRegisterResultModal(message) {
+                if (registerResultModal) {
+                    var msgEl = document.getElementById('registerResultMessage');
+                    if (msgEl && message) msgEl.textContent = message;
+                    registerResultModal.classList.remove('hidden');
+                    registerResultModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeRegisterResultModal() {
+                if (registerResultModal) {
+                    registerResultModal.classList.add('hidden');
+                    registerResultModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (btnRegister) btnRegister.addEventListener('click', openRegisterConfirmModal);
+            if (registerConfirmModalOk) {
+                registerConfirmModalOk.addEventListener('click', function () {
+                    // TODO: 登録/更新処理（API呼び出し等）
+                    closeRegisterConfirmModal();
+                    openRegisterResultModal(getPageMode() === 'edit' ? '更新が完了しました。' : '登録が完了しました。');
+                });
+            }
+            if (registerConfirmModalCancel) registerConfirmModalCancel.addEventListener('click', closeRegisterConfirmModal);
+            if (registerConfirmModalBackdrop) registerConfirmModalBackdrop.addEventListener('click', closeRegisterConfirmModal);
+            if (registerResultModalOk) {
+                registerResultModalOk.addEventListener('click', function () {
+                    closeRegisterResultModal();
+                    switchToUpdateMode();
+                });
+            }
+            if (registerResultModalBackdrop) registerResultModalBackdrop.addEventListener('click', function () {
+                closeRegisterResultModal();
+                switchToUpdateMode();
+            });
+
+            updateRegisterButton();
+            setOrderSelectSearchState();
+            setKanbanSectionVisibility();
+            if (cameFromList) {
+                setTimeout(function () { applyOrderInfoFromParams(); }, 0);
+            }
+
+            if (typeof AppConfig !== 'undefined' && AppConfig.onPageshowReplaceWithMainUrl) {
+                AppConfig.onPageshowReplaceWithMainUrl(
+                    AppConfig.CONFIG.ORDER_PARAM_KEYS.concat(AppConfig.CONFIG.ORDER_DETAIL_EXTRA_KEYS)
+                );
+            }
+
+            var orderListData = [
+                { orderNo: 'ORD-2026-0001', orderName: 'サンプルビル外壁工事', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/26', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0002', orderName: '○○駅前 再開発看板', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/25', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0003', orderName: 'サンプル工事③', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/24', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0004', orderName: 'サンプル工事④', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/23', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0005', orderName: 'サンプル工事⑤', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/22', updater: 'テスト更新者' }
+            ];
+
+            function clearOrderInfoExceptOrderNo() {
+                var el;
+                if (el = document.getElementById('orderNameAddress')) { el.textContent = '-'; el.className = 'text-slate-700 font-semibold text-sm'; }
+                if (el = document.getElementById('orderNameAddressSub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                if (el = document.getElementById('orderCompany')) { el.textContent = '-'; el.className = 'text-slate-700 font-semibold text-sm'; }
+                if (el = document.getElementById('orderCompanySub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                if (el = document.getElementById('orderTemplateDesign')) { el.textContent = '-'; el.className = 'text-slate-700 text-sm'; }
+                if (el = document.getElementById('orderTemplateDesignSub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                if (el = document.getElementById('orderUpdateDate')) el.textContent = '-';
+                if (el = document.getElementById('orderUpdater')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                if (!cameFromList) {
+                    hasSearched = false;
+                    setKanbanSectionVisibility();
+                }
+            }
+
+            function setBranchFormVisibility(hasBranches) {
+                var section = document.getElementById('branchDetailSection');
+                var btnDelete = document.getElementById('btnDeleteBranch');
+                if (section) section.classList.toggle('hidden', !hasBranches);
+                if (btnDelete) {
+                    btnDelete.disabled = !hasBranches;
+                    btnDelete.classList.toggle('opacity-50', !hasBranches);
+                    btnDelete.classList.toggle('cursor-not-allowed', !hasBranches);
+                    btnDelete.classList.toggle('pointer-events-none', !hasBranches);
+                }
+            }
+
+            var MAX_BRANCH_DISPLAY = 10;
+            var MAX_BRANCH_COUNT = 99;
+            var allBranches = [];
+            var visibleStartIndex = 0;
+
+            function getBranchesForOrder(orderNo) {
+                if (!orderNo) return [];
+                // ORD-2026-0005 は枝番新規（枝番なし）の動き
+                if (orderNo === 'ORD-2026-0005') return [];
+                var i, list = [];
+                for (i = 1; i <= 15; i++) list.push(String(i).padStart(2, '0'));
+                return list;
+            }
+
+            function branchExistsInOrder(branchNo) {
+                var n = (branchNo || '').trim();
+                if (!n) return false;
+                n = String(parseInt(n, 10) || n).padStart(2, '0');
+                return allBranches.indexOf(n) >= 0;
+            }
+
+            function ensureVisible(branchNo) {
+                var n = (branchNo || '').trim();
+                if (!n) return;
+                n = String(parseInt(n, 10) || n).padStart(2, '0');
+                var idx = allBranches.indexOf(n);
+                if (idx < 0) return;
+                var maxStart = Math.max(0, allBranches.length - MAX_BRANCH_DISPLAY);
+                if (idx < visibleStartIndex) visibleStartIndex = Math.max(0, idx);
+                else if (idx >= visibleStartIndex + MAX_BRANCH_DISPLAY) visibleStartIndex = Math.min(maxStart, idx - MAX_BRANCH_DISPLAY + 1);
+            }
+
+            function renderBranchTabs() {
+                var container = document.getElementById('branchTabContainer');
+                var display = document.getElementById('activeBranchDisplay');
+                if (!container) return;
+                var activeBranch = normalizeBranchNo(display ? display.value : '');
+                var visible = allBranches.slice(visibleStartIndex, visibleStartIndex + MAX_BRANCH_DISPLAY);
+                var activeItemClasses = 'bg-main';
+                var inactiveItemClasses = 'bg-slate-100 border border-slate-200/60';
+                var activeTabClasses = 'text-white shadow-sm font-bold rounded-xl';
+                var inactiveTabClasses = 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold rounded-xl transition-colors duration-200';
+                container.innerHTML = visible.map(function (b) {
+                    var isActive = b === activeBranch;
+                    return '<div class="branch-tab-item inline-flex rounded-xl overflow-hidden ' + (isActive ? activeItemClasses : inactiveItemClasses) + '">' +
+                        '<button type="button" class="branch-tab px-3 py-1.5 rounded-xl text-xs ' + (isActive ? activeTabClasses : inactiveTabClasses) + '" data-branch="' + b + '">' + b + '</button></div>';
+                }).join('');
+                if (typeof updateBranchNavButtons === 'function') updateBranchNavButtons();
+            }
+
+            function applyBranchTabsForOrder(orderNo, initialBranch) {
+                var container = document.getElementById('branchTabContainer');
+                var display = document.getElementById('activeBranchDisplay');
+                var memo = document.getElementById('branchMemoInput');
+                if (!container) return;
+                if (memo) memo.value = '';
+                if (typeof setDirty === 'function') setDirty(false);
+                lastAddedBranchNo = null;
+                var effectiveOrderNo = orderNo || (initialBranch && cameFromList ? 'ORD-2026-0001' : '');
+                allBranches = getBranchesForOrder(effectiveOrderNo);
+                visibleStartIndex = 0;
+                if (allBranches.length === 0) {
+                    container.innerHTML = '<p class="text-sm text-slate-500 py-2">枝番情報がありません。枝番を追加してください</p>';
+                    if (display) display.value = '';
+                    if (typeof setOriginalBranchValues === 'function') setOriginalBranchValues('', '');
+                    setBranchFormVisibility(false);
+                    if (typeof updateBranchNavButtons === 'function') updateBranchNavButtons();
+                    updateRegisterButton();
+                    return;
+                }
+                var activeBranch = allBranches[0];
+                if (initialBranch) {
+                    var n = String(parseInt(initialBranch, 10) || initialBranch).padStart(2, '0');
+                    if (allBranches.indexOf(n) >= 0) {
+                        activeBranch = n;
+                        ensureVisible(n);
+                    }
+                }
+                if (display) display.value = activeBranch;
+                if (typeof setOriginalBranchValues === 'function') setOriginalBranchValues(activeBranch, '');
+                setBranchFormVisibility(true);
+                renderBranchTabs();
+                updateRegisterButton();
+            }
+
+            function applyOrderDataToDisplay(data) {
+                if (!data) return;
+                var designLabel = data.designType === 'ecosign' ? 'エコサイン' : (data.designType === '550' ? '550' : data.designType || '-');
+                var el;
+                if (el = document.getElementById('inputOrderNo')) { el.value = data.orderNo || ''; lastConfirmedOrderNo = data.orderNo || ''; originalOrderNo = data.orderNo || ''; }
+                if (el = document.getElementById('orderNameAddress')) {
+                    el.textContent = data.orderName || '-';
+                    el.className = 'text-slate-700 font-semibold text-sm';
+                }
+                if (el = document.getElementById('orderNameAddressSub')) {
+                    el.textContent = data.address || '-';
+                    el.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (el = document.getElementById('orderCompany')) {
+                    el.textContent = data.companyName || '-';
+                    el.className = 'text-slate-700 font-semibold text-sm';
+                }
+                if (el = document.getElementById('orderCompanySub')) {
+                    el.textContent = data.manager || '-';
+                    el.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (el = document.getElementById('orderTemplateDesign')) {
+                    el.textContent = data.template || '-';
+                    el.className = 'text-slate-700 text-sm';
+                }
+                if (el = document.getElementById('orderTemplateDesignSub')) {
+                    el.textContent = designLabel;
+                    el.className = 'text-[11px] text-slate-500 mt-0.5';
+                }
+                if (el = document.getElementById('orderUpdateDate')) el.textContent = data.updateDate || '-';
+                if (el = document.getElementById('orderUpdater')) { el.textContent = data.updater || '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                applyBranchTabsForOrder(data.orderNo || '');
+            }
+
+            function setDummyOrderData() {
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                var orderNo = inputOrderNo ? inputOrderNo.value.trim() : '';
+                if (!orderNo) {
+                    openOrderSearchValidationModal();
+                    return;
+                }
+                var data = orderListData.find(function (o) { return o.orderNo === orderNo; });
+                if (!data) data = orderListData[0];
+                applyOrderDataToDisplay(data);
+                hasSearched = true;
+                setKanbanSectionVisibility();
+            }
+
+            function openOrderSearchValidationModal() {
+                var modal = document.getElementById('orderSearchValidationModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    modal.setAttribute('aria-hidden', 'false');
+                }
+            }
+            function closeOrderSearchValidationModal() {
+                var modal = document.getElementById('orderSearchValidationModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                if (inputOrderNo) inputOrderNo.focus();
+            }
+
+            var orderNoSelectModal = document.getElementById('orderNoSelectModal');
+            var orderNoSelectList = document.getElementById('orderNoSelectList');
+            var orderNoSelectModalCancel = document.getElementById('orderNoSelectModalCancel');
+            var orderNoSelectModalBackdrop = document.getElementById('orderNoSelectModalBackdrop');
+
+            function openOrderNoSelectModal() {
+                if (!orderNoSelectList) return;
+                orderNoSelectList.innerHTML = orderListData.map(function (o) {
+                    var designLabel = o.designType === 'ecosign' ? 'エコサイン' : (o.designType === '550' ? '550' : o.designType || '-');
+                    return '<tr class="order-no-select-item hover:bg-slate-100 cursor-pointer transition-colors" data-order-no="' + (o.orderNo || '') + '">' +
+                        '<td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">' + (o.orderNo || '') + '</span></td>' +
+                        '<td class="px-3 py-2"><div class="text-slate-700 font-semibold text-xs">' + (o.orderName || '') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.address || '') + '</div></td>' +
+                        '<td class="px-3 py-2"><div class="text-slate-700 font-semibold text-xs">' + (o.companyName || '') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.manager || '') + '</div></td>' +
+                        '<td class="px-3 py-2"><div class="text-slate-700 text-xs">' + (o.template || '-') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + designLabel + '</div></td>' +
+                        '<td class="px-3 py-2"><div class="text-slate-600 text-xs">' + (o.updateDate || '-') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.updater || '-') + '</div></td>' +
+                        '</tr>';
+                }).join('');
+                orderNoSelectList.querySelectorAll('.order-no-select-item').forEach(function (row) {
+                    row.addEventListener('click', function () {
+                        var no = row.dataset.orderNo || '';
+                        if (no === lastConfirmedOrderNo) {
+                            if (orderNoSelectModal) { orderNoSelectModal.classList.add('hidden'); orderNoSelectModal.setAttribute('aria-hidden', 'true'); }
+                            return;
+                        }
+                        if (typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                            if (orderNoSelectModal) { orderNoSelectModal.classList.add('hidden'); orderNoSelectModal.setAttribute('aria-hidden', 'true'); }
+                            pendingAction = { type: 'changeOrderNo', orderNo: no || '' };
+                            openBranchSwitchConfirmModal();
+                            return;
+                        }
+                        var inputOrderNo = document.getElementById('inputOrderNo');
+                        if (inputOrderNo) { inputOrderNo.value = no || ''; lastConfirmedOrderNo = no || ''; originalOrderNo = no || ''; }
+                        clearOrderInfoExceptOrderNo();
+                        if (orderNoSelectModal) {
+                            orderNoSelectModal.classList.add('hidden');
+                            orderNoSelectModal.setAttribute('aria-hidden', 'true');
+                        }
+                    });
+                });
+                if (orderNoSelectModal) {
+                    orderNoSelectModal.classList.remove('hidden');
+                    orderNoSelectModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeOrderNoSelectModal() {
+                if (orderNoSelectModal) {
+                    orderNoSelectModal.classList.add('hidden');
+                    orderNoSelectModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            var btnOrderSelect = document.getElementById('btnOrderSelect');
+            var btnOrderSearch = document.getElementById('btnOrderSearch');
+            var inputOrderNoEl = document.getElementById('inputOrderNo');
+            if (inputOrderNoEl) {
+                inputOrderNoEl.addEventListener('input', function () {
+                    var newVal = (inputOrderNoEl.value || '').trim();
+                    if (newVal === lastConfirmedOrderNo) return;
+                    if (typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                        inputOrderNoEl.value = lastConfirmedOrderNo;
+                        pendingAction = { type: 'changeOrderNo', orderNo: newVal };
+                        openBranchSwitchConfirmModal();
+                    } else if (typeof checkActuallyDirty !== 'function' || !checkActuallyDirty()) {
+                        lastConfirmedOrderNo = newVal;
+                        originalOrderNo = newVal;
+                    }
+                });
+                inputOrderNoEl.addEventListener('change', function () {
+                    var newVal = (inputOrderNoEl.value || '').trim();
+                    if (newVal === lastConfirmedOrderNo) return;
+                    if (typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                        inputOrderNoEl.value = lastConfirmedOrderNo;
+                        pendingAction = { type: 'changeOrderNo', orderNo: newVal };
+                        openBranchSwitchConfirmModal();
+                        return;
+                    }
+                    lastConfirmedOrderNo = newVal;
+                    originalOrderNo = newVal;
+                    clearOrderInfoExceptOrderNo();
+                });
+            }
+            if (btnOrderSelect) btnOrderSelect.addEventListener('click', openOrderNoSelectModal);
+            if (btnOrderSearch) btnOrderSearch.addEventListener('click', setDummyOrderData);
+            if (orderNoSelectModalCancel) orderNoSelectModalCancel.addEventListener('click', closeOrderNoSelectModal);
+            if (orderNoSelectModalBackdrop) orderNoSelectModalBackdrop.addEventListener('click', closeOrderNoSelectModal);
+            var orderSearchValidationModalOk = document.getElementById('orderSearchValidationModalOk');
+            var orderSearchValidationModalBackdrop = document.getElementById('orderSearchValidationModalBackdrop');
+            if (orderSearchValidationModalOk) orderSearchValidationModalOk.addEventListener('click', closeOrderSearchValidationModal);
+            if (orderSearchValidationModalBackdrop) orderSearchValidationModalBackdrop.addEventListener('click', closeOrderSearchValidationModal);
+
+            // 枝番追加モーダル
+            var btnAddBranch = document.getElementById('btnAddBranch');
+            var branchAddModal = document.getElementById('branchAddModal');
+            var branchNoInput = document.getElementById('branchNoInput');
+            var branchAddModalOk = document.getElementById('branchAddModalOk');
+            var branchAddModalCancel = document.getElementById('branchAddModalCancel');
+            var branchAddModalBackdrop = document.getElementById('branchAddModalBackdrop');
+
+            function openBranchAddModal() {
+                if (branchAddModal) {
+                    branchAddModal.classList.remove('hidden');
+                    branchAddModal.setAttribute('aria-hidden', 'false');
+                    if (branchNoInput) {
+                        branchNoInput.value = '';
+                        branchNoInput.focus();
+                    }
+                }
+            }
+
+            function closeBranchAddModal() {
+                if (branchNoInput) branchNoInput.value = '';
+                if (branchAddModal) {
+                    branchAddModal.classList.add('hidden');
+                    branchAddModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (btnAddBranch) {
+                btnAddBranch.addEventListener('click', function () {
+                    // 枝番新規（枝番なし）の場合は変更確認を出さずに追加モーダルを開く
+                    if (allBranches.length > 0 && typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                        pendingAction = { type: 'addBranch' };
+                        openBranchSwitchConfirmModal();
+                        return;
+                    }
+                    openBranchAddModal();
+                });
+            }
+            if (branchNoInput) {
+                branchNoInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (branchAddModalOk) branchAddModalOk.click();
+                    }
+                    if (e.key === 'Escape') {
+                        closeBranchAddModal();
+                    }
+                });
+            }
+            if (branchAddModalOk) {
+                branchAddModalOk.addEventListener('click', function () {
+                    var value = branchNoInput ? branchNoInput.value.trim() : '';
+                    if (value) {
+                        var branchNo = String(parseInt(value, 10) || value).padStart(2, '0');
+                        var container = document.getElementById('branchTabContainer');
+                        var existing = branchExistsInOrder(branchNo);
+                        if (!existing && allBranches.length >= MAX_BRANCH_COUNT) {
+                            closeBranchAddModal();
+                            return;
+                        }
+                        if (!existing) {
+                            allBranches.push(branchNo);
+                            allBranches.sort();
+                            if (allBranches.length === 1) setBranchFormVisibility(true);
+                            ensureVisible(branchNo);
+                            renderBranchTabs();
+                            var tab = container && container.querySelector('[data-branch="' + branchNo + '"]');
+                            if (tab) performBranchSwitch(tab);
+                            lastAddedBranchNo = branchNo;
+                            updateRegisterButton();
+                        } else {
+                            ensureVisible(branchNo);
+                            renderBranchTabs();
+                            var tab = container && container.querySelector('[data-branch="' + branchNo + '"]');
+                            if (tab) {
+                                performBranchSwitch(tab);
+                                closeBranchAddModal();
+                                setTimeout(function () { if (tab.focus) tab.focus(); }, 50);
+                                return;
+                            }
+                        }
+                    }
+                    closeBranchAddModal();
+                });
+            }
+            if (branchAddModalCancel || branchAddModalBackdrop) {
+                var closeHandler = closeBranchAddModal;
+                if (branchAddModalCancel) branchAddModalCancel.addEventListener('click', closeHandler);
+                if (branchAddModalBackdrop) branchAddModalBackdrop.addEventListener('click', closeHandler);
+            }
+
+            // 枝番タブのフォーカス切り替え
+            var branchTabContainer = document.getElementById('branchTabContainer');
+            var activeItemClasses = 'bg-main';
+            var inactiveItemClasses = 'bg-slate-100 border border-slate-200/60';
+            var activeTabClasses = 'text-white shadow-sm font-bold rounded-xl';
+            var inactiveTabClasses = 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold rounded-xl transition-colors duration-200';
+
+            var isDirty = false;
+            var pendingAction = null;  // { type: 'branch', tab: el } | { type: 'navigate', url: string, labels: { message, discard, register } }
+            var originalOrderNo = '';
+            var originalBranchNo = '';
+            var originalBranchMemo = '';
+
+            function setDirty(value) {
+                isDirty = value;
+            }
+
+            function setOriginalBranchValues(no, memo) {
+                originalBranchNo = no || '';
+                originalBranchMemo = memo || '';
+            }
+
+            function normalizeBranchNo(val) {
+                var s = (val || '').trim();
+                if (!s) return '';
+                return String(parseInt(s, 10) || s).padStart(2, '0');
+            }
+
+            function checkActuallyDirty() {
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                var display = document.getElementById('activeBranchDisplay');
+                var memo = document.getElementById('branchMemoInput');
+                var currentOrderNo = (inputOrderNo && inputOrderNo.value) ? (inputOrderNo.value || '').trim() : '';
+                var currentNo = (display && display.value) ? normalizeBranchNo(display.value) : '';
+                var currentMemo = memo ? memo.value : '';
+                var origNo = normalizeBranchNo(originalBranchNo);
+                return (currentOrderNo !== originalOrderNo || currentNo !== origNo || currentMemo !== originalBranchMemo);
+            }
+
+            function resetBranchFormInputs() {
+                var memo = document.getElementById('branchMemoInput');
+                if (memo) memo.value = '';
+            }
+
+            function resetToOriginalBranchValues() {
+                var display = document.getElementById('activeBranchDisplay');
+                var memo = document.getElementById('branchMemoInput');
+                if (display) display.value = originalBranchNo || '';
+                if (memo) memo.value = originalBranchMemo || '';
+                if (typeof setDirty === 'function') setDirty(false);
+            }
+
+            function clearDirtyAndSwitchTo(tabEl) {
+                isDirty = false;
+                pendingAction = null;
+                performBranchSwitch(tabEl);
+            }
+
+            function executePendingNavigate(url) {
+                if (url) {
+                    isDirty = false;
+                    pendingAction = null;
+                    window.location.href = url;
+                }
+            }
+
+            function fetchBranchData(orderNo, branchNo, callback) {
+                if (typeof callback !== 'function') callback = function () {};
+                if (!orderNo || !branchNo) { callback(null); return; }
+                if (typeof AppConfig !== 'undefined' && AppConfig.fetchBranchData) {
+                    AppConfig.fetchBranchData(orderNo, branchNo, callback);
+                    return;
+                }
+                var memo = document.getElementById('branchMemoInput');
+                if (memo) memo.value = '';
+                callback(null);
+            }
+
+            function performBranchSwitch(tabEl) {
+                if (!tabEl || !tabEl.classList.contains('branch-tab')) return;
+                var items = branchTabContainer ? branchTabContainer.querySelectorAll('.branch-tab-item') : [];
+                var activeBranch = tabEl.getAttribute('data-branch');
+                items.forEach(function (item) {
+                    var tab = item.querySelector('.branch-tab');
+                    var isActive = tab === tabEl;
+                    item.className = 'branch-tab-item inline-flex rounded-xl overflow-hidden ' + (isActive ? activeItemClasses : inactiveItemClasses);
+                    if (tab) tab.className = 'branch-tab px-3 py-1.5 text-xs ' + (isActive ? activeTabClasses : inactiveTabClasses);
+                });
+                var display = document.getElementById('activeBranchDisplay');
+                var memo = document.getElementById('branchMemoInput');
+                if (typeof setOriginalBranchValues === 'function') setOriginalBranchValues(activeBranch || '', '');
+                if (display) display.value = activeBranch || '';
+                if (typeof updateBranchNavButtons === 'function') updateBranchNavButtons();
+                var orderNo = (document.getElementById('inputOrderNo') || {}).value ? (document.getElementById('inputOrderNo').value || '').trim() : '';
+                fetchBranchData(orderNo, activeBranch, function (data) {
+                    if (data && data.memo !== undefined && memo) memo.value = data.memo || '';
+                    if (typeof setDirty === 'function') setDirty(false);
+                });
+            }
+
+            function setActiveBranchTab(tabEl) {
+                if (!tabEl || !tabEl.classList.contains('branch-tab')) return;
+                var display = document.getElementById('activeBranchDisplay');
+                var currentBranch = display ? display.value.trim() : '';
+                var targetBranch = tabEl.getAttribute('data-branch');
+                if (currentBranch === targetBranch) return;
+                if (typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                    pendingAction = { type: 'branch', tab: tabEl, branchNo: targetBranch };
+                    openBranchSwitchConfirmModal();
+                    return;
+                }
+                performBranchSwitch(tabEl);
+            }
+
+            // 変更検知（枝番・備考）※元の値と同一の場合はダイアログを出さない（checkActuallyDirty で判定）
+            var activeBranchDisplay = document.getElementById('activeBranchDisplay');
+            var branchMemoTextarea = document.getElementById('branchMemoInput');
+            var branchExistsModal = document.getElementById('branchExistsModal');
+            var branchExistsModalOk = document.getElementById('branchExistsModalOk');
+            var branchExistsModalBackdrop = document.getElementById('branchExistsModalBackdrop');
+            var pendingBranchExists = null;
+
+            function openBranchExistsModal() {
+                if (branchExistsModal) {
+                    branchExistsModal.classList.remove('hidden');
+                    branchExistsModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeBranchExistsModal() {
+                if (branchExistsModal) {
+                    branchExistsModal.classList.add('hidden');
+                    branchExistsModal.setAttribute('aria-hidden', 'true');
+                }
+                pendingBranchExists = null;
+                var toFocus = document.getElementById('activeBranchDisplay');
+                if (toFocus) setTimeout(function () { toFocus.focus(); }, 50);
+            }
+
+            function applyActiveBranchDisplayValue() {
+                var display = document.getElementById('activeBranchDisplay');
+                var value = display ? display.value.trim() : '';
+                if (!value) return;
+                var branchNo = normalizeBranchNo(value);
+                var currentBranch = normalizeBranchNo(originalBranchNo);
+                if (branchNo === currentBranch) return;
+                var exists = branchExistsInOrder(branchNo);
+                if (exists) {
+                    ensureVisible(branchNo);
+                    renderBranchTabs();
+                    var container = document.getElementById('branchTabContainer');
+                    var existingTab = container && container.querySelector('[data-branch="' + branchNo + '"]');
+                    pendingBranchExists = { existing: existingTab, dirty: typeof checkActuallyDirty === 'function' && checkActuallyDirty() };
+                    openBranchExistsModal();
+                    return;
+                }
+                if (typeof checkActuallyDirty === 'function' && checkActuallyDirty()) {
+                    pendingAction = { type: 'applyBranchInput', branchNo: branchNo };
+                    openBranchSwitchConfirmModal();
+                    return;
+                }
+                doApplyActiveBranchDisplayValue(branchNo, false);
+            }
+
+            function doApplyActiveBranchDisplayValue(branchNo, switchOnly) {
+                if (switchOnly) {
+                    ensureVisible(branchNo);
+                    renderBranchTabs();
+                    var container = document.getElementById('branchTabContainer');
+                    var tab = container && container.querySelector('[data-branch="' + branchNo + '"]');
+                    if (tab) performBranchSwitch(tab);
+                    return;
+                }
+                if (allBranches.length >= MAX_BRANCH_COUNT) return;
+                if (allBranches.indexOf(branchNo) >= 0) return;
+                allBranches.push(branchNo);
+                allBranches.sort();
+                var container = document.getElementById('branchTabContainer');
+                var hasNoBranches = allBranches.length === 1;
+                if (hasNoBranches && container) {
+                    setBranchFormVisibility(true);
+                }
+                ensureVisible(branchNo);
+                renderBranchTabs();
+                var tab = container && container.querySelector('[data-branch="' + branchNo + '"]');
+                if (tab) performBranchSwitch(tab);
+                lastAddedBranchNo = branchNo;
+                updateRegisterButton();
+            }
+
+            if (branchExistsModalOk) branchExistsModalOk.addEventListener('click', closeBranchExistsModal);
+            if (branchExistsModalBackdrop) branchExistsModalBackdrop.addEventListener('click', closeBranchExistsModal);
+
+            if (activeBranchDisplay) {
+                activeBranchDisplay.addEventListener('input', function () {
+                    if (typeof updateBranchNavButtons === 'function') updateBranchNavButtons();
+                });
+                activeBranchDisplay.addEventListener('change', function () {
+                    applyActiveBranchDisplayValue();
+                });
+                activeBranchDisplay.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyActiveBranchDisplayValue();
+                    }
+                });
+            }
+
+            if (branchTabContainer) {
+                branchTabContainer.addEventListener('click', function (e) {
+                    var target = e.target.closest('.branch-tab');
+                    if (target) setActiveBranchTab(target);
+                });
+            }
+
+            function updateBranchNavButtons() {
+                var btnPrev = document.getElementById('btnPrevBranch');
+                var btnNext = document.getElementById('btnNextBranch');
+                var hasBranches = allBranches.length > 0;
+                var canSlidePrev = visibleStartIndex > 0;
+                var canSlideNext = allBranches.length > MAX_BRANCH_DISPLAY && visibleStartIndex < allBranches.length - MAX_BRANCH_DISPLAY;
+                if (btnPrev) {
+                    btnPrev.disabled = !hasBranches || !canSlidePrev;
+                    btnPrev.style.display = hasBranches ? '' : 'none';
+                }
+                if (btnNext) {
+                    btnNext.disabled = !hasBranches || !canSlideNext;
+                    btnNext.style.display = hasBranches ? '' : 'none';
+                }
+            }
+
+            function slidePrevBranch() {
+                if (visibleStartIndex <= 0) return;
+                visibleStartIndex = Math.max(0, visibleStartIndex - 1);
+                renderBranchTabs();
+            }
+
+            function slideNextBranch() {
+                if (allBranches.length <= MAX_BRANCH_DISPLAY) return;
+                var maxStart = allBranches.length - MAX_BRANCH_DISPLAY;
+                if (visibleStartIndex >= maxStart) return;
+                visibleStartIndex = Math.min(maxStart, visibleStartIndex + 1);
+                renderBranchTabs();
+            }
+
+            var btnPrevBranch = document.getElementById('btnPrevBranch');
+            var btnNextBranch = document.getElementById('btnNextBranch');
+            if (btnPrevBranch) btnPrevBranch.addEventListener('click', slidePrevBranch);
+            if (btnNextBranch) btnNextBranch.addEventListener('click', slideNextBranch);
+            updateBranchNavButtons();
+
+            (function initOriginalBranchValues() {
+                var display = document.getElementById('activeBranchDisplay');
+                var memo = document.getElementById('branchMemoInput');
+                if (display && memo) setOriginalBranchValues(display.value.trim(), memo.value);
+            })();
+
+            // プレビュー・出力（選択中枝番に対して）
+            var btnPreview = document.getElementById('btnPreview');
+            var btnOutput = document.getElementById('btnOutput');
+            var outputFormatSelect = document.getElementById('outputFormatSelect');
+            if (btnPreview) {
+                btnPreview.addEventListener('click', function () {
+                    var branchNo = (document.getElementById('activeBranchDisplay') && document.getElementById('activeBranchDisplay').value) || '';
+                    // TODO: 枝番 branchNo のプレビュー表示処理
+                    console.log('プレビュー:', branchNo);
+                });
+            }
+            if (btnOutput && outputFormatSelect) {
+                btnOutput.addEventListener('click', function () {
+                    var branchNo = (document.getElementById('activeBranchDisplay') && document.getElementById('activeBranchDisplay').value) || '';
+                    var format = outputFormatSelect.value || 'pdf';
+                    // TODO: 枝番 branchNo を format 形式で出力
+                    console.log('出力:', branchNo, format);
+                });
+            }
+            var btnSvgOutput = document.getElementById('btnSvgOutput');
+            var inputSvgLoad = document.getElementById('inputSvgLoad');
+            if (btnSvgOutput) {
+                btnSvgOutput.addEventListener('click', function () {
+                    var branchNo = (document.getElementById('activeBranchDisplay') && document.getElementById('activeBranchDisplay').value) || '';
+                    // TODO: 枝番 branchNo を SVG 形式で出力
+                    console.log('地図出力:', branchNo);
+                });
+            }
+            if (inputSvgLoad) {
+                inputSvgLoad.addEventListener('change', function (e) {
+                    var file = e.target && e.target.files && e.target.files[0];
+                    if (!file) return;
+                    var branchNo = (document.getElementById('activeBranchDisplay') && document.getElementById('activeBranchDisplay').value) || '';
+                    var reader = new FileReader();
+                    reader.onload = function (ev) {
+                        var svgContent = ev.target && ev.target.result;
+                        // TODO: 枝番 branchNo に SVG を読み込み・反映
+                        console.log('地図読込:', branchNo, svgContent ? svgContent.substring(0, 100) + '...' : '');
+                    };
+                    reader.readAsText(file);
+                    e.target.value = '';
+                });
+            }
+
+            // 全画面編集モードの切り替え
+            var btnFullscreenEdit = document.getElementById('btnFullscreenEdit');
+            var btnCloseFullscreenEdit = document.getElementById('btnCloseFullscreenEdit');
+            var fullscreenEditOverlay = document.getElementById('fullscreenEditOverlay');
+            if (btnFullscreenEdit && fullscreenEditOverlay) {
+                btnFullscreenEdit.addEventListener('click', function () {
+                    fullscreenEditOverlay.classList.remove('hidden');
+                    fullscreenEditOverlay.setAttribute('aria-hidden', 'false');
+                    document.body.style.overflow = 'hidden';
+                });
+            }
+            if (btnCloseFullscreenEdit && fullscreenEditOverlay) {
+                btnCloseFullscreenEdit.addEventListener('click', function () {
+                    fullscreenEditOverlay.classList.add('hidden');
+                    fullscreenEditOverlay.setAttribute('aria-hidden', 'true');
+                    document.body.style.overflow = '';
+                });
+            }
+
+            // 枝番切り替え確認モーダル（変更あり）※枝番切り替え・戻る・メインメニューへ共通
+            var branchSwitchConfirmModal = document.getElementById('branchSwitchConfirmModal');
+            var branchSwitchConfirmModalMessage = document.getElementById('branchSwitchConfirmModalMessage');
+            var branchSwitchConfirmModalBackdrop = document.getElementById('branchSwitchConfirmModalBackdrop');
+            var branchSwitchConfirmModalCancel = document.getElementById('branchSwitchConfirmModalCancel');
+            var branchSwitchConfirmModalDiscard = document.getElementById('branchSwitchConfirmModalDiscard');
+            var branchSwitchConfirmModalRegister = document.getElementById('branchSwitchConfirmModalRegister');
+
+            function getActionVerbTe() { return getPageMode() === 'edit' ? '更新して' : '登録して'; }
+
+            function getBranchLabels() {
+                var v = getActionVerbTe();
+                return { message: '変更が保存されていません。' + v + 'から枝番を切り替えますか？', discard: '破棄して切り替え', register: v + '切り替え' };
+            }
+            function getOrderNoChangeLabels() {
+                var v = getActionVerbTe();
+                return { message: '看板情報に変更があります。注文番号を変更しますか？変更は破棄されます。', discard: '破棄して変更', register: v + '変更' };
+            }
+            function getAddBranchLabels() {
+                var v = getActionVerbTe();
+                return { message: '変更が保存されていません。枝番を追加しますか？変更は破棄されます。', discard: '破棄して追加', register: v + '追加' };
+            }
+
+            function openBranchSwitchConfirmModal(action) {
+                pendingAction = action || pendingAction;
+                var labels = getBranchLabels();
+                if (pendingAction && pendingAction.type === 'navigate' && pendingAction.labels) labels = pendingAction.labels;
+                else if (pendingAction && pendingAction.type === 'back' && pendingAction.labels) labels = pendingAction.labels;
+                else if (pendingAction && pendingAction.type === 'changeOrderNo') labels = getOrderNoChangeLabels();
+                else if (pendingAction && pendingAction.type === 'addBranch') labels = getAddBranchLabels();
+                if (branchSwitchConfirmModalMessage) branchSwitchConfirmModalMessage.textContent = labels.message;
+                if (branchSwitchConfirmModalDiscard) {
+                    branchSwitchConfirmModalDiscard.textContent = labels.discard;
+                    var isAddBranch = pendingAction && pendingAction.type === 'addBranch';
+                    if (isAddBranch) {
+                        branchSwitchConfirmModalDiscard.className = 'inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap';
+                    } else {
+                        branchSwitchConfirmModalDiscard.className = 'inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap';
+                    }
+                }
+                if (branchSwitchConfirmModalRegister) {
+                    branchSwitchConfirmModalRegister.textContent = labels.register;
+                    var hideRegister = (pendingAction && (pendingAction.type === 'changeOrderNo' || pendingAction.type === 'addBranch'));
+                    branchSwitchConfirmModalRegister.style.display = hideRegister ? 'none' : '';
+                }
+                if (branchSwitchConfirmModal) {
+                    branchSwitchConfirmModal.classList.remove('hidden');
+                    branchSwitchConfirmModal.setAttribute('aria-hidden', 'false');
+                    if (pendingAction && pendingAction.type === 'addBranch' && branchSwitchConfirmModalDiscard) {
+                        setTimeout(function () { branchSwitchConfirmModalDiscard.focus(); }, 50);
+                    }
+                }
+            }
+
+            function closeBranchSwitchConfirmModal(clearPending) {
+                if (branchSwitchConfirmModal) {
+                    branchSwitchConfirmModal.classList.add('hidden');
+                    branchSwitchConfirmModal.setAttribute('aria-hidden', 'true');
+                    if (clearPending !== false) pendingAction = null;
+                }
+            }
+
+            if (branchSwitchConfirmModalRegister) {
+                branchSwitchConfirmModalRegister.addEventListener('click', function () {
+                    // TODO: 登録処理（API呼び出し等）
+                    closeBranchSwitchConfirmModal(false);
+                    if (pendingAction) {
+                        openBranchRegisterResultModal(getPageMode() === 'edit' ? '更新が完了しました。' : '登録が完了しました。');
+                    }
+                });
+            }
+
+            // 登録結果モーダル
+            var branchRegisterResultModal = document.getElementById('branchRegisterResultModal');
+            var branchRegisterResultModalOk = document.getElementById('branchRegisterResultModalOk');
+            var branchRegisterResultModalBackdrop = document.getElementById('branchRegisterResultModalBackdrop');
+
+            function openBranchRegisterResultModal(message) {
+                if (branchRegisterResultModal) {
+                    var msgEl = document.getElementById('branchRegisterResultMessage');
+                    if (msgEl && message) msgEl.textContent = message;
+                    branchRegisterResultModal.classList.remove('hidden');
+                    branchRegisterResultModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeBranchRegisterResultModal() {
+                if (branchRegisterResultModal) {
+                    branchRegisterResultModal.classList.add('hidden');
+                    branchRegisterResultModal.setAttribute('aria-hidden', 'true');
+                }
+            }
+
+            if (branchRegisterResultModalOk) {
+                branchRegisterResultModalOk.addEventListener('click', function () {
+                    if (pendingAction) {
+                        if (pendingAction.type === 'branch' && pendingAction.tab) clearDirtyAndSwitchTo(pendingAction.tab);
+                        else if (pendingAction.type === 'applyBranchInput' && pendingAction.branchNo) {
+                            if (typeof doApplyActiveBranchDisplayValue === 'function') doApplyActiveBranchDisplayValue(pendingAction.branchNo, true);
+                        } else if (pendingAction.type === 'navigate' && pendingAction.url) executePendingNavigate(pendingAction.url);
+                        else if (pendingAction.type === 'back') {
+                            closeBranchRegisterResultModal();
+                            history.back();
+                            return;
+                        }
+                    }
+                    closeBranchRegisterResultModal();
+                    switchToUpdateMode();
+                });
+            }
+            if (branchRegisterResultModalBackdrop) branchRegisterResultModalBackdrop.addEventListener('click', function () {
+                if (pendingAction) {
+                    if (pendingAction.type === 'branch' && pendingAction.tab) clearDirtyAndSwitchTo(pendingAction.tab);
+                    else if (pendingAction.type === 'applyBranchInput' && pendingAction.branchNo) {
+                        var container = document.getElementById('branchTabContainer');
+                        var existing = container && container.querySelector('[data-branch="' + pendingAction.branchNo + '"]');
+                        if (typeof doApplyActiveBranchDisplayValue === 'function') doApplyActiveBranchDisplayValue(pendingAction.branchNo, true);
+                    } else if (pendingAction.type === 'navigate' && pendingAction.url) executePendingNavigate(pendingAction.url);
+                    else if (pendingAction.type === 'back') {
+                        closeBranchRegisterResultModal();
+                        history.back();
+                        return;
+                    }
+                }
+                closeBranchRegisterResultModal();
+                switchToUpdateMode();
+            });
+            function executeChangeOrderNo(orderNo) {
+                var inputOrderNo = document.getElementById('inputOrderNo');
+                if (inputOrderNo) inputOrderNo.value = orderNo || '';
+                resetBranchFormInputs();
+                setDirty(false);
+                lastConfirmedOrderNo = orderNo || '';
+                originalOrderNo = orderNo || '';
+                clearOrderInfoExceptOrderNo();
+            }
+
+            if (branchSwitchConfirmModalDiscard) {
+                branchSwitchConfirmModalDiscard.addEventListener('click', function () {
+                    if (pendingAction) {
+                        var action = pendingAction;
+                        resetBranchFormInputs();
+                        if (action.type === 'branch') {
+                            var branchNo = action.branchNo || (action.tab && action.tab.getAttribute('data-branch'));
+                            closeBranchSwitchConfirmModal();
+                            pendingAction = null;
+                            if (typeof setDirty === 'function') setDirty(false);
+                            if (branchNo) {
+                                var n = String(parseInt(branchNo, 10) || branchNo).padStart(2, '0');
+                                var display = document.getElementById('activeBranchDisplay');
+                                if (typeof setOriginalBranchValues === 'function') setOriginalBranchValues(n, '');
+                                if (display) display.value = n;
+                                ensureVisible(n);
+                                renderBranchTabs();
+                                var container = document.getElementById('branchTabContainer');
+                                var tab = container && container.querySelector('[data-branch="' + n + '"]');
+                                if (tab) {
+                                    performBranchSwitch(tab);
+                                }
+                            }
+                            return;
+                        }
+                        if (action.type === 'navigate' && action.url) {
+                            resetToOriginalBranchValues();
+                            closeBranchSwitchConfirmModal();
+                            executePendingNavigate(action.url);
+                            return;
+                        }
+                        if (action.type === 'back') {
+                            resetToOriginalBranchValues();
+                            closeBranchSwitchConfirmModal();
+                            history.back();
+                            return;
+                        }
+                        if (action.type === 'changeOrderNo' && action.orderNo !== undefined) {
+                            closeBranchSwitchConfirmModal();
+                            executeChangeOrderNo(action.orderNo);
+                            return;
+                        }
+                        if (action.type === 'applyBranchInput' && action.branchNo) {
+                            resetBranchFormInputs();
+                            setDirty(false);
+                            var container = document.getElementById('branchTabContainer');
+                            var existing = container && container.querySelector('[data-branch="' + action.branchNo + '"]');
+                            if (typeof doApplyActiveBranchDisplayValue === 'function') doApplyActiveBranchDisplayValue(action.branchNo, true);
+                            closeBranchSwitchConfirmModal();
+                            return;
+                        }
+                        if (action.type === 'addBranch') {
+                            resetToOriginalBranchValues();
+                            if (lastAddedBranchNo && branchTabContainer) {
+                                var toRemove = branchTabContainer.querySelector('[data-branch="' + lastAddedBranchNo + '"]');
+                                if (toRemove) {
+                                    var itemEl = toRemove.closest('.branch-tab-item');
+                                    if (itemEl) itemEl.remove();
+                                    var left = branchTabContainer.querySelectorAll('.branch-tab-item');
+                                    if (left.length > 0) {
+                                        var first = branchTabContainer.querySelector('.branch-tab-item');
+                                        if (first) performBranchSwitch(first.querySelector('.branch-tab'));
+                                    } else {
+                                        branchTabContainer.innerHTML = '<p class="text-sm text-slate-500 py-2">枝番情報がありません。枝番を追加してください</p>';
+                                        var display = document.getElementById('activeBranchDisplay');
+                                        if (display) display.value = '';
+                                        setBranchFormVisibility(false);
+                                        updateRegisterButton();
+                                    }
+                                }
+                                lastAddedBranchNo = null;
+                            }
+                            setDirty(false);
+                            closeBranchSwitchConfirmModal();
+                            openBranchAddModal();
+                            return;
+                        }
+                    }
+                    closeBranchSwitchConfirmModal();
+                });
+            }
+            if (branchSwitchConfirmModalCancel) branchSwitchConfirmModalCancel.addEventListener('click', function () { closeBranchSwitchConfirmModal(true); });
+            if (branchSwitchConfirmModalBackdrop) branchSwitchConfirmModalBackdrop.addEventListener('click', function () { closeBranchSwitchConfirmModal(true); });
+
+            // 戻る・メインメニューへ・ヘッダーリンク：未保存変更時は確認モーダル表示（元の値と同一ならダイアログ出さない）
+            function handleNavigationClick(e, url, labels) {
+                if (typeof checkActuallyDirty !== 'function' || !checkActuallyDirty()) return;
+                e.preventDefault();
+                pendingAction = { type: 'navigate', url: url, labels: labels };
+                openBranchSwitchConfirmModal();
+            }
+            function handleBackClick(e, labels) {
+                if (typeof checkActuallyDirty !== 'function' || !checkActuallyDirty()) {
+                    e.preventDefault();
+                    history.back();
+                    return;
+                }
+                e.preventDefault();
+                pendingAction = { type: 'back', labels: labels };
+                openBranchSwitchConfirmModal();
+            }
+            var linkBack = document.getElementById('linkBack');
+            var linkHeaderMenu = document.getElementById('linkHeaderMenu');
+            if (linkBack) linkBack.addEventListener('click', function (e) {
+                var v = getActionVerbTe();
+                handleBackClick(e, { message: '変更が保存されていません。' + v + 'から戻りますか？', discard: '破棄して戻る', register: v + '戻る' });
+            });
+            if (linkHeaderMenu) linkHeaderMenu.addEventListener('click', function (e) {
+                var v = getActionVerbTe();
+                handleNavigationClick(e, 'menu.html', { message: '変更が保存されていません。' + v + 'からメインメニューへ移動しますか？', discard: '破棄してメインメニューへ', register: v + 'メインメニューへ' });
+            });
+
+            // 選択中の枝番を削除
+            var btnDeleteBranch = document.getElementById('btnDeleteBranch');
+            var branchDeleteModal = document.getElementById('branchDeleteModal');
+            var branchDeleteTargetNo = document.getElementById('branchDeleteTargetNo');
+            var branchDeleteModalOk = document.getElementById('branchDeleteModalOk');
+            var branchDeleteModalCancel = document.getElementById('branchDeleteModalCancel');
+            var branchDeleteModalBackdrop = document.getElementById('branchDeleteModalBackdrop');
+            var branchToDeleteNo = null;
+
+            function openBranchDeleteModal(branchNo) {
+                if (branchDeleteModal && branchDeleteTargetNo) {
+                    branchDeleteTargetNo.textContent = branchNo;
+                    branchToDeleteNo = branchNo;
+                    branchDeleteModal.classList.remove('hidden');
+                    branchDeleteModal.setAttribute('aria-hidden', 'false');
+                }
+            }
+
+            function closeBranchDeleteModal() {
+                if (branchDeleteModal) {
+                    branchDeleteModal.classList.add('hidden');
+                    branchDeleteModal.setAttribute('aria-hidden', 'true');
+                    branchToDeleteNo = null;
+                }
+            }
+
+            if (btnDeleteBranch) {
+                btnDeleteBranch.addEventListener('click', function () {
+                    var display = document.getElementById('activeBranchDisplay');
+                    var activeBranch = normalizeBranchNo(display ? display.value : '');
+                    if (!activeBranch) return;
+                    if (!branchExistsInOrder(activeBranch)) return;
+                    openBranchDeleteModal(activeBranch);
+                });
+            }
+
+            if (branchDeleteModalOk) {
+                branchDeleteModalOk.addEventListener('click', function () {
+                    if (branchToDeleteNo && branchTabContainer) {
+                        var deletedBranchNo = branchToDeleteNo;
+                        if (deletedBranchNo) {
+                            if (deletedBranchNo === lastAddedBranchNo) {
+                                lastAddedBranchNo = null;
+                                setDirty(false);
+                            }
+                            var idx = allBranches.indexOf(deletedBranchNo);
+                            if (idx >= 0) allBranches.splice(idx, 1);
+                        }
+                        if (allBranches.length > 0) {
+                            var display = document.getElementById('activeBranchDisplay');
+                            var wasActive = deletedBranchNo === normalizeBranchNo(display ? display.value : '');
+                            var nextBranch = allBranches[0];
+                            if (wasActive && allBranches.length > 0) {
+                                nextBranch = allBranches[Math.min(idx, allBranches.length - 1)] || allBranches[0];
+                            }
+                            if (display) display.value = nextBranch;
+                            if (typeof setOriginalBranchValues === 'function') setOriginalBranchValues(nextBranch, '');
+                            visibleStartIndex = Math.min(visibleStartIndex, Math.max(0, allBranches.length - MAX_BRANCH_DISPLAY));
+                            renderBranchTabs();
+                            updateRegisterButton();
+                        } else {
+                            branchTabContainer.innerHTML = '<p class="text-sm text-slate-500 py-2">枝番情報がありません。枝番を追加してください</p>';
+                            var display = document.getElementById('activeBranchDisplay');
+                            if (display) display.value = '';
+                            setBranchFormVisibility(false);
+                            updateRegisterButton();
+                        }
+                    }
+                    closeBranchDeleteModal();
+                });
+            }
+            if (branchDeleteModalCancel) branchDeleteModalCancel.addEventListener('click', closeBranchDeleteModal);
+            if (branchDeleteModalBackdrop) branchDeleteModalBackdrop.addEventListener('click', closeBranchDeleteModal);
+        })();
+    </script>
+
+</body>
+</html>
+
+<script setup lang="ts">
+	import { ref, onMounted, computed, watch } from 'vue'
+	import { useRouter, useRoute } from 'vue-router';
+	import OrderSelectModal from '@/components/modals/OrderRegist/OrderSelectModal.vue'
+	import MapCustomComponent from '@/components/tabcontents/MapCustomComponent.vue'
+	const router = useRouter();
+	const route = useRoute();
+
+	// クエリパラメータ
+	const activeOrderNo = ref<number | null>(null);
+	const activeItemCode = ref<string | null>(null);
+	onMounted(() => {
+	  const orderNo = route.query.orderNo;
+	  const itemCode = route.query.itemCode;
+	  if (orderNo) activeOrderNo.value = Number(orderNo);
+	  if (itemCode) activeItemCode.value = String(itemCode);
+	});
+	watch(() => route.query, (newQuery) => {
+	  if (newQuery.orderNo) activeOrderNo.value = Number(newQuery.orderNo);
+	  if (newQuery.itemCode) activeItemCode.value = String(newQuery.itemCode);
+	});
+
+	// タブごとのマップデータ保持用
+	const mapStates = ref<Record<string, any>>({})
+
+	// 追加: マップ状態を保存する関数
+	const saveMapState = (itemId: string, state: any) => {
+	  mapStates.value[itemId] = state
+	  console.log(`マップ状態を保存: ${itemId}`, state)
+	}
+
+	// 追加: マップ状態を取得する関数
+	const getMapState = (itemId: string) => {
+	  return mapStates.value[itemId] || null
+	}
+
+	// 注文選択ボタンクリック
+	const isOrderSelectModalOpen = ref(false)
+	const dummyOrders = [
+	  { orderId: 'id_0202600001', orderNo: '202600001', orderName: '電気工事A', templateId: 'temp01' },
+	  { orderId: 'id_0202600002', orderNo: '202600002', orderName: '排水工事B', templateId: 'temp02' },
+	]
+	const openOrderSelectModal = () => {
+	  isOrderSelectModalOpen.value = true
+	}
+	const onDecideOrder = (order: {
+	  orderId: string
+	  orderNo: string
+	  orderName: string
+	}) => {
+	  registParams.value.orderId = order.orderId
+	  registParams.value.orderNo = order.orderNo
+	  registParams.value.orderName = order.orderName
+	  isOrderSelectModalOpen.value = false
+	}
+
+	// 登録情報のデータ（v-modelで紐付け）
+	const registParams = ref({
+	  company: '',
+	  user: '',
+	  templateId: '',
+	  address: '',
+	  orderId: '',
+	  orderNo: '',
+	  orderName: '',
+	  branchNo: null,
+	});
+
+	const isOrderIdDisabled = computed(() => {
+	  return !!route.query.orderId
+	})
+
+	// 子アイテム（ダミー）
+	const childItems = ref([
+	  { id: 'item1', name: '01', detail: '内容①です' },
+	  { id: 'item2', name: '02', detail: '内容②です' },
+	  { id: 'item3', name: '03', detail: '内容③です' },
+	])
+	const activeChildItemId = ref<string | null>(
+	  childItems.value[0]?.id ?? null
+	)
+	const activeChildItem = computed(() => {
+	  return childItems.value.find(
+		item => item.id === activeChildItemId.value
+	  ) ?? null
+	})
+
+	// 登録ボタンクリック
+	const isModalOpen = ref(false);
+	const onClickRegister = () => {
+	  // 本来はここで入力チェックやAPI呼び出し
+	  // 全タブのマップ状態をまとめて送信する場合
+	  console.log('全マップ状態:', mapStates.value)
+	  isModalOpen.value = true;
+	};
+	const goToOrderList = () => {
+	  isModalOpen.value = false;
+	  router.push('/order_list');
+	};
+	const goToSignCustom = () => {
+	  isModalOpen.value = false;
+	  router.push('/sign_custom');
+	};
+	const goToMainMenu = () => {
+	  isModalOpen.value = false;
+	  router.push('/');
+	};
+
+	// クエリパラメータにorderIdがあれば反映(一覧からの遷移、登録完了後)
+	watch(
+	  () => route.query.orderId,
+	  (orderId) => {
+		if (!orderId) return
+		const order = dummyOrders.find(o => o.orderId === orderId)
+		if (!order) return
+		registParams.value.orderId = order.orderId
+		registParams.value.orderNo = order.orderNo
+		registParams.value.orderName = order.orderName
+		registParams.value.templateId = order.templateId
+	  },
+	  { immediate: true }
+	)
+
+	// クエリパラメータに応じてアクティブタブを設定
+	const setActiveTabFromQuery = () => {
+	  const itemCode = route.query.itemCode as string | undefined
+	  if (itemCode) {
+		const target = childItems.value.find(item => item.name === itemCode)
+		if (target) activeChildItemId.value = target.id
+	  }
+	}
+
+	// 初回マウント時
+	onMounted(() => {
+	  const orderNo = route.query.orderNo
+	  if (orderNo) activeOrderNo.value = Number(orderNo)
+	  setActiveTabFromQuery()
+	})
+
+	// クエリ変更時にも対応
+	watch(() => route.query.itemCode, () => {
+	  setActiveTabFromQuery()
+	})
+
+	// 新規追加時
+	const addChildItem = () => {
+	  const nextIndex = childItems.value.length + 1
+	  const newItem = {
+		id: `item${Date.now()}`,
+		name: String(nextIndex).padStart(2, '0'),
+		detail: `内容${nextIndex}`,
+	  }
+	  childItems.value.push(newItem)
+	  activeChildItemId.value = newItem.id
+	}
+
+	</script>
+
+	<template>
+	  <main>
+		<h2 class="title">看板情報入力／変更</h2>
+		<section class="form-section">
+			<h3>看板情報</h3>
+			<div class="regist-form">
+			  <div class="form-group required">
+				<label>注文番号</label>
+				<div class="order-no-area">
+				  <input
+					v-model="registParams.orderNo"
+					:disabled="isOrderIdDisabled"
+					type="text"
+					placeholder="注文番号を入力してください"
+				  />
+				  <button
+					class="search-btn"
+					:disabled="isOrderIdDisabled"
+					@click="openOrderSelectModal">
+					…
+				  </button>
+				  <button
+					class="search-btn"
+					:disabled="isOrderIdDisabled"
+					@click="">
+					検索
+				  </button>
+				</div>
+			  </div>
+			</div>
+			<div class="regist-form">
+				<div class="form-group">
+				  <label>顧客名</label>
+				  <input v-model="registParams.company" type="text" placeholder="注文番号選択後に検索結果が表示されます" disabled/>
+				</div>
+				<div class="form-group">
+				  <label>担当者名</label>
+				  <input v-model="registParams.user" type="text" placeholder="注文番号選択後に検索結果が表示されます" disabled/>
+				</div>
+			</div>
+			<div class="regist-form-long">
+				<div class="form-group">
+				  <label>住所</label>
+				  <input v-model="registParams.address" type="text" placeholder="注文番号選択後に検索結果が表示されます" disabled/>
+				</div>
+			</div>
+			<hr />
+			<div class="child-tabs">
+			  <button
+				v-for="item in childItems"
+				:key="item.id"
+				class="child-tab"
+				:class="{ active: item.id === activeChildItemId }"
+				@click="activeChildItemId = item.id"
+			  >
+				{{ item.name }}
+			  </button>
+				<button class="child-tab add-tab" @click="addChildItem">新しく看板を作成する</button>
+			</div>
+			<div class="child-tab-content" v-if="activeChildItem">
+			  <MapCustomComponent
+				:item="activeChildItem"
+				:key="activeChildItem.id"
+				:initial-state="getMapState(activeChildItem.id)"
+				@save-state="state => saveMapState(activeChildItem!.id, state)"
+			  />
+			</div>
+			<div v-else class="child-tab-content">
+			  <p>子アイテムがありません</p>
+			</div>
+			<hr />
+			<button class="regist-btn" @click="">
+			  戻る
+			</button>
+			<h4></h4>
+			<!-- 注文選択モーダル -->
+			<OrderSelectModal
+			  v-if="isOrderSelectModalOpen"
+			  :orders="dummyOrders"
+			  @decide="onDecideOrder"
+			  @close="isOrderSelectModalOpen = false"
+			/>
+		</section>
+	  </main>
+	</template>
+	<style lang="scss" scoped>
+	.form-section {
+	  width: 90%;
+	  max-width: 1200px;
+	  margin: 0 auto;
+	}
+	.regist-form {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 15px;
+		text-align: left;
+		margin-bottom: 15px;
+	}
+	.regist-form-long {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 15px;
+		text-align: left;
+		margin-bottom: 15px;
+	}
+	.form-group {
+	  display: grid;
+	  grid-template-columns: 160px 1fr;
+	  align-items: center;
+	  gap: 10px;
+	}
+	.form-group label {
+		width: 200px;
+	}
+	.form-group input,
+	.form-group select {
+	  width: 100%;
+	  height: 36px;
+	  padding: 6px 10px;
+	  font-size: 14px;
+	  border: 1px solid #ccc;
+	  border-radius: 4px;
+	  box-sizing: border-box;
+	  background: #fff;
+	}
+	.form-group select {
+	  appearance: none;
+	  -webkit-appearance: none;
+	  -moz-appearance: none;
+	  width: 100%;
+	  height: 36px;
+	  padding: 6px 10px;
+	  padding-right: 32px;
+	  font-size: 14px;
+	  border: 1px solid #ccc;
+	  border-radius: 4px;
+	  background: #fff;
+	  box-sizing: border-box;
+	}
+	.form-group input:disabled,
+	.form-group select:disabled {
+	  background: #f3f3f3;
+	  color: #999;
+	  cursor: not-allowed;
+	}
+	.form-group.required label::before {
+	  content: "必須";
+	  margin-right: 10px;
+	  padding: 2px 6px;
+	  font-size: 11px;
+	  color: #fff;
+	  background: $color-primary;
+	  border-radius: 3px;
+	}
+	.order-no-area {
+	  display: flex;
+	  gap: 8px;
+	}
+	.order-no-area input {
+	  flex: 1;
+	}
+	.search-btn {
+	  height: 36px;
+	  padding: 0 14px;
+	  border: 1px solid #ccc;
+	  background: #eee;
+	  color: #333;
+	  border-radius: 4px;
+	  cursor: pointer;
+	  white-space: nowrap;
+	}
+	.search-btn:disabled {
+	  cursor: not-allowed;
+	}
+	.child-tab {
+	  padding: 6px 14px;
+	  margin-right: 6px;
+	  border: 1px solid #ccc;
+	  background: #f5f5f5;
+	  border-radius: 4px;
+	  cursor: pointer;
+	  font-size: 14px;
+	}
+	.child-tab.active {
+	  background: $color-primary;
+	  color: #fff;
+	  font-weight: bold;
+	}
+	.child-tab-content {
+	  background: rgba($color-primary, 0.1);
+	  padding: 12px;
+	  border-radius: 10px;
+	  margin-top: 8px;
+	}
+	.regist-btn {
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  width: 120px;
+	  padding: 4px 15px;
+	  margin: 0 auto;
+	  background: $color-primary;
+	  color: white;
+	  border: none;
+	  border-radius: 4px;
+	  cursor: pointer;
+	  font-size: 16px;
+	  font-weight: bold;
+	  text-align: center;
+	  transition: transform 0.1s, background 0.2s;
+	}
+	</style>
