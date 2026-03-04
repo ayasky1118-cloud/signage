@@ -19,7 +19,7 @@
 ## ディレクトリ構成
 
 ```
-map_pj/
+signage/
 ├── frontend/           # Vue 3 + Vite + Vue Router + Tailwind
 │   ├── src/
 │   │   ├── pages/      # ページコンポーネント（Menu, OrderList など）

@@ -3,7 +3,7 @@
 00_schema の DDL を順に実行し、DB を定義書どおりに反映します。
 
 実行方法（backend の .env の DATABASE_URL を使用）:
-  cd /path/to/map_pj
+  cd /path/to/signage
   PYTHONPATH=backend backend/.venv/bin/python db/apply_schema.py
   # または venv 有効時:  PYTHONPATH=backend python db/apply_schema.py
 
@@ -15,8 +15,8 @@ import sys
 import argparse
 
 # backend を path に追加（app.core.config のため）
-_map_pj = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_map_pj / "backend"))
+_signage = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_signage / "backend"))
 
 from sqlalchemy import create_engine, text
 from app.core.config import settings
@@ -43,7 +43,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    schema_dir = _map_pj / "db" / "00_schema"
+    schema_dir = _signage / "db" / "00_schema"
     engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
     print("接続先:", settings.DATABASE_URL.replace("password", "****"))
     print()

@@ -32,10 +32,10 @@ class Settings(BaseSettings):
     # DB接続URL
     # =============================
     # デフォルト: ローカル開発（docker compose + uvicorn 直接起動）用
-    # - SAM Local 利用時: DATABASE_URL=mysql+pymysql://root:password@db:3306/map_db?charset=utf8mb4
+    # - SAM Local 利用時: DATABASE_URL=mysql+pymysql://root:password@db:3306/signage_dev?charset=utf8mb4
     # - 本番: Lambda の環境変数で上書き
     DATABASE_URL: str = (
-        "mysql+pymysql://root:password@127.0.0.1:3306/map_db?charset=utf8mb4"
+        "mysql+pymysql://root:password@127.0.0.1:3306/signage_dev?charset=utf8mb4"
     )
 
 
