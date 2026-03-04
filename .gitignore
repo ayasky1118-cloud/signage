@@ -10,6 +10,10 @@ __pycache__/
 *.pyc
 *.pyo
 
+# DB データ・バックアップ（ローカルのみ）
+mysql_data/
+db/backups/*.sql
+
 # その他
 .DS_Store
 *.log

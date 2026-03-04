@@ -908,7 +908,16 @@
                 setKanbanSectionVisibility();
             }
 
+            var orderSearchValidationFocusEl = null;
+
+            function focusValidationTarget(el) {
+                if (!el || !document.body.contains(el)) return;
+                if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                if (typeof el.focus === 'function') el.focus();
+            }
+
             function openOrderSearchValidationModal() {
+                orderSearchValidationFocusEl = document.getElementById('inputOrderNo');
                 var modal = document.getElementById('orderSearchValidationModal');
                 if (modal) {
                     modal.classList.remove('hidden');
@@ -916,13 +925,17 @@
                 }
             }
             function closeOrderSearchValidationModal() {
+                var el = orderSearchValidationFocusEl;
+                orderSearchValidationFocusEl = null;
                 var modal = document.getElementById('orderSearchValidationModal');
                 if (modal) {
                     modal.classList.add('hidden');
                     modal.setAttribute('aria-hidden', 'true');
                 }
-                var inputOrderNo = document.getElementById('inputOrderNo');
-                if (inputOrderNo) inputOrderNo.focus();
+                if (el) {
+                    var target = el;
+                    setTimeout(function () { focusValidationTarget(target); }, 50);
+                }
             }
 
             var orderNoSelectModal = document.getElementById('orderNoSelectModal');
@@ -1013,8 +1026,8 @@
             if (orderNoSelectModalBackdrop) orderNoSelectModalBackdrop.addEventListener('click', closeOrderNoSelectModal);
             var orderSearchValidationModalOk = document.getElementById('orderSearchValidationModalOk');
             var orderSearchValidationModalBackdrop = document.getElementById('orderSearchValidationModalBackdrop');
-            if (orderSearchValidationModalOk) orderSearchValidationModalOk.addEventListener('click', closeOrderSearchValidationModal);
-            if (orderSearchValidationModalBackdrop) orderSearchValidationModalBackdrop.addEventListener('click', closeOrderSearchValidationModal);
+            if (orderSearchValidationModalOk) orderSearchValidationModalOk.addEventListener('click', function (e) { e.preventDefault(); closeOrderSearchValidationModal(); });
+            if (orderSearchValidationModalBackdrop) orderSearchValidationModalBackdrop.addEventListener('click', function (e) { e.preventDefault(); closeOrderSearchValidationModal(); });
 
             // 枝番追加モーダル
             var btnAddBranch = document.getElementById('btnAddBranch');

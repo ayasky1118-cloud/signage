@@ -1,6 +1,6 @@
-# Map Sign Project
+# 簡易地図作成アプリ-仮称
 
-フロントエンド（Vue 3）とバックエンド（FastAPI）を組み合わせたフルスタックプロジェクト。  
+フロントエンド（Vue 3）とバックエンド（FastAPI）を組み合わせたプロジェクト。
 ローカル開発では MySQL（Docker）、本番は AWS Lambda 上での動作を想定。
 
 ---
@@ -33,8 +33,7 @@ signage/
 │   │   ├── core/       # 設定（config.py）
 │   │   ├── db/         # DB接続（session.py）
 │   │   ├── models/     # SQLAlchemyモデル
-│   │   ├── schemas/    # Pydanticスキーマ
-│   │   └── routers/    # APIルーター（/companies など）
+│   │   └── routers/    # APIルーター（/companies, /orders など）
 │   └── requirements.txt
 │
 ├── docs/               # 手順書・仕様書
@@ -42,7 +41,7 @@ signage/
 │   ├── 102.Node・npm 環境確認.md
 │   └── ...（詳細は docs/README.md）
 │
-└── docker-compose.yml  # MySQL用（プロジェクトルートに配置予定）
+└── docker-compose.yml  # MySQL用（プロジェクトルート）
 ```
 
 ---
@@ -60,9 +59,14 @@ signage/
 
 ### 1. MySQL 起動
 
+signage プロジェクトのルートで実行する。
+
 ```bash
 docker compose up -d
 ```
+
+**データのバックアップ（推奨）**  
+コンテナ入れ替えやスキーマ変更の前に、`./db/backup.sh` を実行すると `db/backups/` にダンプが保存されます。
 
 ### 2. フロントエンド起動
 
@@ -92,6 +96,13 @@ API は `http://localhost:8000` で動作します。
 |----------------|------|
 | `GET /health` | ヘルスチェック |
 | `GET /companies` | 会社一覧（DB疎通確認用） |
+| `GET /address/validate?address=...` | 住所検証（MapTiler Geocoding） |
+
+**住所検証（MapTiler）**  
+注文情報の「住所」は登録ボタン押下時に MapTiler Geocoding API で検証します。  
+- ローカル: `backend/.env.example` をコピーして `backend/.env` を作成し、`MAPTILER_API_KEY` を設定。**`.env` を変更したらバックエンドを再起動すること。**  
+- 本番: 環境変数 `MAPTILER_API_KEY` で設定（`.env` に秘密を置かない）。  
+未設定の場合は検証をスキップし、登録はそのまま進みます。詳細は [docs/203.本番環境の環境変数.md](docs/203.本番環境の環境変数.md) を参照。
 
 ---
 

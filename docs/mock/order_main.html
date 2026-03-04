@@ -695,21 +695,33 @@
 
             var pendingValidationFocusEl = null;
 
+            function focusValidationTarget(el) {
+                if (!el || !document.body.contains(el)) return;
+                if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                if (typeof el.focus === 'function') el.focus();
+            }
+
             function openRequiredValidationModal(result) {
+                var focusEl = result.focusEl || null;
+                pendingValidationFocusEl = focusEl;
                 var modal = document.getElementById('requiredValidationModal');
                 var msgEl = document.getElementById('requiredValidationModalMessage');
                 if (msgEl) msgEl.textContent = result.message || '必須項目が未入力です。';
-                pendingValidationFocusEl = result.focusEl || null;
                 if (modal) { modal.classList.remove('hidden'); modal.setAttribute('aria-hidden', 'false'); }
+                if (focusEl) setTimeout(function () { focusValidationTarget(focusEl); }, 0);
             }
 
             function closeRequiredValidationModal() {
+                var el = pendingValidationFocusEl;
+                pendingValidationFocusEl = null;
                 var modal = document.getElementById('requiredValidationModal');
-                if (modal) { modal.classList.add('hidden'); modal.setAttribute('aria-hidden', 'true'); }
-                if (pendingValidationFocusEl) {
-                    var el = pendingValidationFocusEl;
-                    pendingValidationFocusEl = null;
-                    setTimeout(function () { if (el && el.focus) el.focus(); }, 50);
+                if (modal) {
+                    if (modal.contains(document.activeElement) && typeof document.activeElement.blur === 'function') document.activeElement.blur();
+                    modal.classList.add('hidden');
+                    modal.setAttribute('aria-hidden', 'true');
+                }
+                if (el) {
+                    focusValidationTarget(el);
                 }
             }
 
@@ -1224,8 +1236,8 @@
             updateRegisterButtonAndModals(); // 初期表示
             var requiredValidationModalOk = document.getElementById('requiredValidationModalOk');
             var requiredValidationModalBackdrop = document.getElementById('requiredValidationModalBackdrop');
-            if (requiredValidationModalOk) requiredValidationModalOk.addEventListener('click', function () { closeRequiredValidationModal(); });
-            if (requiredValidationModalBackdrop) requiredValidationModalBackdrop.addEventListener('click', function () { closeRequiredValidationModal(); });
+            if (requiredValidationModalOk) requiredValidationModalOk.addEventListener('click', function (e) { e.preventDefault(); closeRequiredValidationModal(); });
+            if (requiredValidationModalBackdrop) requiredValidationModalBackdrop.addEventListener('click', function (e) { e.preventDefault(); closeRequiredValidationModal(); });
             if (registerConfirmModalCancel) registerConfirmModalCancel.addEventListener('click', closeRegisterConfirmModal);
             if (registerConfirmModalBackdrop) registerConfirmModalBackdrop.addEventListener('click', closeRegisterConfirmModal);
             var registerResultModalCancel = document.getElementById('registerResultModalCancel');

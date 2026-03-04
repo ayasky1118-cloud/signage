@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS user
 ,	email				VARCHAR(256) NOT NULL UNIQUE					COMMENT 'メールアドレス'
 ,	user_name			VARCHAR(100) NOT NULL							COMMENT 'ユーザー名'
 ,	is_super_admin		BOOLEAN NOT NULL DEFAULT FALSE					COMMENT '全体管理者フラグ'
-,	role				VARCHAR(50) NOT NULL							COMMENT '会社内ロール'
+,	role				VARCHAR(50) 	 								COMMENT '会社内ロール'
 ,	is_deleted			BOOLEAN 	NOT NULL DEFAULT FALSE				COMMENT '削除フラグ'
 ,	created_dt			DATETIME 	NOT NULL DEFAULT CURRENT_TIMESTAMP	COMMENT '作成日時'
 ,	created_by			BIGINT		NOT NULL							COMMENT '作成者'
