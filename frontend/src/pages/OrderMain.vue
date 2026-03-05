@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { RouterLink, useRouter, useRoute } from "vue-router"
 import { validateAddress } from "../composables/useAddressApi"
-import { searchOrders, type OrderItem } from "../composables/useOrderApi"
+import { searchOrders, createOrder, type OrderItem } from "../composables/useOrderApi"
 import { fetchCompanies, type CompanyItem } from "../composables/useCompanyApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
@@ -420,9 +420,52 @@ async function openRegisterConfirm() {
   registerConfirmOpen.value = true
 }
 
-function doRegisterConfirm() {
+/**
+ * 登録確認モーダルで OK 押下時の処理。
+ * 新規: createOrder API を呼び、成功時に採番された orderNo を反映して結果モーダル表示。
+ * 変更: 更新 API は未実装のため結果メッセージのみ表示。
+ */
+async function doRegisterConfirm() {
+  if (mode.value === "new") {
+    const loginCompanyId = getLoginCompanyId()
+    if (
+      companyId.value == null ||
+      templateId.value == null ||
+      designTypeId.value == null
+    ) {
+      return
+    }
+    // テンプレート項目は可変のため、template_item 順で ID と入力値をペアにして送信
+    const templateItemsPayload = templateItems.value.map((item, idx) => ({
+      templateItemId: item.templateItemId,
+      orderItemVal: templateItemValues.value[idx] ?? "",
+    }))
+    try {
+      const result = await createOrder({
+        loginCompanyId,
+        orderName: orderName.value.trim(),
+        orderAdd: address.value.trim(),
+        companyId: companyId.value,
+        templateId: templateId.value,
+        designTypeId: designTypeId.value,
+        templateItems: templateItemsPayload,
+      })
+      registerConfirmOpen.value = false
+      orderNo.value = result.orderNo
+      registerResultMessage.value = "登録が完了しました。"
+      registerResultOpen.value = true
+      initialNewState.value = getFormState()
+      initialChangeState.value = getFormState()
+    } catch (e) {
+      registerConfirmOpen.value = false
+      const msg = e instanceof Error ? e.message : "登録に失敗しました。"
+      requiredValidationMessage.value = msg
+      requiredValidationOpen.value = true
+    }
+    return
+  }
   registerConfirmOpen.value = false
-  registerResultMessage.value = mode.value === "change" ? "更新が完了しました。" : "登録が完了しました。"
+  registerResultMessage.value = "更新が完了しました。"
   registerResultOpen.value = true
 }
 

@@ -1,14 +1,21 @@
 """
-注文一覧検索API。
+注文一覧検索API・注文登録API。
 
-order_main を中心に company, customer, template, user, order_detail を JOIN し、
-検索条件に応じて一覧を返す。
-order_main のみ存在し order_detail が無いケースも含める（枝番は空配列）。
+【一覧検索】GET /orders
+  order_main を中心に company, customer, template, user, order_detail を JOIN し、
+  検索条件に応じて一覧を返す。order_detail が無い場合は枝番は空配列。
+
+【新規登録】POST /orders
+  1. order_no_seq: ログイン会社・当年で採番（該当無ければ last_number=1 で新規）。
+     order_no = 年4桁 + last_number を0埋め6桁。
+  2. order_main: テンプレート項目以外（会社・顧客・テンプレート・受注番号・受注名・住所・デザイン種別）を登録。
+  3. order_item: テンプレート項目ごとに1行、入力値を order_item_val に格納（可変項目）。
 """
 
 import logging
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -17,6 +24,9 @@ from app.db.session import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+# 認証未実装のため登録・更新者IDは固定（将来は認証から取得）
+DEFAULT_USER_ID = 1
 
 
 @router.get("")
@@ -204,3 +214,168 @@ def _search_orders_impl(
         "page": page,
         "perPage": per_page,
     }
+
+
+# -----------------------------
+# 注文登録
+# -----------------------------
+
+
+def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
+    """
+    受注番号を採番する（order_no_seq に基づく）。
+
+    - ログイン会社（company_id）とシステムの当年が一致する order_no_seq の
+      last_number の最大値を取得。該当行がなければ 0 として扱い、次番号は 1。
+    - 採番した番号を履歴として order_no_seq に新規 INSERT する
+      （同一 company_id・year で last_number を積み上げる設計）。
+    - 戻り値: 年4桁 + last_number を0埋め6桁の文字列（例: 2025000001）。
+
+    Args:
+        db: DB セッション
+        company_id: ログイン会社ID（採番の単位）
+        user_id: 作成者・更新者（order_no_seq の created_by / updated_by）
+
+    Returns:
+        採番された order_no 文字列
+    """
+    now = datetime.now()
+    year = now.year
+    # 該当年・該当会社の既存採番の最大 last_number を取得（無ければ 0）
+    r = db.execute(
+        text("""
+            SELECT COALESCE(MAX(last_number), 0) AS max_no
+            FROM order_no_seq
+            WHERE company_id = :company_id AND `year` = :year AND is_deleted = 0
+        """),
+        {"company_id": company_id, "year": year},
+    ).fetchone()
+    next_no = (r[0] or 0) + 1
+    # 今回使用する番号を order_no_seq に INSERT（履歴として残し、次回は MAX+1 で採番）
+    db.execute(
+        text("""
+            INSERT INTO order_no_seq (company_id, `year`, last_number, is_deleted, created_by, updated_by)
+            VALUES (:company_id, :year, :last_number, 0, :created_by, :updated_by)
+        """),
+        {
+            "company_id": company_id,
+            "year": year,
+            "last_number": next_no,
+            "created_by": user_id,
+            "updated_by": user_id,
+        },
+    )
+    db.flush()
+    return f"{year:04d}{next_no:06d}"
+
+
+@router.post("")
+def create_order(
+    db: Session = Depends(get_db),
+    login_company_id: int = Body(..., embed=True, alias="loginCompanyId"),
+    order_name: str = Body(..., embed=True, alias="orderName"),
+    order_add: str = Body(..., embed=True, alias="orderAdd"),
+    company_id: int = Body(..., embed=True, alias="companyId"),
+    template_id: int = Body(..., embed=True, alias="templateId"),
+    design_type_id: int = Body(..., embed=True, alias="designTypeId"),
+    template_items: list[dict] = Body(..., embed=True, alias="templateItems"),
+):
+    """
+    注文を新規登録する。
+
+    処理順:
+    1. リクエストの companyId に紐づく customer を1件取得（無い場合は 400）。
+    2. order_no_seq で受注番号を採番（ログイン会社・当年。形式: 年4桁+連番6桁）。
+    3. order_main に登録（会社・顧客・テンプレート・受注番号・受注名・住所・デザイン種別）。
+    4. テンプレート項目ごとに order_item を登録（template_item_id と入力値を order_item_val に格納）。
+
+    リクエスト Body（JSON）:
+        loginCompanyId: ログイン会社ID（採番に使用）
+        orderName: 受注名
+        orderAdd: 受注住所
+        companyId: 注文先会社ID（order_main.company_id。この会社に紐づく顧客を customer_id に使用）
+        templateId: テンプレートID
+        designTypeId: デザイン種別ID
+        templateItems: [ { "templateItemId": number, "orderItemVal": string }, ... ]
+            テンプレート項目ごとの ID と入力値。可変長。
+
+    レスポンス: { "orderNo": str, "orderId": int }
+    エラー: 400（顧客不在）、500（DB エラー等）
+    """
+    try:
+        user_id = DEFAULT_USER_ID
+        # 注文先会社に紐づく顧客を1件取得（order_main.customer_id 用）。いなければ 400
+        cust = db.execute(
+            text("""
+                SELECT customer_id FROM customer
+                WHERE company_id = :company_id AND is_deleted = 0
+                ORDER BY customer_id LIMIT 1
+            """),
+            {"company_id": company_id},
+        ).fetchone()
+        if not cust:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "指定された会社に紐づく顧客が存在しません。"},
+            )
+        customer_id = cust[0]
+
+        # 受注番号を採番（ログイン会社・当年。order_no_seq に基づく）
+        order_no = _next_order_no(db, login_company_id, user_id)
+
+        # order_main に登録（テンプレート項目以外。company_id＝注文先会社、customer_id＝上で取得した顧客）
+        db.execute(
+            text("""
+                INSERT INTO order_main
+                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, is_deleted, created_by, updated_by)
+                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, 0, :created_by, :updated_by)
+            """),
+            {
+                "company_id": company_id,
+                "customer_id": customer_id,
+                "template_id": template_id,
+                "order_no": order_no,
+                "order_name": order_name.strip(),
+                "order_add": order_add.strip(),
+                "design_type_id": design_type_id,
+                "created_by": user_id,
+                "updated_by": user_id,
+            },
+        )
+        db.flush()
+        # 挿入した order_main の order_id を取得（AUTO_INCREMENT。order_item の FK に必要）
+        order_id_row = db.execute(text("SELECT LAST_INSERT_ID()")).fetchone()
+        order_id = order_id_row[0] if order_id_row else None
+        if not order_id:
+            db.rollback()
+            return JSONResponse(status_code=500, content={"detail": "order_main の登録に失敗しました。"})
+
+        # テンプレート項目を order_item に登録（1項目1行。入力値は order_item_val、最大200文字）
+        for item in template_items:
+            tid = item.get("templateItemId")
+            val = item.get("orderItemVal")
+            if tid is None:
+                continue
+            val_str = (val if val is not None else "").strip()[:200]
+            db.execute(
+                text("""
+                    INSERT INTO order_item (order_id, template_item_id, order_item_val, is_deleted, created_by, updated_by)
+                    VALUES (:order_id, :template_item_id, :order_item_val, 0, :created_by, :updated_by)
+                """),
+                {
+                    "order_id": order_id,
+                    "template_item_id": tid,
+                    "order_item_val": val_str,
+                    "created_by": user_id,
+                    "updated_by": user_id,
+                },
+            )
+        db.commit()
+        return {"orderNo": order_no, "orderId": order_id}
+    except Exception as e:
+        db.rollback()
+        logger.exception("注文登録でエラー")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "注文の登録に失敗しました。", "error": str(e)},
+        )
