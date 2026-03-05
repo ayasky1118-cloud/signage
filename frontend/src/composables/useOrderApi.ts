@@ -67,7 +67,20 @@ export async function searchOrders(
 
   const base = getApiBase()
   const url = `${base}${API_PREFIX}/orders?${searchParams.toString()}`
-  const res = await fetch(url)
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15秒でタイムアウト
+  let res: Response
+  try {
+    res = await fetch(url, { signal: controller.signal })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("接続がタイムアウトしました。バックエンド（port 8000）が起動しているか確認してください。")
+    }
+    throw e
+  }
+  clearTimeout(timeoutId)
 
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`

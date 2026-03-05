@@ -32,12 +32,24 @@
     box-shadow: inset 0 0 0 2px var(--color-light-blue);
 }
 
-/* 共通ヘッダー：メニューページではタイトル非表示・右寄せ */
+/* 共通ヘッダー：メニューページでは「メインメニュー」リンクを非表示・右寄せ（メニュー画面ではリンクが重複するため） */
 body.header-menu-only #app-header {
     justify-content: flex-end;
 }
 body.header-menu-only .header-menu-link {
     display: none;
+}
+
+/* メニューページのコンテンツが確実に表示されるようにする */
+#menu-page {
+    width: 100%;
+    min-width: 0;
+}
+
+/* アプリルート・レイアウトが画面幅いっぱいになるようにする */
+#app {
+    width: 100%;
+    min-width: 0;
 }
 
 /* ベース */

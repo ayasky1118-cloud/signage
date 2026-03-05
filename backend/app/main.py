@@ -15,6 +15,8 @@ from app.routers.address import router as address_router
 from app.routers.company import router as company_router
 from app.routers.design_type import router as design_type_router
 from app.routers.order import router as order_router
+from app.routers.template import router as template_router
+from app.routers.template_item import router as template_item_router
 
 
 # =============================
@@ -46,6 +48,8 @@ app.add_middleware(
 app.include_router(address_router)
 app.include_router(company_router)
 app.include_router(design_type_router)
+app.include_router(template_router)
+app.include_router(template_item_router)
 # 注文一覧検索
 app.include_router(order_router)
 
