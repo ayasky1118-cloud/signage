@@ -64,6 +64,26 @@ a, button, [role="button"], input[type="button"], input[type="submit"] {
     -webkit-user-select: none;
 }
 
+/* フォーカスが外れているとき、空欄ならキャレットを出さない */
+body input:not([type="button"]):not([type="submit"]):not([type="image"]):not([type="reset"]):placeholder-shown:not(:focus),
+body textarea:placeholder-shown:not(:focus) {
+    caret-color: transparent !important;
+}
+
+/* フォーカスが当たったらキャレットを表示（readonly / disabled は除く） */
+body input:not([type="button"]):not([type="submit"]):not([type="image"]):not([type="reset"]):not([readonly]):not(:disabled):focus,
+body textarea:not([readonly]):not(:disabled):focus {
+    caret-color: #334155 !important;
+}
+
+/* 入力不可（readonly / disabled）のテキストはキャレットなし */
+body input[readonly],
+body input:disabled,
+body textarea[readonly],
+body textarea:disabled {
+    caret-color: transparent !important;
+}
+
 /* 表示エリアのカーソル点滅のみ防ぐ（文字選択は可能） */
 p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
     caret-color: transparent;
@@ -104,4 +124,4 @@ p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
 body {
 	font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji",
 	  "Segoe UI Emoji";
-  }
+}

@@ -139,6 +139,9 @@ def _search_orders_impl(
             om.order_add,
             om.company_id,
             om.design_type_id,
+            om.attribute_01 AS attribute_01,
+            om.attribute_02 AS attribute_02,
+            om.attribute_03 AS attribute_03,
             dt.design_type_name,
             om.updated_dt,
             c.company_name,
@@ -203,6 +206,9 @@ def _search_orders_impl(
             "template": r.get("template_name") or "",
             "designTypeId": r.get("design_type_id"),
             "designType": r.get("design_type_name") or "",
+            "attribute_01": (r.get("attribute_01") or r.get("om.attribute_01")) or "",
+            "attribute_02": (r.get("attribute_02") or r.get("om.attribute_02")) or "",
+            "attribute_03": (r.get("attribute_03") or r.get("om.attribute_03")) or "",
             "updateDate": update_date,
             "updater": r.get("updater_name") or "",
             "branches": branches,
@@ -278,6 +284,9 @@ def create_order(
     company_id: int = Body(..., embed=True, alias="companyId"),
     template_id: int = Body(..., embed=True, alias="templateId"),
     design_type_id: int = Body(..., embed=True, alias="designTypeId"),
+    attribute_01: str = Body(..., embed=True, alias="attribute01"),
+    attribute_02: str = Body(..., embed=True, alias="attribute02"),
+    attribute_03: str = Body(..., embed=True, alias="attribute03"),
     template_items: list[dict] = Body(..., embed=True, alias="templateItems"),
 ):
     """
@@ -296,14 +305,26 @@ def create_order(
         companyId: 注文先会社ID（order_main.company_id。この会社に紐づく顧客を customer_id に使用）
         templateId: テンプレートID
         designTypeId: デザイン種別ID
+        attribute01: 社内CD（必須）
+        attribute02: 事業所CD（必須）
+        attribute03: 現場CD（必須）
         templateItems: [ { "templateItemId": number, "orderItemVal": string }, ... ]
             テンプレート項目ごとの ID と入力値。可変長。
 
     レスポンス: { "orderNo": str, "orderId": int }
-    エラー: 400（顧客不在）、500（DB エラー等）
+    エラー: 400（顧客不在・社内CD/事業所CD/現場CD未入力）、500（DB エラー等）
     """
     try:
         user_id = DEFAULT_USER_ID
+        # 社内CD・事業所CD・現場CDは必須
+        a01 = (attribute_01 or "").strip()
+        a02 = (attribute_02 or "").strip()
+        a03 = (attribute_03 or "").strip()
+        if not a01 or not a02 or not a03:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "社内CD・事業所CD・現場CDはすべて必須です。"},
+            )
         # 注文先会社に紐づく顧客を1件取得（order_main.customer_id 用）。いなければ 400
         cust = db.execute(
             text("""
@@ -327,8 +348,8 @@ def create_order(
         db.execute(
             text("""
                 INSERT INTO order_main
-                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, is_deleted, created_by, updated_by)
-                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, 0, :created_by, :updated_by)
+                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, attribute_01, attribute_02, attribute_03, is_deleted, created_by, updated_by)
+                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, :attribute_01, :attribute_02, :attribute_03, 0, :created_by, :updated_by)
             """),
             {
                 "company_id": company_id,
@@ -338,6 +359,9 @@ def create_order(
                 "order_name": order_name.strip(),
                 "order_add": order_add.strip(),
                 "design_type_id": design_type_id,
+                "attribute_01": a01[:256],
+                "attribute_02": a02[:256],
+                "attribute_03": a03[:256],
                 "created_by": user_id,
                 "updated_by": user_id,
             },

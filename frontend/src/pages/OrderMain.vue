@@ -17,6 +17,9 @@ const hasSearchedInChangeMode = ref(false)
 
 /* フォーム */
 const orderNo = ref("")
+const companyCd = ref("")
+const officeCd = ref("")
+const siteCd = ref("")
 const orderName = ref("")
 const address = ref("")
 const companyId = ref<number | null>(null)
@@ -116,6 +119,9 @@ const newModeRadioDisabled = computed(() => cameFromList.value)
 function getFormState(): string {
   return [
     orderNo.value.trim(),
+    companyCd.value.trim(),
+    officeCd.value.trim(),
+    siteCd.value.trim(),
     orderName.value.trim(),
     address.value.trim(),
     companyName.value.trim(),
@@ -164,6 +170,9 @@ const requiredValidationFocusRef = ref<string | null>(null)
 /* フォーカス用テンプレート ref */
 const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const orderNoSearchBtnRef = ref<HTMLButtonElement | null>(null)
+const companyCdInputRef = ref<HTMLInputElement | null>(null)
+const officeCdInputRef = ref<HTMLInputElement | null>(null)
+const siteCdInputRef = ref<HTMLInputElement | null>(null)
 const orderNameInputRef = ref<HTMLInputElement | null>(null)
 const addressInputRef = ref<HTMLInputElement | null>(null)
 const companySelectBtnRef = ref<HTMLButtonElement | null>(null)
@@ -190,6 +199,9 @@ function designTypeLabel(v: string): string {
 /* 注文データをフォームに反映（画面上の会社は Customer） */
 function applyOrderData(order: OrderItem) {
   orderNo.value = order.orderNo ?? ""
+  companyCd.value = order.attribute_01 ?? ""
+  officeCd.value = order.attribute_02 ?? ""
+  siteCd.value = order.attribute_03 ?? ""
   orderName.value = order.orderName ?? ""
   address.value = order.address ?? ""
   companyId.value = order.companyId ?? null
@@ -233,6 +245,9 @@ function clearCompany() {
 /* 注文番号変更時（変更モード）他項目クリア */
 function clearOtherFieldsOnOrderNoChange() {
   if (mode.value !== "change") return
+  companyCd.value = ""
+  officeCd.value = ""
+  siteCd.value = ""
   orderName.value = ""
   address.value = ""
   companyName.value = ""
@@ -244,19 +259,24 @@ function clearOtherFieldsOnOrderNoChange() {
   hasSearchedInChangeMode.value = false
 }
 
-/* 注文番号選択モーダルを開く → APIで一覧取得 */
+/* 注文番号選択モーダルを開く → APIで一覧取得。データが無い場合はメッセージダイアログのみ表示 */
 async function openOrderNoSelectModal() {
-  orderNoSelectModalOpen.value = true
-  if (orderListForSelect.value.length === 0) {
-    isLoadingOrders.value = true
-    try {
-      const result = await searchOrders({ perPage: 50, page: 1 })
-      orderListForSelect.value = result.items
-    } catch {
-      orderListForSelect.value = []
-    } finally {
-      isLoadingOrders.value = false
+  isLoadingOrders.value = true
+  try {
+    const result = await searchOrders({ perPage: 50, page: 1 })
+    orderListForSelect.value = result.items
+    if (result.items.length === 0) {
+      requiredValidationMessage.value = "データがありません"
+      requiredValidationOpen.value = true
+      return
     }
+    orderNoSelectModalOpen.value = true
+  } catch {
+    orderListForSelect.value = []
+    requiredValidationMessage.value = "データの取得に失敗しました。"
+    requiredValidationOpen.value = true
+  } finally {
+    isLoadingOrders.value = false
   }
 }
 
@@ -323,6 +343,9 @@ function validateRequired(): { valid: boolean; message: string; focusRef?: strin
   if (mode.value === "change" && !orderNo.value.trim()) {
     return { valid: false, message: "「注文番号」を選択してください。", focusRef: "orderNoSearch" }
   }
+  if (!companyCd.value.trim()) return { valid: false, message: "「社内CD」を入力してください。", focusRef: "companyCd" }
+  if (!officeCd.value.trim()) return { valid: false, message: "「事業所CD」を入力してください。", focusRef: "officeCd" }
+  if (!siteCd.value.trim()) return { valid: false, message: "「現場CD」を入力してください。", focusRef: "siteCd" }
   if (!orderName.value.trim()) return { valid: false, message: "「注文名」を入力してください。", focusRef: "orderName" }
   if (!address.value.trim()) return { valid: false, message: "「住所」を入力してください。", focusRef: "address" }
   if (!companyName.value.trim()) return { valid: false, message: "「会社名」を選択してください。", focusRef: "companySelect" }
@@ -358,6 +381,12 @@ function getFocusElement(key: string | null | undefined): HTMLElement | null {
   switch (key) {
     case "orderNoSearch":
       return (orderNoSearchBtnRef.value ?? orderNoInputRef.value) as HTMLElement | null
+    case "companyCd":
+      return companyCdInputRef.value
+    case "officeCd":
+      return officeCdInputRef.value
+    case "siteCd":
+      return siteCdInputRef.value
     case "orderName":
       return orderNameInputRef.value
     case "address":
@@ -448,6 +477,9 @@ async function doRegisterConfirm() {
         companyId: companyId.value,
         templateId: templateId.value,
         designTypeId: designTypeId.value,
+        attribute01: companyCd.value.trim(),
+        attribute02: officeCd.value.trim(),
+        attribute03: siteCd.value.trim(),
         templateItems: templateItemsPayload,
       })
       registerConfirmOpen.value = false
@@ -509,6 +541,9 @@ function onModeChangeToChange() {
 
 function changeNoticeDiscard() {
   orderNo.value = ""
+  companyCd.value = ""
+  officeCd.value = ""
+  siteCd.value = ""
   orderName.value = ""
   address.value = ""
   companyName.value = ""
@@ -536,6 +571,9 @@ function onModeChangeToNew() {
     unsavedConfirmOkText.value = "破棄して新規へ"
     pendingUnsavedAction.value = () => {
       orderNo.value = ""
+      companyCd.value = ""
+      officeCd.value = ""
+      siteCd.value = ""
       orderName.value = ""
       address.value = ""
       companyName.value = ""
@@ -553,6 +591,9 @@ function onModeChangeToNew() {
     mode.value = "change" // モーダル表示中は変更のまま
   } else {
     orderNo.value = ""
+    companyCd.value = ""
+    officeCd.value = ""
+    siteCd.value = ""
     orderName.value = ""
     address.value = ""
     companyName.value = ""
@@ -632,7 +673,7 @@ watch(orderNo, () => {
         <h2 class="text-base font-bold text-white tracking-tight">注文情報入力 / 変更</h2>
       </div>
 
-      <form class="pt-5 px-10 pb-10 space-y-4" @submit.prevent>
+      <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
         <div>
           <div class="pb-4 border-b border-slate-100">
             <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden bg-slate-100 min-w-[11rem] mode-radio-group">
@@ -663,46 +704,93 @@ watch(orderNo, () => {
               <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
               <h3 class="font-bold text-base tracking-tight">注文情報</h3>
             </div>
-            <div class="grid grid-cols-1 gap-5">
-              <div class="space-y-2.5">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-                  注文番号
-                </label>
-                <div class="flex flex-wrap gap-2">
-                  <input
-                    ref="orderNoInputRef"
-                    v-model="orderNo"
-                    type="text"
-                    :readonly="orderNoReadOnly"
-                    :placeholder="orderNoPlaceholder"
-                    class="w-1/3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs"
-                    :class="{
-                      'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
-                      'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
-                    }"
-                  />
-                  <button
-                    type="button"
-                    class="px-8 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                    :disabled="searchAndListDisabled"
-                    @click="openOrderNoSelectModal"
-                  >
-                    選択
-                  </button>
-                  <button
-                    ref="orderNoSearchBtnRef"
-                    type="button"
-                    class="px-8 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                    :disabled="searchAndListDisabled"
-                    @click="doSearchByOrderNo"
-                  >
-                    検索
-                  </button>
-                </div>
+
+            <!-- 注文番号 -->
+            <div class="space-y-2.5">
+              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                注文番号
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <input
+                  ref="orderNoInputRef"
+                  v-model="orderNo"
+                  type="text"
+                  :readonly="orderNoReadOnly"
+                  :placeholder="orderNoPlaceholder"
+                  class="w-1/3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs"
+                  :class="{
+                    'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
+                    'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
+                  }"
+                />
+                <button
+                  type="button"
+                  class="px-8 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  :disabled="searchAndListDisabled"
+                  @click="openOrderNoSelectModal"
+                >
+                  選択
+                </button>
+                <button
+                  ref="orderNoSearchBtnRef"
+                  type="button"
+                  class="px-8 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  :disabled="searchAndListDisabled"
+                  @click="doSearchByOrderNo"
+                >
+                  検索
+                </button>
               </div>
             </div>
 
+            <!-- 社内CD・事業所CD・現場CD（注文番号と注文名の間・3項目とも必須。配置を揃えて横並び） -->
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-0">
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  社内CD
+                </label>
+                <input
+                  ref="companyCdInputRef"
+                  v-model="companyCd"
+                  type="text"
+                  placeholder="社内CDを入力"
+                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  事業所CD
+                </label>
+                <input
+                  ref="officeCdInputRef"
+                  v-model="officeCd"
+                  type="text"
+                  placeholder="事業所CDを入力"
+                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  現場CD
+                </label>
+                <input
+                  ref="siteCdInputRef"
+                  v-model="siteCd"
+                  type="text"
+                  placeholder="現場CDを入力"
+                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+            </div>
+
+            <!-- 注文名 -->
             <div class="space-y-2.5">
               <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -952,6 +1040,7 @@ watch(orderNo, () => {
                 <thead>
                   <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
                     <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
+                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">社内CD<br>事業所CD<br>現場CD</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">会社名<br>担当者</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200">デザイン種別</th>
@@ -966,6 +1055,11 @@ watch(orderNo, () => {
                     @click="selectOrderNo(order)"
                   >
                     <td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">{{ order.orderNo }}</span></td>
+                    <td class="px-3 py-2 text-slate-600 text-xs">
+                      <div>{{ order.attribute_01 ?? '—' }}</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.attribute_02 ?? '—' }}</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.attribute_03 ?? '—' }}</div>
+                    </td>
                     <td class="px-3 py-2">
                       <div class="text-slate-700 font-semibold text-xs">{{ order.orderName }}</div>
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ order.address }}</div>
@@ -1230,3 +1324,11 @@ watch(orderNo, () => {
     </Teleport>
   </main>
 </template>
+
+<style>
+/* フォーカスが当たったらキャレットを表示（空欄でも入力中でも） */
+.order-main-form input:not([readonly]):not(:disabled):focus,
+.order-main-form textarea:not([readonly]):not(:disabled):focus {
+  caret-color: #334155 !important;
+}
+</style>

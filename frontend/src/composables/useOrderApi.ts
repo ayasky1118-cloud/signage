@@ -36,6 +36,12 @@ export interface OrderItem {
   template: string
   designTypeId?: number
   designType: string
+  /** 社内CD (attribute_01) */
+  attribute_01?: string
+  /** 事業所CD (attribute_02) */
+  attribute_02?: string
+  /** 現場CD (attribute_03) */
+  attribute_03?: string
   updateDate: string
   updater: string
   branches: string[]
@@ -69,6 +75,12 @@ export interface CreateOrderParams {
   companyId: number
   templateId: number
   designTypeId: number
+  /** 社内CD（必須） */
+  attribute01: string
+  /** 事業所CD（必須） */
+  attribute02: string
+  /** 現場CD（必須） */
+  attribute03: string
   /** テンプレート項目ごとの ID と入力値。可変長。 */
   templateItems: CreateOrderTemplateItem[]
 }
@@ -147,6 +159,9 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     companyId: params.companyId,
     templateId: params.templateId,
     designTypeId: params.designTypeId,
+    attribute01: params.attribute01,
+    attribute02: params.attribute02,
+    attribute03: params.attribute03,
     templateItems: params.templateItems,
   }
   const controller = new AbortController()
