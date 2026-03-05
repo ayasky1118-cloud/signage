@@ -15,7 +15,7 @@ const route = useRoute()
 const searchOrderNo = ref("")
 const searchOrderName = ref("")
 const searchAddress = ref("")
-const searchCompanyName = ref("")
+const searchCustomerName = ref("")
 const searchDesignTypeId = ref<string>("")
 const searchUpdater = ref("")
 
@@ -106,7 +106,7 @@ async function fetchOrders() {
       orderNo: searchOrderNo.value,
       orderName: searchOrderName.value,
       address: searchAddress.value,
-      companyName: searchCompanyName.value,
+      customerName: searchCustomerName.value,
       designTypeId: searchDesignTypeId.value ? Number(searchDesignTypeId.value) : undefined,
       updateDateFrom,
       updateDateTo,
@@ -237,7 +237,7 @@ watch(
       <!-- 検索条件カード -->
       <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-4">
         <div class="bg-main px-8 py-4">
-          <h2 class="text-base md:text-lg font-bold text-white tracking-tight">注文 / 看板情報一覧</h2>
+          <h2 class="text-base md:text-lg font-bold text-white tracking-tight">注文一覧</h2>
         </div>
         <div class="px-6 pt-4 pb-6 md:px-8 md:pt-5 md:pb-7 min-w-0">
           <div class="flex items-center justify-between gap-4 mb-2 text-main">
@@ -267,14 +267,14 @@ watch(
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2 min-w-0"
           >
             <div class="space-y-1.5 sm:col-span-3 min-w-0">
-              <div class="flex flex-col lg:flex-row lg:items-end lg:gap-4 gap-2 min-w-0">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:gap-4 gap-2 min-w-0">
                 <div class="space-y-1.5 flex-1 min-w-0">
                   <label class="text-xs font-bold text-slate-500 block">注文番号</label>
                   <input
                     v-model="searchOrderNo"
                     type="text"
                     id="inputOrderNo"
-                    class="w-full min-w-0 px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                    class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                   />
                 </div>
                 <div class="space-y-1.5 flex-1 min-w-0">
@@ -282,7 +282,7 @@ watch(
                   <input
                     v-model="searchOrderName"
                     type="text"
-                    class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                    class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                   />
                 </div>
                 <div class="space-y-1.5 flex-1 min-w-0">
@@ -290,27 +290,27 @@ watch(
                   <input
                     v-model="searchAddress"
                     type="text"
-                    class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                    class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                   />
                 </div>
                 <div class="space-y-1.5 flex-1 min-w-0">
-                  <label class="text-xs font-bold text-slate-500 block">会社名</label>
+                  <label class="text-xs font-bold text-slate-500 block">顧客名</label>
                   <input
-                    v-model="searchCompanyName"
+                    v-model="searchCustomerName"
                     type="text"
-                    class="w-full min-w-0 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                    class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                   />
                 </div>
               </div>
             </div>
             <div class="space-y-1.5 sm:col-span-3 min-w-0">
-              <div class="flex flex-col lg:flex-row lg:items-end gap-2 min-w-0">
-                <div class="flex flex-1 flex-col gap-2 lg:flex-row lg:items-end min-w-0">
+              <div class="flex flex-col lg:flex-row lg:items-center gap-2 min-w-0">
+                <div class="flex flex-1 flex-col gap-2 lg:flex-row lg:items-center min-w-0">
                   <div class="space-y-1.5 shrink-0">
                     <label class="text-xs font-bold text-slate-500 block">デザイン種別</label>
                     <select
                       v-model="searchDesignTypeId"
-                      class="w-40 md:w-48 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                      class="w-40 md:w-48 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
                     >
                       <option value="">デザイン種別を選択</option>
                       <option
@@ -330,7 +330,7 @@ watch(
                         id="inputUpdateDateFrom"
                         readonly
                         placeholder="開始日"
-                        class="w-32 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                        class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
                       />
                       <span class="text-slate-400 shrink-0 text-xs">～</span>
                       <input
@@ -338,7 +338,7 @@ watch(
                         id="inputUpdateDateTo"
                         readonly
                         placeholder="終了日"
-                        class="w-32 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                        class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
                       />
                     </div>
                   </div>
@@ -347,7 +347,7 @@ watch(
                     <input
                       v-model="searchUpdater"
                       type="text"
-                      class="w-36 md:w-40 px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                      class="w-36 md:w-40 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                       placeholder="更新者名を入力"
                     />
                   </div>
@@ -356,7 +356,7 @@ watch(
                   <label class="text-xs font-bold text-slate-500 block invisible select-none">検索</label>
                   <button
                     type="button"
-                    class="shrink-0 px-8 py-2 text-xs rounded-xl bg-main hover:bg-subBlue text-white font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                    class="shrink-0 h-[2.25rem] px-6 py-2 text-xs rounded-xl bg-main hover:bg-subBlue text-white font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                     :disabled="isLoading"
                     @click="performSearch"
                   >
@@ -467,8 +467,10 @@ watch(
               <colgroup>
                 <col id="col-order-no" />
                 <col id="col-name" />
-                <col id="col-company" />
+                <col id="col-customer" />
                 <col id="col-design" />
+                <col id="col-production-type" />
+                <col id="col-status" />
                 <col id="col-date" />
                 <col id="col-action" />
               </colgroup>
@@ -479,11 +481,13 @@ watch(
                     <span class="header-2line">注文名<br />住所</span>
                   </th>
                   <th class="px-5 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
-                    <span class="header-2line">会社名<br />担当者</span>
+                    <span class="header-2line">顧客名<br />担当者</span>
                   </th>
                   <th class="col-design px-4 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
-                    <span class="header-2line">テンプレート<br />デザイン種別</span>
+                    <span class="header-2line">デザイン種別<br />テンプレート</span>
                   </th>
+                  <th class="col-production-type px-4 py-4 font-bold border-b border-slate-200 whitespace-nowrap">制作区分</th>
+                  <th class="col-status px-4 py-4 font-bold border-b border-slate-200 whitespace-nowrap">ステータス</th>
                   <th class="col-date pl-6 pr-2 py-4 font-bold border-b border-slate-200 whitespace-nowrap">
                     <span class="header-2line">更新日<br />更新者</span>
                   </th>
@@ -509,12 +513,18 @@ watch(
                     <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.address }}</div>
                   </td>
                   <td class="px-5 py-2">
-                    <div class="text-slate-600 font-semibold text-[12px]">{{ order.companyName }}</div>
+                    <div class="text-slate-600 font-semibold text-[12px]">{{ order.customerName }}</div>
                     <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.manager }}</div>
                   </td>
                   <td class="col-design px-4 py-2">
-                    <div class="text-slate-600 text-[12px]">{{ order.template }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ designTypeLabel(order.designType) }}</div>
+                    <div class="text-slate-600 text-[12px]">{{ designTypeLabel(order.designType) }}</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.template }}</div>
+                  </td>
+                  <td class="col-production-type px-4 py-2 text-[12px] text-slate-600">
+                    {{ order.attribute_04 || "—" }}
+                  </td>
+                  <td class="col-status px-4 py-2 text-[12px] text-slate-600">
+                    {{ order.attribute_05 || "—" }}
                   </td>
                   <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
                     <div>{{ order.updateDate }}</div>

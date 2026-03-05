@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # 追加したルーター（DB疎通確認用）
 from app.routers.address import router as address_router
 from app.routers.company import router as company_router
+from app.routers.customer import router as customer_router
 from app.routers.design_type import router as design_type_router
 from app.routers.order import router as order_router
 from app.routers.template import router as template_router
@@ -47,6 +48,7 @@ app.add_middleware(
 # /companies を有効化（DB疎通確認のため）
 app.include_router(address_router)
 app.include_router(company_router)
+app.include_router(customer_router)
 app.include_router(design_type_router)
 app.include_router(template_router)
 app.include_router(template_item_router)

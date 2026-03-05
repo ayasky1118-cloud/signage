@@ -35,7 +35,7 @@ def search_orders(
     order_no: str | None = Query(None, description="注文番号（部分一致）"),
     order_name: str | None = Query(None, description="注文名（部分一致）"),
     address: str | None = Query(None, description="住所（部分一致）"),
-    company_name: str | None = Query(None, description="会社名（部分一致）"),
+    customer_name: str | None = Query(None, description="顧客名（部分一致）"),
     design_type_id: int | None = Query(None, description="デザイン種別ID（完全一致）"),
     design_type_name: str | None = Query(None, description="デザイン種別名（部分一致）"),
     update_date_from: str | None = Query(None, description="更新日開始（YYYY-MM-DD）"),
@@ -56,7 +56,7 @@ def search_orders(
             order_no=order_no,
             order_name=order_name,
             address=address,
-            company_name=company_name,
+            customer_name=customer_name,
             design_type_id=design_type_id,
             design_type_name=design_type_name,
             update_date_from=update_date_from,
@@ -78,7 +78,7 @@ def _search_orders_impl(
     order_no: str | None,
     order_name: str | None,
     address: str | None,
-    company_name: str | None,
+    customer_name: str | None,
     design_type_id: int | None,
     design_type_name: str | None,
     update_date_from: str | None,
@@ -105,9 +105,9 @@ def _search_orders_impl(
         conditions.append("om.order_add LIKE :address")
         params["address"] = f"%{address.strip()}%"
 
-    if company_name and company_name.strip():
-        conditions.append("c.company_name LIKE :company_name")
-        params["company_name"] = f"%{company_name.strip()}%"
+    if customer_name and customer_name.strip():
+        conditions.append("cus.customer_name LIKE :customer_name")
+        params["customer_name"] = f"%{customer_name.strip()}%"
 
     if design_type_id is not None:
         conditions.append("om.design_type_id = :design_type_id")
@@ -138,13 +138,16 @@ def _search_orders_impl(
             om.order_name,
             om.order_add,
             om.company_id,
+            om.customer_id,
             om.design_type_id,
             om.attribute_01 AS attribute_01,
             om.attribute_02 AS attribute_02,
             om.attribute_03 AS attribute_03,
+            om.attribute_04 AS attribute_04,
+            om.attribute_05 AS attribute_05,
             dt.design_type_name,
             om.updated_dt,
-            c.company_name,
+            cus.customer_name,
             cus.contact_name AS manager_name,
             t.template_name,
             u.user_name AS updater_name,
@@ -201,7 +204,8 @@ def _search_orders_impl(
             "orderName": r.get("order_name", ""),
             "address": r.get("order_add", ""),
             "companyId": r.get("company_id"),
-            "companyName": r.get("company_name") or "",
+            "customerId": r.get("customer_id"),
+            "customerName": r.get("customer_name") or "",
             "manager": r.get("manager_name") or "",
             "template": r.get("template_name") or "",
             "designTypeId": r.get("design_type_id"),
@@ -209,6 +213,8 @@ def _search_orders_impl(
             "attribute_01": (r.get("attribute_01") or r.get("om.attribute_01")) or "",
             "attribute_02": (r.get("attribute_02") or r.get("om.attribute_02")) or "",
             "attribute_03": (r.get("attribute_03") or r.get("om.attribute_03")) or "",
+            "attribute_04": (r.get("attribute_04") or r.get("om.attribute_04")) or "",
+            "attribute_05": (r.get("attribute_05") or r.get("om.attribute_05")) or "",
             "updateDate": update_date,
             "updater": r.get("updater_name") or "",
             "branches": branches,
@@ -220,6 +226,117 @@ def _search_orders_impl(
         "page": page,
         "perPage": per_page,
     }
+
+
+# -----------------------------
+# 注文1件取得（order_no 完全一致。order_item 含む）
+# -----------------------------
+
+
+@router.get("/by-no")
+def get_order_by_no(
+    db: Session = Depends(get_db),
+    order_no: str = Query(..., description="注文番号（完全一致）"),
+):
+    """
+    注文番号で1件取得。order_main と order_item を返す。
+    テンプレート項目の値は orderItems に templateItemId と orderItemVal の配列で含まれる。
+    """
+    try:
+        no = (order_no or "").strip()
+        if not no:
+            return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
+        row = db.execute(
+            text("""
+                SELECT
+                    om.order_id,
+                    om.order_no,
+                    om.order_name,
+                    om.order_add,
+                    om.company_id,
+                    om.customer_id,
+                    om.template_id,
+                    om.design_type_id,
+                    om.deadline_dt,
+                    om.proofreading_dt,
+                    om.attribute_01,
+                    om.attribute_02,
+                    om.attribute_03,
+                    om.attribute_04,
+                    om.attribute_05,
+                    om.note,
+                    cus.customer_name,
+                    cus.contact_name AS manager_name,
+                    t.template_name,
+                    dt.design_type_name
+                FROM order_main om
+                LEFT JOIN company c ON om.company_id = c.company_id AND c.is_deleted = 0
+                LEFT JOIN customer cus ON om.customer_id = cus.customer_id AND cus.is_deleted = 0
+                LEFT JOIN template t ON om.template_id = t.template_id AND t.is_deleted = 0
+                LEFT JOIN design_type dt ON om.design_type_id = dt.design_type_id AND dt.is_deleted = 0
+                WHERE om.order_no = :order_no AND om.is_deleted = 0
+            """),
+            {"order_no": no},
+        ).mappings().fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"detail": "該当する注文が見つかりませんでした。"})
+        order_id = row["order_id"]
+        item_rows = db.execute(
+            text("""
+                SELECT template_item_id, order_item_val
+                FROM order_item
+                WHERE order_id = :order_id AND is_deleted = 0
+                ORDER BY template_item_id
+            """),
+            {"order_id": order_id},
+        ).mappings().fetchall()
+        order_items = [
+            {"templateItemId": r["template_item_id"], "orderItemVal": r["order_item_val"] or ""}
+            for r in item_rows
+        ]
+        deadline_dt = row.get("deadline_dt")
+        proofreading_dt = row.get("proofreading_dt")
+        deadline_str = ""
+        if deadline_dt:
+            if hasattr(deadline_dt, "strftime"):
+                deadline_str = deadline_dt.strftime("%Y/%m/%d")
+            else:
+                deadline_str = str(deadline_dt)[:10].replace("-", "/")
+        proofreading_str = ""
+        if proofreading_dt:
+            if hasattr(proofreading_dt, "strftime"):
+                proofreading_str = proofreading_dt.strftime("%Y/%m/%d")
+            else:
+                proofreading_str = str(proofreading_dt)[:10].replace("-", "/")
+        return {
+            "orderId": order_id,
+            "orderNo": row["order_no"],
+            "orderName": row["order_name"] or "",
+            "address": row["order_add"] or "",
+            "companyId": row["company_id"],
+            "customerId": row["customer_id"],
+            "customerName": row["customer_name"] or "",
+            "manager": row["manager_name"] or "",
+            "templateId": row["template_id"],
+            "templateName": row["template_name"] or "",
+            "designTypeId": row["design_type_id"],
+            "designTypeName": row["design_type_name"] or "",
+            "deadlineDt": deadline_str,
+            "proofreadingDt": proofreading_str,
+            "attribute_01": row["attribute_01"] or "",
+            "attribute_02": row["attribute_02"] or "",
+            "attribute_03": row["attribute_03"] or "",
+            "attribute_04": row["attribute_04"] or "",
+            "attribute_05": row["attribute_05"] or "",
+            "note": row["note"] or "",
+            "orderItems": order_items,
+        }
+    except Exception as e:
+        logger.exception("注文1件取得でエラー")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "サーバーでエラーが発生しました。", "error": str(e)},
+        )
 
 
 # -----------------------------
@@ -281,19 +398,24 @@ def create_order(
     login_company_id: int = Body(..., embed=True, alias="loginCompanyId"),
     order_name: str = Body(..., embed=True, alias="orderName"),
     order_add: str = Body(..., embed=True, alias="orderAdd"),
-    company_id: int = Body(..., embed=True, alias="companyId"),
+    customer_id: int = Body(..., embed=True, alias="customerId"),
     template_id: int = Body(..., embed=True, alias="templateId"),
     design_type_id: int = Body(..., embed=True, alias="designTypeId"),
     attribute_01: str = Body(..., embed=True, alias="attribute01"),
     attribute_02: str = Body(..., embed=True, alias="attribute02"),
     attribute_03: str = Body(..., embed=True, alias="attribute03"),
+    attribute_04: str = Body("", embed=True, alias="attribute04"),
+    attribute_05: str = Body("", embed=True, alias="attribute05"),
     template_items: list[dict] = Body(..., embed=True, alias="templateItems"),
+    deadline_dt: str | None = Body(None, embed=True, alias="deadlineDt"),
+    proofreading_dt: str | None = Body(None, embed=True, alias="proofreadingDt"),
+    note: str | None = Body(None, embed=True, alias="note"),
 ):
     """
     注文を新規登録する。
 
     処理順:
-    1. リクエストの companyId に紐づく customer を1件取得（無い場合は 400）。
+    1. リクエストの customerId に紐づく顧客を取得し、company_id を取得（無い場合は 400）。
     2. order_no_seq で受注番号を採番（ログイン会社・当年。形式: 年4桁+連番6桁）。
     3. order_main に登録（会社・顧客・テンプレート・受注番号・受注名・住所・デザイン種別）。
     4. テンプレート項目ごとに order_item を登録（template_item_id と入力値を order_item_val に格納）。
@@ -302,7 +424,7 @@ def create_order(
         loginCompanyId: ログイン会社ID（採番に使用）
         orderName: 受注名
         orderAdd: 受注住所
-        companyId: 注文先会社ID（order_main.company_id。この会社に紐づく顧客を customer_id に使用）
+        customerId: 顧客ID（order_main.customer_id。顧客の company_id が order_main.company_id に使用される）
         templateId: テンプレートID
         designTypeId: デザイン種別ID
         attribute01: 社内CD（必須）
@@ -325,31 +447,44 @@ def create_order(
                 status_code=400,
                 content={"detail": "社内CD・事業所CD・現場CDはすべて必須です。"},
             )
-        # 注文先会社に紐づく顧客を1件取得（order_main.customer_id 用）。いなければ 400
+        # 指定された顧客を取得（order_main.company_id / customer_id 用）。いなければ 400
         cust = db.execute(
             text("""
-                SELECT customer_id FROM customer
-                WHERE company_id = :company_id AND is_deleted = 0
-                ORDER BY customer_id LIMIT 1
+                SELECT customer_id, company_id FROM customer
+                WHERE customer_id = :customer_id AND is_deleted = 0
             """),
-            {"company_id": company_id},
+            {"customer_id": customer_id},
         ).fetchone()
         if not cust:
             return JSONResponse(
                 status_code=400,
-                content={"detail": "指定された会社に紐づく顧客が存在しません。"},
+                content={"detail": "指定された顧客が存在しません。"},
             )
-        customer_id = cust[0]
+        company_id = cust[1]
 
         # 受注番号を採番（ログイン会社・当年。order_no_seq に基づく）
         order_no = _next_order_no(db, login_company_id, user_id)
 
-        # order_main に登録（テンプレート項目以外。company_id＝注文先会社、customer_id＝上で取得した顧客）
+        # 日付は YYYY-MM-DD 形式で受け取り、DATETIME に格納（時刻は 00:00:00）
+        deadline_val = None
+        if deadline_dt and deadline_dt.strip():
+            try:
+                deadline_val = datetime.strptime(deadline_dt.strip()[:10], "%Y-%m-%d")
+            except ValueError:
+                pass
+        proofreading_val = None
+        if proofreading_dt and proofreading_dt.strip():
+            try:
+                proofreading_val = datetime.strptime(proofreading_dt.strip()[:10], "%Y-%m-%d")
+            except ValueError:
+                pass
+
+        # order_main に登録（テンプレート項目以外。company_id＝顧客の会社、customer_id＝選択した顧客）
         db.execute(
             text("""
                 INSERT INTO order_main
-                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, attribute_01, attribute_02, attribute_03, is_deleted, created_by, updated_by)
-                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, :attribute_01, :attribute_02, :attribute_03, 0, :created_by, :updated_by)
+                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, deadline_dt, proofreading_dt, attribute_01, attribute_02, attribute_03, attribute_04, attribute_05, note, is_deleted, created_by, updated_by)
+                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, :deadline_dt, :proofreading_dt, :attribute_01, :attribute_02, :attribute_03, :attribute_04, :attribute_05, :note, 0, :created_by, :updated_by)
             """),
             {
                 "company_id": company_id,
@@ -359,9 +494,14 @@ def create_order(
                 "order_name": order_name.strip(),
                 "order_add": order_add.strip(),
                 "design_type_id": design_type_id,
+                "deadline_dt": deadline_val,
+                "proofreading_dt": proofreading_val,
                 "attribute_01": a01[:256],
                 "attribute_02": a02[:256],
                 "attribute_03": a03[:256],
+                "attribute_04": (attribute_04 or "").strip()[:256],
+                "attribute_05": (attribute_05 or "").strip()[:256],
+                "note": (note or "").strip() or None,
                 "created_by": user_id,
                 "updated_by": user_id,
             },

@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from "vue"
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
 import { RouterLink, useRouter, useRoute } from "vue-router"
+import flatpickr from "flatpickr"
+import { Japanese } from "flatpickr/dist/l10n/ja"
+import "flatpickr/dist/flatpickr.min.css"
 import { validateAddress } from "../composables/useAddressApi"
-import { searchOrders, createOrder, type OrderItem } from "../composables/useOrderApi"
-import { fetchCompanies, type CompanyItem } from "../composables/useCompanyApi"
+import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
+import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
 
@@ -22,12 +25,33 @@ const officeCd = ref("")
 const siteCd = ref("")
 const orderName = ref("")
 const address = ref("")
-const companyId = ref<number | null>(null)
-const companyName = ref("")
+const customerId = ref<number | null>(null)
+const customerName = ref("")
 const manager = ref("")
 const templateId = ref<number | null>(null)
 const designTypeId = ref<number | null>(null)
 const templateItemValues = ref<string[]>([])
+/** 納期（Y/m/d 表示。Flatpickr と同期） */
+const deadlineDate = ref("")
+/** 校正予定日（Y/m/d 表示。Flatpickr と同期） */
+const proofreadingDate = ref("")
+/** ステータス（attribute_05）。固定値ドロップダウン */
+const status = ref("")
+const STATUS_OPTIONS = [
+  "依頼中",
+  "製作中",
+  "確認中",
+  "確認完了",
+  "製作完了",
+  "納品完了",
+  "キャンセル",
+] as const
+/** 制作区分（attribute_04）。固定値ドロップダウン */
+const productionType = ref("")
+const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
+/** 備考（デフォルトテンプレート。画面上は入力必須） */
+const NOTE_DEFAULT = "営業担当者：\n制作担当者："
+const note = ref(NOTE_DEFAULT)
 
 /* テンプレート選択肢（ログイン会社でAPI取得） */
 const templateOptions = ref<TemplateOption[]>([])
@@ -52,7 +76,7 @@ function getLoginCompanyId(): number {
 
 const showTemplateItemsSection = computed(() => templateItems.value.length > 0)
 
-/* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる */
+/* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる。pendingOrderItems があれば order_item の値を反映 */
 watch(templateId, async (val) => {
   templateItems.value = []
   templateItemValues.value = []
@@ -62,36 +86,52 @@ watch(templateId, async (val) => {
   try {
     const items = await fetchTemplateItems(val)
     templateItems.value = items
-    templateItemValues.value = items.map((_, i) => templateItemValues.value[i] ?? "")
+    const pending = pendingOrderItems.value
+    if (pending?.length) {
+      templateItemValues.value = items.map((item, i) => {
+        const found = pending.find((oi) => oi.templateItemId === item.templateItemId)
+        return found ? found.orderItemVal : (templateItemValues.value[i] ?? "")
+      })
+      pendingOrderItems.value = null
+    } else {
+      templateItemValues.value = items.map((_, i) => templateItemValues.value[i] ?? "")
+    }
   } catch {
     templateItems.value = []
     templateItemValues.value = []
     templateItemInputRefs.value = []
+    pendingOrderItems.value = null
   } finally {
     isLoadingTemplateItems.value = false
+    /* 注文読み込み直後のテンプレート項目反映が終わったら、その時点をデフォルト値として記録 */
+    if (deferInitialChangeStateAfterOrderLoad.value) {
+      initialChangeState.value = getFormState()
+      deferInitialChangeStateAfterOrderLoad.value = false
+    }
   }
 })
 
-/* 変更モード時：他項目の編集可否 */
+/* 変更モード時：注文番号・会社名以外は編集可能。他項目は未検索かつ一覧以外からの遷移でない場合のみ無効 */
 const otherFieldsDisabled = computed(
-  () => mode.value === "change" && !hasSearchedInChangeMode.value
+  () => mode.value === "change" && !hasSearchedInChangeMode.value && !cameFromList.value
 )
 
+/* 変更モードでは注文番号は常に読取専用（一覧から遷移時または検索済み時）。新規時は自動採番のため読取 */
 const orderNoReadOnly = computed(
-  () => mode.value !== "change" || cameFromList.value
+  () => mode.value !== "change" || cameFromList.value || hasSearchedInChangeMode.value
 )
 
 const orderNoPlaceholder = computed(() =>
-  mode.value === "change" ? "注文番号を入力してください" : "新規作成時は自動で採番されます"
+  mode.value === "change" ? "注文番号を入力してください" : "新規時は自動で採番されます"
 )
 
 const searchAndListDisabled = computed(() => !(mode.value === "change" && !cameFromList.value))
 
-const companySelectDisabled = computed(() => mode.value === "change")
+const customerSelectDisabled = computed(() => mode.value === "change")
 
 const templateDisabled = computed(() => {
   if (mode.value === "change") return !hasSearchedInChangeMode.value && !cameFromList.value
-  return !companyName.value.trim()
+  return !customerName.value.trim()
 })
 
 const templateSelectPlaceholder = computed(() =>
@@ -115,16 +155,21 @@ const orderDetailLinkDisabled = computed(
 /* 新規モードでラジオを無効化（一覧から遷移時） */
 const newModeRadioDisabled = computed(() => cameFromList.value)
 
-/* フォーム状態（未保存変更判定用） */
+/* フォーム状態（未保存変更判定用。デフォルト値からの差分がある場合のみ「変更あり」とする） */
 function getFormState(): string {
   return [
     orderNo.value.trim(),
     companyCd.value.trim(),
     officeCd.value.trim(),
     siteCd.value.trim(),
+    deadlineDate.value.trim(),
+    proofreadingDate.value.trim(),
+    productionType.value.trim(),
+    status.value.trim(),
+    note.value.trim(),
     orderName.value.trim(),
     address.value.trim(),
-    companyName.value.trim(),
+    customerName.value.trim(),
     manager.value.trim(),
     templateId.value ?? "",
     designTypeId.value ?? "",
@@ -135,6 +180,7 @@ function getFormState(): string {
 const initialNewState = ref("")
 const initialChangeState = ref("")
 
+/* 入力の可否ではなく、デフォルト値（初期状態）から値が変わった場合のみ true */
 const hasUnsavedChanges = computed(() => {
   const current = getFormState()
   if (mode.value === "new") return current !== initialNewState.value
@@ -146,10 +192,10 @@ const orderListForSelect = ref<OrderItem[]>([])
 const orderNoSelectModalOpen = ref(false)
 const isLoadingOrders = ref(false)
 
-/* 会社選択モーダル用 */
-const companyListForSelect = ref<CompanyItem[]>([])
-const companySelectModalOpen = ref(false)
-const isLoadingCompanies = ref(false)
+/* 顧客選択モーダル用 */
+const customerListForSelect = ref<CustomerItem[]>([])
+const customerSelectModalOpen = ref(false)
+const isLoadingCustomers = ref(false)
 
 /* テンプレート選択モーダル（グリッド） */
 const templateSelectModalOpen = ref(false)
@@ -170,16 +216,24 @@ const requiredValidationFocusRef = ref<string | null>(null)
 /* フォーカス用テンプレート ref */
 const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const orderNoSearchBtnRef = ref<HTMLButtonElement | null>(null)
+const inputDeadlineRef = ref<HTMLInputElement | null>(null)
+const inputProofreadingRef = ref<HTMLInputElement | null>(null)
 const companyCdInputRef = ref<HTMLInputElement | null>(null)
 const officeCdInputRef = ref<HTMLInputElement | null>(null)
 const siteCdInputRef = ref<HTMLInputElement | null>(null)
 const orderNameInputRef = ref<HTMLInputElement | null>(null)
 const addressInputRef = ref<HTMLInputElement | null>(null)
-const companySelectBtnRef = ref<HTMLButtonElement | null>(null)
+const customerSelectBtnRef = ref<HTMLButtonElement | null>(null)
 const templateSelectRef = ref<HTMLSelectElement | null>(null)
 const designTypeSelectRef = ref<HTMLSelectElement | null>(null)
+const noteInputRef = ref<HTMLTextAreaElement | null>(null)
 /** テンプレート項目入力欄の ref（必須チェック時のフォーカス用） */
 const templateItemInputRefs = ref<(HTMLInputElement | null)[]>([])
+
+/* 変更モードで注文取得時に、テンプレート項目取得後に order_item の値を反映するための待ち行列 */
+const pendingOrderItems = ref<OrderDetailItem[] | null>(null)
+/* 注文データ反映後、テンプレート項目読込完了時に initialChangeState を更新するフラグ（デフォルト値は読み込み完了時点のみ） */
+const deferInitialChangeStateAfterOrderLoad = ref(false)
 
 const registerConfirmOpen = ref(false)
 const registerConfirmTitle = ref("登録の確認")
@@ -196,28 +250,33 @@ function designTypeLabel(v: string): string {
   return v || "—"
 }
 
-/* 注文データをフォームに反映（画面上の会社は Customer） */
-function applyOrderData(order: OrderItem) {
+/* 注文データをフォームに反映（order_item は pendingOrderItems に渡し、template 読込後に反映） */
+function applyOrderData(order: OrderDetail) {
   orderNo.value = order.orderNo ?? ""
   companyCd.value = order.attribute_01 ?? ""
   officeCd.value = order.attribute_02 ?? ""
   siteCd.value = order.attribute_03 ?? ""
+  deadlineDate.value = order.deadlineDt ?? ""
+  proofreadingDate.value = order.proofreadingDt ?? ""
+  productionType.value = order.attribute_04 ?? ""
+  status.value = order.attribute_05 ?? ""
+  note.value = order.note?.trim() ? order.note : NOTE_DEFAULT
   orderName.value = order.orderName ?? ""
   address.value = order.address ?? ""
-  companyId.value = order.companyId ?? null
-  companyName.value = order.companyName ?? ""
+  customerId.value = order.customerId ?? null
+  customerName.value = order.customerName ?? ""
   manager.value = order.manager ?? ""
   designTypeId.value = order.designTypeId ?? null
-  const orderTemplateName = order.template ?? ""
-  const t = templateOptions.value.find((o) => o.templateName === orderTemplateName)
-  templateId.value = t?.templateId ?? null
-  initialChangeState.value = getFormState()
+  pendingOrderItems.value = order.orderItems?.length ? [...order.orderItems] : null
+  templateId.value = order.templateId ?? null
+  /* テンプレート項目は非同期で反映するため、反映完了後に initialChangeState を更新する（deferInitialChangeStateAfterOrderLoad） */
+  deferInitialChangeStateAfterOrderLoad.value = true
 }
 
-/* Customer（画面上の会社）をフォームに反映。デザイン種別はログイン会社で取得するためここでは取得しない */
-function applyCompanyData(c: CompanyItem) {
-  companyId.value = c.companyId
-  companyName.value = c.companyName
+/* 選択した顧客をフォームに反映。デザイン種別はログイン会社で取得するためここでは取得しない */
+function applyCustomerData(c: CustomerItem) {
+  customerId.value = c.customerId
+  customerName.value = c.customerName
   manager.value = "" // 担当者は別入力のためクリア可
   designTypeId.value = null
 }
@@ -233,9 +292,9 @@ async function loadDesignTypes(companyId: number) {
   }
 }
 
-function clearCompany() {
-  companyId.value = null
-  companyName.value = ""
+function clearCustomer() {
+  customerId.value = null
+  customerName.value = ""
   manager.value = ""
   designTypeId.value = null
   templateId.value = null
@@ -248,10 +307,17 @@ function clearOtherFieldsOnOrderNoChange() {
   companyCd.value = ""
   officeCd.value = ""
   siteCd.value = ""
+  deadlineDate.value = ""
+  proofreadingDate.value = ""
+  productionType.value = ""
+  status.value = ""
+  note.value = NOTE_DEFAULT
+  fpDeadline?.clear()
+  fpProofreading?.clear()
   orderName.value = ""
   address.value = ""
-  companyName.value = ""
-  companyId.value = null
+  customerName.value = ""
+  customerId.value = null
   manager.value = ""
   designTypeId.value = null
   templateId.value = null
@@ -286,7 +352,7 @@ function selectOrderNo(order: OrderItem) {
   orderNoSelectModalOpen.value = false
 }
 
-/* 検索ボタン：注文番号で検索してフォームに反映 */
+/* 検索ボタン：注文番号で検索してフォームに反映（order_item 含む） */
 async function doSearchByOrderNo() {
   const no = orderNo.value.trim()
   if (!no) {
@@ -296,41 +362,35 @@ async function doSearchByOrderNo() {
     return
   }
   try {
-    const result = await searchOrders({ orderNo: no, perPage: 1 })
-    const order = result.items[0]
-    if (order) {
-      applyOrderData(order)
-      hasSearchedInChangeMode.value = true
-    } else {
-      requiredValidationMessage.value = "該当する注文が見つかりませんでした。"
-      requiredValidationOpen.value = true
-    }
-  } catch {
-    requiredValidationMessage.value = "該当する注文が見つかりませんでした。"
+    const order = await getOrderByNo(no)
+    applyOrderData(order)
+    hasSearchedInChangeMode.value = true
+  } catch (e) {
+    requiredValidationMessage.value = e instanceof Error ? e.message : "該当する注文が見つかりませんでした。"
     requiredValidationOpen.value = true
   }
 }
 
-/* 会社選択モーダルを開く */
-async function openCompanySelectModal() {
-  companySelectModalOpen.value = true
-  if (companyListForSelect.value.length === 0) {
-    isLoadingCompanies.value = true
+/* 顧客選択モーダルを開く */
+async function openCustomerSelectModal() {
+  customerSelectModalOpen.value = true
+  if (customerListForSelect.value.length === 0) {
+    isLoadingCustomers.value = true
     try {
-      companyListForSelect.value = await fetchCompanies()
+      customerListForSelect.value = await fetchCustomers(getLoginCompanyId())
     } catch {
-      companyListForSelect.value = []
+      customerListForSelect.value = []
     } finally {
-      isLoadingCompanies.value = false
+      isLoadingCustomers.value = false
     }
   }
 }
 
-function selectCompany(c: CompanyItem) {
-  applyCompanyData(c)
+function selectCustomer(c: CustomerItem) {
+  applyCustomerData(c)
   templateId.value = null
   templateItemValues.value = []
-  companySelectModalOpen.value = false
+  customerSelectModalOpen.value = false
 }
 
 function selectTemplateFromModal(id: number) {
@@ -348,9 +408,10 @@ function validateRequired(): { valid: boolean; message: string; focusRef?: strin
   if (!siteCd.value.trim()) return { valid: false, message: "「現場CD」を入力してください。", focusRef: "siteCd" }
   if (!orderName.value.trim()) return { valid: false, message: "「注文名」を入力してください。", focusRef: "orderName" }
   if (!address.value.trim()) return { valid: false, message: "「住所」を入力してください。", focusRef: "address" }
-  if (!companyName.value.trim()) return { valid: false, message: "「会社名」を選択してください。", focusRef: "companySelect" }
+  if (!customerName.value.trim()) return { valid: false, message: "「顧客」を選択してください。", focusRef: "customerSelect" }
   if (templateId.value == null) return { valid: false, message: "「テンプレート」を選択してください。", focusRef: "template" }
   if (designTypeId.value == null) return { valid: false, message: "「デザイン種別」を選択してください。", focusRef: "designType" }
+  if (!note.value.trim()) return { valid: false, message: "「備考」を入力してください。", focusRef: "note" }
   for (let i = 0; i < templateItems.value.length; i++) {
     const item = templateItems.value[i]
     if (item.isRequired && !(templateItemValues.value[i] ?? "").trim()) {
@@ -391,12 +452,14 @@ function getFocusElement(key: string | null | undefined): HTMLElement | null {
       return orderNameInputRef.value
     case "address":
       return addressInputRef.value
-    case "companySelect":
-      return companySelectBtnRef.value
+    case "customerSelect":
+      return customerSelectBtnRef.value
     case "template":
       return templateSelectRef.value
     case "designType":
       return designTypeSelectRef.value
+    case "note":
+      return noteInputRef.value
     default:
       return null
   }
@@ -458,7 +521,7 @@ async function doRegisterConfirm() {
   if (mode.value === "new") {
     const loginCompanyId = getLoginCompanyId()
     if (
-      companyId.value == null ||
+      customerId.value == null ||
       templateId.value == null ||
       designTypeId.value == null
     ) {
@@ -474,12 +537,17 @@ async function doRegisterConfirm() {
         loginCompanyId,
         orderName: orderName.value.trim(),
         orderAdd: address.value.trim(),
-        companyId: companyId.value,
+        customerId: customerId.value,
         templateId: templateId.value,
         designTypeId: designTypeId.value,
         attribute01: companyCd.value.trim(),
         attribute02: officeCd.value.trim(),
         attribute03: siteCd.value.trim(),
+        attribute04: productionType.value.trim() || undefined,
+        attribute05: status.value.trim() || undefined,
+        note: note.value.trim() || undefined,
+        deadlineDt: deadlineDate.value.trim() ? deadlineDate.value.trim().replace(/\//g, "-") : undefined,
+        proofreadingDt: proofreadingDate.value.trim() ? proofreadingDate.value.trim().replace(/\//g, "-") : undefined,
         templateItems: templateItemsPayload,
       })
       registerConfirmOpen.value = false
@@ -501,7 +569,7 @@ async function doRegisterConfirm() {
   registerResultOpen.value = true
 }
 
-/* 看板情報入力へのリンク（変更モード・検索済み時） */
+/* 看板編集へのリンク（変更モード・検索済み時） */
 const orderDetailTo = computed(() => {
   if (!orderDetailLinkDisabled.value && orderNo.value) {
     return {
@@ -544,10 +612,15 @@ function changeNoticeDiscard() {
   companyCd.value = ""
   officeCd.value = ""
   siteCd.value = ""
+  deadlineDate.value = ""
+  proofreadingDate.value = ""
+  productionType.value = ""
+  status.value = ""
+  note.value = NOTE_DEFAULT
   orderName.value = ""
   address.value = ""
-  companyName.value = ""
-  companyId.value = null
+  customerName.value = ""
+  customerId.value = null
   manager.value = ""
   designTypeId.value = null
   templateId.value = null
@@ -574,10 +647,15 @@ function onModeChangeToNew() {
       companyCd.value = ""
       officeCd.value = ""
       siteCd.value = ""
+      deadlineDate.value = ""
+      proofreadingDate.value = ""
+      productionType.value = ""
+      status.value = ""
+      note.value = NOTE_DEFAULT
       orderName.value = ""
       address.value = ""
-      companyName.value = ""
-      companyId.value = null
+      customerName.value = ""
+      customerId.value = null
       manager.value = ""
       designTypeId.value = null
       templateId.value = null
@@ -594,10 +672,15 @@ function onModeChangeToNew() {
     companyCd.value = ""
     officeCd.value = ""
     siteCd.value = ""
+    deadlineDate.value = ""
+    proofreadingDate.value = ""
+    productionType.value = ""
+    status.value = ""
+    note.value = NOTE_DEFAULT
     orderName.value = ""
     address.value = ""
-    companyName.value = ""
-    companyId.value = null
+    customerName.value = ""
+    customerId.value = null
     manager.value = ""
     designTypeId.value = null
     templateId.value = null
@@ -623,6 +706,10 @@ function handleOrderDetailClick(e: MouseEvent) {
   }
 }
 
+/* Flatpickr インスタンス（納期・校正予定日） */
+let fpDeadline: flatpickr.Instance | null = null
+let fpProofreading: flatpickr.Instance | null = null
+
 /* 初期化：URL パラメータ */
 onMounted(async () => {
   const loginCompanyId = getLoginCompanyId()
@@ -646,11 +733,8 @@ onMounted(async () => {
     if (no) {
       orderNo.value = no
       try {
-        const result = await searchOrders({ orderNo: no, perPage: 1 })
-        const order = result.items[0]
-        if (order) {
-          applyOrderData(order)
-        }
+        const order = await getOrderByNo(no)
+        applyOrderData(order)
       } catch {
         // 注文番号だけ入れておく
       }
@@ -658,6 +742,31 @@ onMounted(async () => {
   }
   initialNewState.value = getFormState()
   initialChangeState.value = getFormState()
+
+  nextTick(() => {
+    const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
+    if (inputDeadlineRef.value) {
+      fpDeadline = flatpickr(inputDeadlineRef.value, {
+        ...opts,
+        onChange(_selectedDates, dateStr) {
+          deadlineDate.value = dateStr || ""
+        },
+      })
+    }
+    if (inputProofreadingRef.value) {
+      fpProofreading = flatpickr(inputProofreadingRef.value, {
+        ...opts,
+        onChange(_selectedDates, dateStr) {
+          proofreadingDate.value = dateStr || ""
+        },
+      })
+    }
+  })
+})
+
+onUnmounted(() => {
+  fpDeadline?.destroy()
+  fpProofreading?.destroy()
 })
 
 /* 注文番号入力変更時（変更モード） */
@@ -670,7 +779,7 @@ watch(orderNo, () => {
   <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
       <div class="bg-main px-8 py-4">
-        <h2 class="text-base font-bold text-white tracking-tight">注文情報入力 / 変更</h2>
+        <h2 class="text-base font-bold text-white tracking-tight">注文（新規・変更）</h2>
       </div>
 
       <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
@@ -705,47 +814,48 @@ watch(orderNo, () => {
               <h3 class="font-bold text-base tracking-tight">注文情報</h3>
             </div>
 
-            <!-- 注文番号 -->
-            <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-                注文番号
-              </label>
-              <div class="flex flex-wrap gap-2">
-                <input
-                  ref="orderNoInputRef"
-                  v-model="orderNo"
-                  type="text"
-                  :readonly="orderNoReadOnly"
-                  :placeholder="orderNoPlaceholder"
-                  class="w-1/3 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs"
-                  :class="{
-                    'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
-                    'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
-                  }"
-                />
-                <button
-                  type="button"
-                  class="px-8 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                  :disabled="searchAndListDisabled"
-                  @click="openOrderNoSelectModal"
-                >
-                  選択
-                </button>
-                <button
-                  ref="orderNoSearchBtnRef"
-                  type="button"
-                  class="px-8 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                  :disabled="searchAndListDisabled"
-                  @click="doSearchByOrderNo"
-                >
-                  検索
-                </button>
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  注文番号
+                </label>
+                <div class="flex flex-wrap items-center gap-2">
+                  <input
+                    ref="orderNoInputRef"
+                    v-model="orderNo"
+                    type="text"
+                    :readonly="orderNoReadOnly"
+                    :placeholder="orderNoPlaceholder"
+                    class="w-48 min-w-[12rem] h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
+                    :class="{
+                      'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
+                      'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
+                    }"
+                  />
+                  <button
+                    type="button"
+                    title="選択"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    :disabled="searchAndListDisabled"
+                    @click="openOrderNoSelectModal"
+                  >
+                    <!-- リストから選択（注文一覧を開く） -->
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button
+                    ref="orderNoSearchBtnRef"
+                    type="button"
+                    class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    :disabled="searchAndListDisabled"
+                    @click="doSearchByOrderNo"
+                  >
+                    検索
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <!-- 社内CD・事業所CD・現場CD（注文番号と注文名の間・3項目とも必須。配置を揃えて横並び） -->
-            <div class="flex flex-wrap items-end gap-x-6 gap-y-0">
               <div class="space-y-2.5 shrink-0">
                 <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -755,8 +865,8 @@ watch(orderNo, () => {
                   ref="companyCdInputRef"
                   v-model="companyCd"
                   type="text"
-                  placeholder="社内CDを入力"
-                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  placeholder="社内CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
@@ -769,8 +879,8 @@ watch(orderNo, () => {
                   ref="officeCdInputRef"
                   v-model="officeCd"
                   type="text"
-                  placeholder="事業所CDを入力"
-                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  placeholder="事業所CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
@@ -783,11 +893,79 @@ watch(orderNo, () => {
                   ref="siteCdInputRef"
                   v-model="siteCd"
                   type="text"
-                  placeholder="現場CDを入力"
-                  class="min-w-[9rem] w-[9rem] max-w-full px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  placeholder="現場CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  ステータス
+                </label>
+                <select
+                  v-model="status"
+                  class="min-w-[8rem] w-[8rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                >
+                  <option value="">ステータスを選択してください</option>
+                  <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 制作区分・納期・校正予定日（OrderList 更新日と同じスタイル） -->
+            <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-bold text-slate-500 block">制作区分</label>
+                <select
+                  v-model="productionType"
+                  class="min-w-[8rem] w-[8rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                >
+                  <option value="">制作区分を選択してください</option>
+                  <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-bold text-slate-500 block">納期</label>
+                <input
+                  ref="inputDeadlineRef"
+                  type="text"
+                  readonly
+                  placeholder="日付を選択"
+                  :value="deadlineDate"
+                  class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-bold text-slate-500 block">校正予定日</label>
+                <input
+                  ref="inputProofreadingRef"
+                  type="text"
+                  readonly
+                  placeholder="日付を選択"
+                  :value="proofreadingDate"
+                  class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+            </div>
+
+            <!-- 備考（制作区分の下の行。画面上は入力必須） -->
+            <div class="space-y-2.5">
+              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                備考
+              </label>
+              <textarea
+                ref="noteInputRef"
+                v-model="note"
+                rows="3"
+                placeholder="営業担当者・制作担当者を入力してください"
+                class="w-full min-h-[4.5rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none resize-y disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                :disabled="otherFieldsDisabled"
+              />
             </div>
 
             <!-- 注文名 -->
@@ -801,7 +979,7 @@ watch(orderNo, () => {
                 v-model="orderName"
                 type="text"
                 placeholder="注文名を入力してください"
-                class="w-full px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                 :disabled="otherFieldsDisabled"
               />
             </div>
@@ -816,7 +994,7 @@ watch(orderNo, () => {
                 v-model="address"
                 type="text"
                 placeholder="例: サンプル県サンプル市サンプル区サンプル町1-1-1"
-                class="w-full px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                 :disabled="otherFieldsDisabled"
               />
             </div>
@@ -830,25 +1008,28 @@ watch(orderNo, () => {
                 <div class="space-y-2.5 sm:flex-[2]">
                   <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
                     <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-                    会社名
+                    顧客
                   </label>
-                  <div class="flex items-end gap-2">
+                  <div class="flex items-center gap-2">
                     <input
-                      v-model="companyName"
+                      v-model="customerName"
                       type="text"
                       readonly
-                      placeholder="会社名を選択してください"
-                      class="flex-1 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      placeholder="顧客を選択してください"
+                      class="flex-1 min-w-0 h-[2.25rem] box-border bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       :disabled="otherFieldsDisabled"
                     />
                     <button
-                      ref="companySelectBtnRef"
+                      ref="customerSelectBtnRef"
                       type="button"
-                      class="px-8 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold shadow-md shadow-slate-300/60 transition-all duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                      :disabled="companySelectDisabled"
-                      @click="openCompanySelectModal"
+                      title="選択"
+                      class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                      :disabled="customerSelectDisabled"
+                      @click="openCustomerSelectModal"
                     >
-                      選択
+                      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -858,40 +1039,13 @@ watch(orderNo, () => {
                     v-model="manager"
                     type="text"
                     placeholder="担当者を入力してください"
-                    class="w-full px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue focus:border-subBlue outline-none transition-all duration-200 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue focus:border-subBlue outline-none transition-all duration-200 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                     :disabled="otherFieldsDisabled"
                   />
                 </div>
               </div>
             </div>
             <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
-              <div class="space-y-2.5 sm:flex-[2]">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-                  テンプレート
-                </label>
-                <div class="flex gap-2">
-                  <select
-                    ref="templateSelectRef"
-                    v-model="templateId"
-                    class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
-                    :disabled="templateDisabled"
-                  >
-                    <option :value="null">{{ templateSelectPlaceholder }}</option>
-                    <option v-for="opt in templateOptions" :key="opt.templateId" :value="opt.templateId">
-                      {{ opt.templateName }}
-                    </option>
-                  </select>
-                  <button
-                    type="button"
-                    class="px-8 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-xs font-bold shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                    :disabled="templateDisabled"
-                    @click="templateSelectModalOpen = true"
-                  >
-                    選択
-                  </button>
-                </div>
-              </div>
               <div class="space-y-2.5 sm:flex-1">
                 <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -900,7 +1054,7 @@ watch(orderNo, () => {
                 <select
                   ref="designTypeSelectRef"
                   v-model="designTypeId"
-                  class="w-full px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled || isLoadingDesignTypes"
                 >
                   <option :value="null">
@@ -914,6 +1068,36 @@ watch(orderNo, () => {
                     {{ opt.designTypeName }}
                   </option>
                 </select>
+              </div>
+              <div class="space-y-2.5 sm:flex-[2]">
+                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  テンプレート
+                </label>
+                <div class="flex items-center gap-2">
+                  <select
+                    ref="templateSelectRef"
+                    v-model="templateId"
+                    class="flex-1 min-w-0 h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    :disabled="templateDisabled"
+                  >
+                    <option :value="null">{{ templateSelectPlaceholder }}</option>
+                    <option v-for="opt in templateOptions" :key="opt.templateId" :value="opt.templateId">
+                      {{ opt.templateName }}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    title="選択"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    :disabled="templateDisabled"
+                    @click="templateSelectModalOpen = true"
+                  >
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -948,8 +1132,8 @@ watch(orderNo, () => {
                     :ref="(el) => setTemplateItemInputRef(el, idx)"
                     v-model="templateItemValues[idx]"
                     type="text"
-                    class="w-full px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
-                    :disabled="otherFieldsDisabled"
+                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    :disabled="isLoadingTemplateItems"
                   />
                   </div>
                 </template>
@@ -987,7 +1171,7 @@ watch(orderNo, () => {
           :class="{ 'opacity-50 cursor-not-allowed pointer-events-none': orderDetailLinkDisabled }"
           @click="handleOrderDetailClick"
         >
-          看板情報入力
+          看板編集
         </RouterLink>
       </div>
     </div>
@@ -1065,7 +1249,7 @@ watch(orderNo, () => {
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ order.address }}</div>
                     </td>
                     <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ order.companyName }}</div>
+                      <div class="text-slate-700 font-semibold text-xs">{{ order.customerName }}</div>
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager }}</div>
                     </td>
                     <td class="px-3 py-2 text-slate-600 text-xs">{{ designTypeLabel(order.designType) }}</td>
@@ -1131,53 +1315,53 @@ watch(orderNo, () => {
       </div>
     </Teleport>
 
-    <!-- 会社選択モーダル -->
+    <!-- 顧客選択モーダル -->
     <Teleport to="body">
-      <div v-show="companySelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="companySelectModalOpen = false"></div>
+      <div v-show="customerSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="customerSelectModalOpen = false"></div>
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">会社を選択</h3>
+              <h3 class="text-base font-bold text-white tracking-tight">顧客を選択</h3>
             </div>
             <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-              <p v-if="isLoadingCompanies" class="text-sm text-slate-500">読み込み中...</p>
+              <p v-if="isLoadingCustomers" class="text-sm text-slate-500">読み込み中...</p>
               <table v-else class="w-full text-left text-xs">
                 <thead>
                   <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">会社名<br>住所</span></th>
+                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>住所</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200">担当者</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                   <tr
-                    v-for="c in companyListForSelect"
-                    :key="c.companyId"
+                    v-for="c in customerListForSelect"
+                    :key="c.customerId"
                     class="hover:bg-slate-100 cursor-pointer transition-colors"
-                    @click="selectCompany(c)"
+                    @click="selectCustomer(c)"
                   >
                     <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ c.companyName }}</div>
+                      <div class="text-slate-700 font-semibold text-xs">{{ c.customerName }}</div>
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ c.address }}</div>
                     </td>
                     <td class="px-3 py-2 text-slate-600 text-xs">-</td>
                   </tr>
                 </tbody>
               </table>
-              <p v-if="!isLoadingCompanies && companyListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
+              <p v-if="!isLoadingCustomers && customerListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
             </div>
             <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
               <button
                 type="button"
                 class="px-6 py-2 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="clearCompany(); companySelectModalOpen = false"
+                @click="clearCustomer(); customerSelectModalOpen = false"
               >
                 クリア
               </button>
               <button
                 type="button"
                 class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="companySelectModalOpen = false"
+                @click="customerSelectModalOpen = false"
               >
                 キャンセル
               </button>
@@ -1301,14 +1485,14 @@ watch(orderNo, () => {
                 class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="registerResultOpen = false"
               >
-                看板情報入力 / 変更
+                看板編集
               </RouterLink>
               <RouterLink
                 :to="{ path: '/order/list', query: orderNo ? { orderNo } : {} }"
                 class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
                 @click="registerResultOpen = false"
               >
-                注文 / 看板情報一覧
+                注文一覧
               </RouterLink>
               <button
                 type="button"

@@ -24,3 +24,8 @@
 ## 制約（DDL準拠）
 
 - **UK**: (order_id, template_item_id)
+
+## API での利用
+
+- **GET /orders/by-no**: 注文番号で1件取得する際、当テーブルの行が `orderItems`（`templateItemId`, `orderItemVal`）としてレスポンスに含まれる。注文（新規・変更）画面でテンプレート項目の値を表示するために利用。
+- **POST /orders**: 新規登録時にリクエストの `templateItems` から当テーブルへ挿入される。

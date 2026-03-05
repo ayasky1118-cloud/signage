@@ -2,8 +2,8 @@
  * 注文・看板管理アプリ 共通設定・ユーティリティ
  *
  * 実装時にパラメータ追加・変更は本ファイルで一元管理すること。
- * HTMLのdata属性は data-order-no, data-order-name, data-company-name 等、
- * ケバブケースで記述（datasetでは orderNo, orderName, companyName に変換される）。
+ * HTMLのdata属性は data-order-no, data-order-name, data-customer-name 等、
+ * ケバブケースで記述（datasetでは orderNo, orderName, customerName に変換される）。
  */
 (function (global) {
     'use strict';
@@ -11,7 +11,7 @@
     var CONFIG = {
         /** 注文情報・看板情報のURLパラメータキー（一覧→詳細/メイン遷移時に渡す検索条件） */
         ORDER_PARAM_KEYS: [
-            'mode', 'orderNo', 'orderName', 'address', 'companyName',
+            'mode', 'orderNo', 'orderName', 'address', 'customerName',
             'manager', 'template', 'designType', 'updateDate', 'updater'
         ],
         /** 看板詳細専用の追加パラメータ（枝番など） */

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>看板情報入力 / 変更</title>
+    <title>看板編集</title>
     <script src="js/tailwind-config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
         <!-- ページタイトル + 注文情報（一覧と同じカードレイアウト） -->
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
             <div class="bg-main px-8 py-4">
-                <h2 class="text-base font-bold text-white tracking-tight">看板情報入力 / 変更</h2>
+                <h2 class="text-base font-bold text-white tracking-tight">看板編集</h2>
             </div>
             <div class="px-6 pt-5 pb-6 md:px-8 md:pt-6 md:pb-7">
                 <div class="flex items-center justify-between gap-4 mb-4 text-main">
@@ -51,12 +51,12 @@
                         <div id="orderNameAddressSub" class="text-[11px] text-slate-500 mt-0.5">-</div>
                     </div>
                     <div class="space-y-1 md:pl-6">
-                        <div class="text-xs text-slate-400 font-semibold">会社名 / 担当者</div>
-                        <div id="orderCompany" class="text-slate-700 font-semibold text-sm">-</div>
-                        <div id="orderCompanySub" class="text-[11px] text-slate-500 mt-0.5">-</div>
+                        <div class="text-xs text-slate-400 font-semibold">顧客名 / 担当者</div>
+                        <div id="orderCustomer" class="text-slate-700 font-semibold text-sm">-</div>
+                        <div id="orderCustomerSub" class="text-[11px] text-slate-500 mt-0.5">-</div>
                     </div>
                     <div class="space-y-1">
-                        <div class="text-xs text-slate-400 font-semibold">テンプレート / デザイン種別</div>
+                        <div class="text-xs text-slate-400 font-semibold">デザイン種別 / テンプレート</div>
                         <div id="orderTemplateDesign" class="text-slate-700 text-sm">-</div>
                         <div id="orderTemplateDesignSub" class="text-[11px] text-slate-500 mt-0.5">-</div>
                     </div>
@@ -69,7 +69,7 @@
             </div>
         </div>
 
-        <!-- 看板情報入力（メニュー新規時は非表示、検索で表示） -->
+        <!-- 看板編集（メニュー新規時は非表示、検索で表示） -->
         <section id="kanbanSection" class="bg-white rounded-2xl card-shadow border border-slate-200/80 mb-8">
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -356,8 +356,8 @@
                             <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
                                 <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
                                 <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
-                                <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">会社名<br>担当者</span></th>
-                                <th class="px-3 py-2 font-bold border-b border-slate-200 whitespace-normal min-w-[140px]"><span class="header-2line">テンプレート<br>デザイン種別</span></th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>担当者</span></th>
+                                <th class="px-3 py-2 font-bold border-b border-slate-200 whitespace-normal min-w-[140px]"><span class="header-2line">デザイン種別<br>テンプレート</span></th>
                                 <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">更新日<br>更新者</span></th>
                             </tr>
                         </thead>
@@ -521,7 +521,7 @@
                 var orderNo = pageParams.get('orderNo');
                 var orderName = pageParams.get('orderName');
                 var address = pageParams.get('address');
-                var companyName = pageParams.get('companyName');
+                var customerName = pageParams.get('customerName');
                 var manager = pageParams.get('manager');
                 var designType = pageParams.get('designType');
                 var template = pageParams.get('template');
@@ -532,8 +532,8 @@
                 var inputOrderNo = document.getElementById('inputOrderNo');
                 var orderNameAddress = document.getElementById('orderNameAddress');
                 var orderNameAddressSub = document.getElementById('orderNameAddressSub');
-                var orderCompany = document.getElementById('orderCompany');
-                var orderCompanySub = document.getElementById('orderCompanySub');
+                var orderCustomer = document.getElementById('orderCustomer');
+                var orderCustomerSub = document.getElementById('orderCustomerSub');
                 var orderTemplateDesign = document.getElementById('orderTemplateDesign');
                 var orderTemplateDesignSub = document.getElementById('orderTemplateDesignSub');
                 var orderUpdateDate = document.getElementById('orderUpdateDate');
@@ -547,13 +547,13 @@
                     orderNameAddressSub.textContent = address || '-';
                     orderNameAddressSub.className = 'text-[11px] text-slate-500 mt-0.5';
                 }
-                if (orderCompany) {
-                    orderCompany.textContent = companyName || '-';
-                    orderCompany.className = 'text-slate-700 font-semibold text-sm';
+                if (orderCustomer) {
+                    orderCustomer.textContent = customerName || '-';
+                    orderCustomer.className = 'text-slate-700 font-semibold text-sm';
                 }
-                if (orderCompanySub) {
-                    orderCompanySub.textContent = manager || '-';
-                    orderCompanySub.className = 'text-[11px] text-slate-500 mt-0.5';
+                if (orderCustomerSub) {
+                    orderCustomerSub.textContent = manager || '-';
+                    orderCustomerSub.className = 'text-[11px] text-slate-500 mt-0.5';
                 }
                 if (orderTemplateDesign) {
                     orderTemplateDesign.textContent = template || '-';
@@ -673,7 +673,7 @@
                 } else {
                     var p = new URLSearchParams();
                     p.set('mode', 'edit');
-                    var keys = ['orderNo', 'orderName', 'address', 'companyName', 'manager', 'template', 'designType', 'updateDate', 'updater', 'itemCode'];
+                    var keys = ['orderNo', 'orderName', 'address', 'customerName', 'manager', 'template', 'designType', 'updateDate', 'updater', 'itemCode'];
                     if (data) {
                         keys.forEach(function (k) { if (data[k]) p.set(k, data[k]); });
                     } else if (orderNo) {
@@ -740,19 +740,19 @@
             }
 
             var orderListData = [
-                { orderNo: 'ORD-2026-0001', orderName: 'サンプルビル外壁工事', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/26', updater: 'テスト更新者' },
-                { orderNo: 'ORD-2026-0002', orderName: '○○駅前 再開発看板', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/25', updater: 'テスト更新者' },
-                { orderNo: 'ORD-2026-0003', orderName: 'サンプル工事③', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/24', updater: 'テスト更新者' },
-                { orderNo: 'ORD-2026-0004', orderName: 'サンプル工事④', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/23', updater: 'テスト更新者' },
-                { orderNo: 'ORD-2026-0005', orderName: 'サンプル工事⑤', address: '東京都渋谷区恵比寿◯ー◯ー◯', companyName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/22', updater: 'テスト更新者' }
+                { orderNo: 'ORD-2026-0001', orderName: 'サンプルビル外壁工事', address: '東京都渋谷区恵比寿◯ー◯ー◯', customerName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/26', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0002', orderName: '○○駅前 再開発看板', address: '東京都渋谷区恵比寿◯ー◯ー◯', customerName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/25', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0003', orderName: 'サンプル工事③', address: '東京都渋谷区恵比寿◯ー◯ー◯', customerName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/24', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0004', orderName: 'サンプル工事④', address: '東京都渋谷区恵比寿◯ー◯ー◯', customerName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート②', designType: '550', updateDate: '2026/02/23', updater: 'テスト更新者' },
+                { orderNo: 'ORD-2026-0005', orderName: 'サンプル工事⑤', address: '東京都渋谷区恵比寿◯ー◯ー◯', customerName: '株式会社◯◯◯◯', manager: 'テスト太郎', template: 'テストテンプレート①', designType: 'ecosign', updateDate: '2026/02/22', updater: 'テスト更新者' }
             ];
 
             function clearOrderInfoExceptOrderNo() {
                 var el;
                 if (el = document.getElementById('orderNameAddress')) { el.textContent = '-'; el.className = 'text-slate-700 font-semibold text-sm'; }
                 if (el = document.getElementById('orderNameAddressSub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
-                if (el = document.getElementById('orderCompany')) { el.textContent = '-'; el.className = 'text-slate-700 font-semibold text-sm'; }
-                if (el = document.getElementById('orderCompanySub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
+                if (el = document.getElementById('orderCustomer')) { el.textContent = '-'; el.className = 'text-slate-700 font-semibold text-sm'; }
+                if (el = document.getElementById('orderCustomerSub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
                 if (el = document.getElementById('orderTemplateDesign')) { el.textContent = '-'; el.className = 'text-slate-700 text-sm'; }
                 if (el = document.getElementById('orderTemplateDesignSub')) { el.textContent = '-'; el.className = 'text-[11px] text-slate-500 mt-0.5'; }
                 if (el = document.getElementById('orderUpdateDate')) el.textContent = '-';
@@ -873,11 +873,11 @@
                     el.textContent = data.address || '-';
                     el.className = 'text-[11px] text-slate-500 mt-0.5';
                 }
-                if (el = document.getElementById('orderCompany')) {
-                    el.textContent = data.companyName || '-';
+                if (el = document.getElementById('orderCustomer')) {
+                    el.textContent = data.customerName || '-';
                     el.className = 'text-slate-700 font-semibold text-sm';
                 }
-                if (el = document.getElementById('orderCompanySub')) {
+                if (el = document.getElementById('orderCustomerSub')) {
                     el.textContent = data.manager || '-';
                     el.className = 'text-[11px] text-slate-500 mt-0.5';
                 }
@@ -950,7 +950,7 @@
                     return '<tr class="order-no-select-item hover:bg-slate-100 cursor-pointer transition-colors" data-order-no="' + (o.orderNo || '') + '">' +
                         '<td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">' + (o.orderNo || '') + '</span></td>' +
                         '<td class="px-3 py-2"><div class="text-slate-700 font-semibold text-xs">' + (o.orderName || '') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.address || '') + '</div></td>' +
-                        '<td class="px-3 py-2"><div class="text-slate-700 font-semibold text-xs">' + (o.companyName || '') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.manager || '') + '</div></td>' +
+                        '<td class="px-3 py-2"><div class="text-slate-700 font-semibold text-xs">' + (o.customerName || '') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.manager || '') + '</div></td>' +
                         '<td class="px-3 py-2"><div class="text-slate-700 text-xs">' + (o.template || '-') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + designLabel + '</div></td>' +
                         '<td class="px-3 py-2"><div class="text-slate-600 text-xs">' + (o.updateDate || '-') + '</div><div class="text-[10px] text-slate-500 mt-0.5">' + (o.updater || '-') + '</div></td>' +
                         '</tr>';
@@ -1928,7 +1928,7 @@
 
 	<template>
 	  <main>
-		<h2 class="title">看板情報入力／変更</h2>
+		<h2 class="title">看板編集</h2>
 		<section class="form-section">
 			<h3>看板情報</h3>
 			<div class="regist-form">

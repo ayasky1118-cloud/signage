@@ -84,10 +84,16 @@
 #order-list-page .order-list-table { table-layout: fixed !important; width: 100% !important; }
 #order-list-page .order-list-table #col-order-no { width: calc(10ch + 2.5rem) !important; min-width: calc(10ch + 2.5rem) !important; }
 #order-list-page .order-list-table #col-name,
-#order-list-page .order-list-table #col-company { width: auto !important; }
+#order-list-page .order-list-table #col-customer { width: auto !important; }
 #order-list-page .order-list-table #col-design { width: 180px !important; min-width: 180px !important; max-width: 180px !important; }
 #order-list-page .order-list-table th.col-design,
 #order-list-page .order-list-table td.col-design { width: 180px !important; min-width: 180px !important; max-width: 180px !important; }
+#order-list-page .order-list-table #col-production-type { width: 90px !important; min-width: 90px !important; max-width: 90px !important; }
+#order-list-page .order-list-table th.col-production-type,
+#order-list-page .order-list-table td.col-production-type { width: 90px !important; min-width: 90px !important; max-width: 90px !important; }
+#order-list-page .order-list-table #col-status { width: 100px !important; min-width: 100px !important; max-width: 100px !important; }
+#order-list-page .order-list-table th.col-status,
+#order-list-page .order-list-table td.col-status { width: 100px !important; min-width: 100px !important; max-width: 100px !important; }
 #order-list-page .order-list-table #col-date { width: 132px !important; }
 #order-list-page .order-list-table #col-action { width: 155px !important; min-width: 155px !important; }
 #order-list-page .order-list-table th.col-date,

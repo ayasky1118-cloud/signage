@@ -1,6 +1,6 @@
 <template>
   <!--
-    画面：注文・看板管理メニュー
+    画面：メニュー
     元HTMLモックをVue化。class は維持し、<a> を <RouterLink> に置換。
     将来ログイン導線が入っても /menu を入口にしやすい構造。
   -->
@@ -8,18 +8,33 @@
     <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
       <!-- カードヘッダー -->
       <div class="bg-main border-b border-slate-200 px-8 py-5">
-        <h2 class="text-lg font-bold text-white">注文・看板管理</h2>
+        <h2 class="text-lg font-bold text-white">メニュー</h2>
       </div>
 
       <!-- カード本文：メニュー項目 -->
       <div class="p-8">
-        <div class="text-center mb-10">
-          <p class="text-slate-500">実行する操作を選択してください</p>
-        </div>
-
         <!-- メニュー項目一覧（各項目は RouterLink で SPA 遷移） -->
         <div class="flex flex-col gap-3">
-          <!-- 注文情報入力/変更 → /order/main -->
+          <!-- 注文一覧 → /order/list -->
+          <RouterLink
+            to="/order/list"
+            class="group flex items-center w-full bg-main hover:bg-subBlue p-4 rounded-xl shadow-md shadow-main/10 transition-all duration-200 transform hover:-translate-y-0.5"
+          >
+            <div class="bg-white/10 p-3 rounded-lg group-hover:bg-white/20 transition-colors">
+              <!-- menu icon -->
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </div>
+
+            <span class="flex-1 text-center text-lg font-bold text-white">注文一覧</span>
+
+            <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </RouterLink>
+
+          <!-- 注文（新規・変更） → /order/main -->
           <RouterLink
             to="/order/main"
             class="group flex items-center w-full bg-main hover:bg-subBlue p-4 rounded-xl shadow-md shadow-main/10 transition-all duration-200 transform hover:-translate-y-0.5"
@@ -36,14 +51,14 @@
               </svg>
             </div>
 
-            <span class="flex-1 text-center text-lg font-bold text-white">注文情報入力 / 変更</span>
+            <span class="flex-1 text-center text-lg font-bold text-white">注文（新規・変更）</span>
 
             <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </RouterLink>
 
-          <!-- 看板情報入力/変更 → /order/detail -->
+          <!-- 看板編集 → /order/detail -->
           <RouterLink
             to="/order/detail"
             class="group flex items-center w-full bg-main hover:bg-subBlue p-4 rounded-xl shadow-md shadow-main/10 transition-all duration-200 transform hover:-translate-y-0.5"
@@ -61,26 +76,7 @@
               </svg>
             </div>
 
-            <span class="flex-1 text-center text-lg font-bold text-white">看板情報入力 / 変更</span>
-
-            <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </RouterLink>
-
-          <!-- 注文/看板一覧 → /order/list -->
-          <RouterLink
-            to="/order/list"
-            class="group flex items-center w-full bg-main hover:bg-subBlue p-4 rounded-xl shadow-md shadow-main/10 transition-all duration-200 transform hover:-translate-y-0.5"
-          >
-            <div class="bg-white/10 p-3 rounded-lg group-hover:bg-white/20 transition-colors">
-              <!-- menu icon -->
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </div>
-
-            <span class="flex-1 text-center text-lg font-bold text-white">注文 / 看板情報一覧</span>
+            <span class="flex-1 text-center text-lg font-bold text-white">看板編集</span>
 
             <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

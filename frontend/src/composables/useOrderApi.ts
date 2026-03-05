@@ -16,7 +16,7 @@ export interface OrderSearchParams {
   orderNo?: string
   orderName?: string
   address?: string
-  companyName?: string
+  customerName?: string
   designTypeId?: number
   designTypeName?: string
   updateDateFrom?: string
@@ -31,7 +31,8 @@ export interface OrderItem {
   orderName: string
   address: string
   companyId?: number
-  companyName: string
+  customerId?: number
+  customerName: string
   manager: string
   template: string
   designTypeId?: number
@@ -42,6 +43,10 @@ export interface OrderItem {
   attribute_02?: string
   /** 現場CD (attribute_03) */
   attribute_03?: string
+  /** 制作区分 (attribute_04) */
+  attribute_04?: string
+  /** ステータス (attribute_05) */
+  attribute_05?: string
   updateDate: string
   updater: string
   branches: string[]
@@ -52,6 +57,110 @@ export interface OrderSearchResult {
   total: number
   page: number
   perPage: number
+}
+
+/** 注文1件取得（by-no）の order_item 1行 */
+export interface OrderDetailItem {
+  templateItemId: number
+  orderItemVal: string
+}
+
+/** 注文1件取得（GET /orders/by-no）のレスポンス。order_item を orderItems で返す */
+export interface OrderDetail {
+  orderId: number
+  orderNo: string
+  orderName: string
+  address: string
+  companyId: number
+  customerId: number
+  customerName: string
+  manager: string
+  templateId: number
+  templateName: string
+  designTypeId: number
+  designTypeName: string
+  /** 納期（Y/m/d）。未設定時は空文字 */
+  deadlineDt?: string
+  /** 校正予定日（Y/m/d）。未設定時は空文字 */
+  proofreadingDt?: string
+  attribute_01: string
+  attribute_02: string
+  attribute_03: string
+  /** 制作区分 (attribute_04) */
+  attribute_04?: string
+  /** ステータス (attribute_05) */
+  attribute_05?: string
+  /** 備考 */
+  note?: string
+  orderItems: OrderDetailItem[]
+}
+
+/**
+ * 注文番号で1件取得（GET /orders/by-no）。order_item を含む。
+ * 該当なしは 404 で throw。その他エラーも throw。
+ */
+export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
+  const no = orderNo?.trim()
+  if (!no) throw new Error("注文番号を指定してください。")
+  const base = getApiBase()
+  const url = `${base}${API_PREFIX}/orders/by-no?order_no=${encodeURIComponent(no)}`
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res: Response
+  try {
+    res = await fetch(url, { signal: controller.signal })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("接続がタイムアウトしました。")
+    }
+    throw e
+  }
+  clearTimeout(timeoutId)
+  if (res.status === 404) {
+    const body = await res.json().catch(() => ({})) as { detail?: string }
+    throw new Error(body?.detail ?? "該当する注文が見つかりませんでした。")
+  }
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const body = (await res.json()) as { error?: string; detail?: string }
+      if (body?.detail && typeof body.detail === "string") detail = body.detail
+      else if (body?.error) detail = body.error
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`API error: ${detail}`)
+  }
+  const data = (await res.json()) as Record<string, unknown>
+  return {
+    orderId: Number(data.orderId),
+    orderNo: String(data.orderNo ?? ""),
+    orderName: String(data.orderName ?? ""),
+    address: String(data.address ?? ""),
+    companyId: Number(data.companyId),
+    customerId: Number(data.customerId),
+    customerName: String(data.customerName ?? ""),
+    manager: String(data.manager ?? ""),
+    templateId: Number(data.templateId),
+    templateName: String(data.templateName ?? ""),
+    designTypeId: Number(data.designTypeId),
+    designTypeName: String(data.designTypeName ?? ""),
+    deadlineDt: data.deadlineDt != null ? String(data.deadlineDt) : "",
+    proofreadingDt: data.proofreadingDt != null ? String(data.proofreadingDt) : "",
+    attribute_01: String(data.attribute_01 ?? ""),
+    attribute_02: String(data.attribute_02 ?? ""),
+    attribute_03: String(data.attribute_03 ?? ""),
+    attribute_04: data.attribute_04 != null ? String(data.attribute_04) : "",
+    attribute_05: data.attribute_05 != null ? String(data.attribute_05) : "",
+    note: data.note != null ? String(data.note) : "",
+    orderItems: Array.isArray(data.orderItems)
+      ? (data.orderItems as OrderDetailItem[]).map((o) => ({
+          templateItemId: Number((o as Record<string, unknown>).templateItemId),
+          orderItemVal: String((o as Record<string, unknown>).orderItemVal ?? ""),
+        }))
+      : [],
+  }
 }
 
 /**
@@ -71,8 +180,8 @@ export interface CreateOrderParams {
   loginCompanyId: number
   orderName: string
   orderAdd: string
-  /** 注文先会社ID（order_main.company_id。この会社に紐づく顧客が customer_id に使われる） */
-  companyId: number
+  /** 顧客ID（order_main.customer_id。顧客の company_id が order_main.company_id に使われる） */
+  customerId: number
   templateId: number
   designTypeId: number
   /** 社内CD（必須） */
@@ -81,6 +190,16 @@ export interface CreateOrderParams {
   attribute02: string
   /** 現場CD（必須） */
   attribute03: string
+  /** 制作区分（attribute_04）。任意 */
+  attribute04?: string
+  /** ステータス（attribute_05）。任意 */
+  attribute05?: string
+  /** 納期（YYYY-MM-DD）。任意 */
+  deadlineDt?: string
+  /** 校正予定日（YYYY-MM-DD）。任意 */
+  proofreadingDt?: string
+  /** 備考。任意 */
+  note?: string
   /** テンプレート項目ごとの ID と入力値。可変長。 */
   templateItems: CreateOrderTemplateItem[]
 }
@@ -100,7 +219,7 @@ export async function searchOrders(
   if (params.orderNo?.trim()) searchParams.set("order_no", params.orderNo.trim())
   if (params.orderName?.trim()) searchParams.set("order_name", params.orderName.trim())
   if (params.address?.trim()) searchParams.set("address", params.address.trim())
-  if (params.companyName?.trim()) searchParams.set("company_name", params.companyName.trim())
+  if (params.customerName?.trim()) searchParams.set("customer_name", params.customerName.trim())
   if (params.designTypeId != null) searchParams.set("design_type_id", String(params.designTypeId))
   if (params.designTypeName?.trim()) searchParams.set("design_type_name", params.designTypeName.trim())
   if (params.updateDateFrom?.trim()) searchParams.set("update_date_from", params.updateDateFrom.trim())
@@ -152,11 +271,11 @@ export async function searchOrders(
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
   const base = getApiBase()
   const url = `${base}${API_PREFIX}/orders`
-  const body = {
+  const body: Record<string, unknown> = {
     loginCompanyId: params.loginCompanyId,
     orderName: params.orderName,
     orderAdd: params.orderAdd,
-    companyId: params.companyId,
+    customerId: params.customerId,
     templateId: params.templateId,
     designTypeId: params.designTypeId,
     attribute01: params.attribute01,
@@ -164,6 +283,11 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     attribute03: params.attribute03,
     templateItems: params.templateItems,
   }
+  if (params.attribute04 != null && params.attribute04 !== "") body.attribute04 = params.attribute04
+  if (params.attribute05 != null && params.attribute05 !== "") body.attribute05 = params.attribute05
+  if (params.deadlineDt != null && params.deadlineDt !== "") body.deadlineDt = params.deadlineDt
+  if (params.proofreadingDt != null && params.proofreadingDt !== "") body.proofreadingDt = params.proofreadingDt
+  if (params.note != null && params.note !== "") body.note = params.note
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000)
   let res: Response
