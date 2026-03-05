@@ -3,6 +3,8 @@
 フロントエンド（Vue 3）とバックエンド（FastAPI）を組み合わせたプロジェクト。
 ローカル開発では MySQL（Docker）、本番は AWS Lambda 上での動作を想定。
 
+**地図看板の作成には [MapTiler](https://www.maptiler.com/) を利用しています。** 商用利用のため MapTiler との契約を締結済み、または締結を進めています。
+
 ---
 
 ## 技術スタック
