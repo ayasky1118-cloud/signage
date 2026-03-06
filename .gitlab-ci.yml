@@ -33,7 +33,7 @@ deploy_to_amplify:
     - curl -X PUT --upload-file build.zip "$UPLOAD_URL"
     - aws amplify start-deployment --app-id $AMPLIFY_APP_ID --branch-name $CI_COMMIT_BRANCH --job-id $JOB_ID --region $AWS_DEFAULT_REGION
   variables:
-    AMPLIFY_APP_ID: "d2cn6ahkb6lb3r"
+    AMPLIFY_APP_ID: "d27nzen1vhtcee"
     AWS_DEFAULT_REGION: "ap-northeast-1"
   only:
     refs:
