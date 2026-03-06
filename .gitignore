@@ -5,6 +5,7 @@
 
 # Python 仮想環境
 .venv/
+backend/.venv/
 venv/
 __pycache__/
 *.pyc
