@@ -1,0 +1,113 @@
+/* ========================================
+   order_list.html 専用スタイル
+   ======================================== */
+
+/* 画面タイトル（bfcache復元時も色を維持） */
+#order-list-page .card-header-full > div:first-child {
+    background-color: #003b82 !important;
+}
+#order-list-page .card-header-full > div:first-child h2 {
+    color: #fff !important;
+}
+
+/* Flatpickr テーマカラー（main: #003b82, lightBlue: #8ed1fc） */
+.flatpickr-calendar { font-size: 12px !important; }
+.flatpickr-day, .flatpickr-weekday { font-size: 11px !important; }
+.flatpickr-current-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month .numInputWrapper input,
+.flatpickr-current-month span.cur-month { font-size: 14px !important; }
+.flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
+    background: #003b82 !important;
+    border-color: #003b82 !important;
+    color: #fff !important;
+}
+.flatpickr-day:hover, .flatpickr-day:focus {
+    background: #8ed1fc !important;
+    border-color: #8ed1fc !important;
+}
+.flatpickr-months .flatpickr-month {
+    background: #003b82 !important;
+    padding-bottom: 16px !important;
+}
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month .numInputWrapper input,
+.flatpickr-current-month .flatpickr-prev-month svg,
+.flatpickr-current-month .flatpickr-next-month svg,
+.flatpickr-current-month select,
+.flatpickr-current-month input {
+    color: #fff !important;
+    fill: #fff !important;
+}
+.flatpickr-current-month input::-webkit-input-placeholder { color: rgba(255,255,255,0.8) !important; }
+.flatpickr-current-month input::placeholder { color: rgba(255,255,255,0.8) !important; }
+.flatpickr-current-month .numInputWrapper span.arrowUp:after { border-bottom-color: #fff !important; }
+.flatpickr-current-month .numInputWrapper span.arrowDown:after { border-top-color: #fff !important; }
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month { color: #fff !important; fill: #fff !important; }
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg,
+.flatpickr-months .flatpickr-prev-month svg path,
+.flatpickr-months .flatpickr-next-month svg path { fill: #fff !important; }
+.flatpickr-current-month .flatpickr-prev-month:hover svg,
+.flatpickr-current-month .flatpickr-next-month:hover svg { fill: #8ed1fc !important; }
+/* 日付間のピッチを詰める・円を小さく中央揃え */
+.flatpickr-calendar { width: 196px !important; }
+.flatpickr-days { width: 196px !important; }
+.dayContainer { width: 196px !important; min-width: 196px !important; max-width: 196px !important; padding: 0 !important; justify-content: flex-start !important; }
+.flatpickr-day {
+    max-width: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 1 !important;
+    flex-basis: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+.flatpickr-weekdays { height: 22px !important; }
+.flatpickr-weekdays .flatpickr-weekdaycontainer .flatpickr-weekday { flex: 0 0 28px !important; max-width: 28px !important; font-size: 10px !important; }
+/* 一覧テーブル */
+#order-list-page .order-list-table { border-collapse: collapse; width: 100%; }
+#order-list-page .order-list-table td { min-width: 0; overflow: hidden; vertical-align: middle; }
+#order-list-page .order-list-table th { vertical-align: middle; }
+#order-list-page .order-list-table td:first-child {
+    display: table-cell;
+}
+#order-list-page .order-list-table td:first-child .order-main-link {
+    display: block;
+    line-height: 1;
+    padding: 0.5rem 0;
+}
+#order-list-page .order-list-table { table-layout: fixed !important; width: 100% !important; }
+#order-list-page .order-list-table #col-order-no { width: 150px !important; }
+#order-list-page .order-list-table #col-name,
+#order-list-page .order-list-table #col-company { width: auto !important; }
+#order-list-page .order-list-table #col-design { width: 180px !important; min-width: 180px !important; max-width: 180px !important; }
+#order-list-page .order-list-table th.col-design,
+#order-list-page .order-list-table td.col-design { width: 180px !important; min-width: 180px !important; max-width: 180px !important; }
+#order-list-page .order-list-table #col-date { width: 132px !important; }
+#order-list-page .order-list-table #col-action { width: 155px !important; min-width: 155px !important; }
+#order-list-page .order-list-table th.col-date,
+#order-list-page .order-list-table td.col-date { width: 132px !important; min-width: 132px !important; max-width: 132px !important; }
+#order-list-page .order-list-table th.col-action,
+#order-list-page .order-list-table td.col-action {
+    width: 155px !important;
+    min-width: 155px !important;
+    overflow: visible !important;
+}
+/* 枝番カラム：5つ/行で表示、右余白を詰める */
+#order-list-page .order-list-table td.col-action {
+    white-space: normal !important;
+    line-height: 1.6;
+}
+#order-list-page .order-list-table td.col-action a {
+    display: inline-block;
+    margin: 0 0 1px 0;
+    padding: 0;
+}
+#order-list-page .order-list-table td.col-action a + a {
+    margin-left: 1px;
+}

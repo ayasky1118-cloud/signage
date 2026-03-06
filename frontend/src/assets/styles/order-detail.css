@@ -1,0 +1,11 @@
+/* ========================================
+   order_detail（看板編集）専用スタイル
+   ======================================== */
+
+/* 画面タイトル（bfcache復元時も色を維持） */
+#order-detail-page .card-header-full > div:first-child {
+  background-color: #003b82 !important;
+}
+#order-detail-page .card-header-full > div:first-child h2 {
+  color: #fff !important;
+}
