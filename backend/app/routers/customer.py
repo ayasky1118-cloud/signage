@@ -26,7 +26,7 @@ def list_customers(
     rows = (
         db.execute(
             text("""
-                SELECT customer_id, company_id, customer_name, customer_post, customer_add
+                SELECT customer_id, company_id, customer_name, customer_post, customer_add, contact_name
                 FROM customer
                 WHERE company_id = :company_id AND is_deleted = 0
                 ORDER BY customer_id
@@ -42,6 +42,7 @@ def list_customers(
             "company_id": r["company_id"],
             "customer_name": r["customer_name"] or "",
             "address": " ".join(filter(None, [r["customer_post"], r["customer_add"] or ""])).strip(),
+            "contact_name": r["contact_name"] or "",
         }
         for r in rows
     ]

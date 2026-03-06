@@ -1,9 +1,11 @@
--- order_main / order_item / order_detail のみドロップして再作成（他テーブルは触らない）
+-- order_main / order_item / order_detail のみドロップして再作成（他テーブルは触らない。データ移行なし）
+SET NAMES utf8mb4;
+
 DROP TABLE IF EXISTS order_detail;
 DROP TABLE IF EXISTS order_item;
 DROP TABLE IF EXISTS order_main;
 
-CREATE TABLE IF NOT EXISTS order_main
+CREATE TABLE order_main
 (
 	order_id			BIGINT AUTO_INCREMENT							COMMENT '受注ID'
 ,	company_id			BIGINT NOT NULL									COMMENT '会社ID'
@@ -13,6 +15,7 @@ CREATE TABLE IF NOT EXISTS order_main
 ,	order_name			VARCHAR(256) NOT NULL							COMMENT '受注名'
 ,	order_add			VARCHAR(256) NOT NULL							COMMENT '受注住所'
 ,	design_type_id		BIGINT NOT NULL									COMMENT 'デザイン種別ID'
+,	manager_name		VARCHAR(100)									COMMENT '担当者名'
 ,	deadline_dt			DATETIME										COMMENT '納期'
 ,	proofreading_dt		DATETIME										COMMENT '校正予定日'
 ,	attribute_01		VARCHAR(256)									COMMENT '属性01（社内CD）'

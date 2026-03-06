@@ -4,6 +4,7 @@ import { RouterLink, useRouter, useRoute } from "vue-router"
 import flatpickr from "flatpickr"
 import { Japanese } from "flatpickr/dist/l10n/ja"
 import "flatpickr/dist/flatpickr.min.css"
+import "../assets/styles/flatpickr-theme.css"
 import { validateAddress } from "../composables/useAddressApi"
 import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
@@ -277,7 +278,7 @@ function applyOrderData(order: OrderDetail) {
 function applyCustomerData(c: CustomerItem) {
   customerId.value = c.customerId
   customerName.value = c.customerName
-  manager.value = "" // 担当者は別入力のためクリア可
+  manager.value = c.contactName ?? ""  // 顧客の担当者名を初期設定（編集可）
   designTypeId.value = null
 }
 
@@ -329,7 +330,7 @@ function clearOtherFieldsOnOrderNoChange() {
 async function openOrderNoSelectModal() {
   isLoadingOrders.value = true
   try {
-    const result = await searchOrders({ perPage: 50, page: 1 })
+    const result = await searchOrders({ companyId: getLoginCompanyId(), perPage: 50, page: 1 })
     orderListForSelect.value = result.items
     if (result.items.length === 0) {
       requiredValidationMessage.value = "データがありません"
@@ -549,6 +550,7 @@ async function doRegisterConfirm() {
         deadlineDt: deadlineDate.value.trim() ? deadlineDate.value.trim().replace(/\//g, "-") : undefined,
         proofreadingDt: proofreadingDate.value.trim() ? proofreadingDate.value.trim().replace(/\//g, "-") : undefined,
         templateItems: templateItemsPayload,
+        managerName: manager.value.trim() || undefined,
       })
       registerConfirmOpen.value = false
       orderNo.value = result.orderNo
@@ -809,11 +811,6 @@ watch(orderNo, () => {
           </div>
 
           <section class="space-y-5 pt-4">
-            <div class="flex items-center gap-2 mb-2 text-main">
-              <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-              <h3 class="font-bold text-base tracking-tight">注文情報</h3>
-            </div>
-
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-2.5 shrink-0">
                 <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -913,13 +910,13 @@ watch(orderNo, () => {
               </div>
             </div>
 
-            <!-- 制作区分・納期・校正予定日（OrderList 更新日と同じスタイル） -->
-            <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
+            <!-- 制作区分・納期・校正予定日 -->
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-1.5 shrink-0">
                 <label class="text-xs font-bold text-slate-500 block">制作区分</label>
                 <select
                   v-model="productionType"
-                  class="min-w-[8rem] w-[8rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 >
                   <option value="">制作区分を選択してください</option>
@@ -932,9 +929,9 @@ watch(orderNo, () => {
                   ref="inputDeadlineRef"
                   type="text"
                   readonly
-                  placeholder="日付を選択"
+                  placeholder="納期を選択"
                   :value="deadlineDate"
-                  class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
@@ -944,15 +941,15 @@ watch(orderNo, () => {
                   ref="inputProofreadingRef"
                   type="text"
                   readonly
-                  placeholder="日付を選択"
+                  placeholder="校正予定日を選択"
                   :value="proofreadingDate"
-                  class="w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
             </div>
 
-            <!-- 備考（制作区分の下の行。画面上は入力必須） -->
+            <!-- 備考（下の行に一項目） -->
             <div class="space-y-2.5">
               <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -1226,9 +1223,9 @@ watch(orderNo, () => {
                     <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">社内CD<br>事業所CD<br>現場CD</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">会社名<br>担当者</span></th>
+                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>担当者</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200">デザイン種別</th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">更新日<br>更新者</span></th>
+                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">登録日<br>登録者</span></th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -1249,13 +1246,13 @@ watch(orderNo, () => {
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ order.address }}</div>
                     </td>
                     <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ order.customerName }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager }}</div>
+                      <div class="text-slate-700 font-semibold text-xs">{{ order.customerName || "—" }}</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager?.trim() || "—" }}</div>
                     </td>
                     <td class="px-3 py-2 text-slate-600 text-xs">{{ designTypeLabel(order.designType) }}</td>
                     <td class="px-3 py-2">
-                      <div class="text-slate-600 text-xs">{{ order.updateDate }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.updater }}</div>
+                      <div class="text-slate-600 text-xs">{{ order.createdDate }}</div>
+                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.creator }}</div>
                     </td>
                   </tr>
                 </tbody>
@@ -1322,13 +1319,13 @@ watch(orderNo, () => {
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">顧客を選択</h3>
+              <h3 class="text-base font-bold text-white tracking-tight">顧客選択</h3>
             </div>
             <div class="px-8 py-6 max-h-[60vh] overflow-auto">
               <p v-if="isLoadingCustomers" class="text-sm text-slate-500">読み込み中...</p>
               <table v-else class="w-full text-left text-xs">
                 <thead>
-                  <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
+                  <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                     <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>住所</span></th>
                     <th class="px-3 py-2 font-bold border-b border-slate-200">担当者</th>
                   </tr>
@@ -1344,7 +1341,7 @@ watch(orderNo, () => {
                       <div class="text-slate-700 font-semibold text-xs">{{ c.customerName }}</div>
                       <div class="text-[10px] text-slate-500 mt-0.5">{{ c.address }}</div>
                     </td>
-                    <td class="px-3 py-2 text-slate-600 text-xs">-</td>
+                    <td class="px-3 py-2 text-slate-600 text-xs">{{ c.contactName?.trim() || "—" }}</td>
                   </tr>
                 </tbody>
               </table>

@@ -7,8 +7,6 @@
 | 物理名 | order_main |
 | 論理名 | 注文情報 |
 
-**画面・APIでの扱い**: 注文フォームでは**顧客**（customer）を選択する。一覧・検索・1件取得の表示も顧客名（customer_name）を返す。登録時は customerId を送信し、customer の company_id が order_main.company_id に設定される。**納期**（deadline_dt）・**校正予定日**（proofreading_dt）は注文（新規・変更）画面で日付ピッカー（Y/m/d）で入力する。GET /orders/by-no では `deadlineDt`・`proofreadingDt` を Y/m/d 文字列で返す。POST /orders では任意で `deadlineDt`・`proofreadingDt`（YYYY-MM-DD）を受け取り格納する。
-
 ## カラム定義
 
 | No | 物理名 | 論理名 | 型 | 桁数 | 必須 | PK | FK | UK | 初期値 | 備考 |

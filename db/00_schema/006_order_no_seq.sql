@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS order_no_seq
+DROP TABLE IF EXISTS order_no_seq;
+
+CREATE TABLE order_no_seq
 (
 	company_id			BIGINT		NOT NULL							COMMENT '所属会社ID'
 ,	`year`				SMALLINT UNSIGNED	NOT NULL					COMMENT '年'
@@ -9,7 +11,7 @@ CREATE TABLE IF NOT EXISTS order_no_seq
 ,	updated_dt			DATETIME	NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP	COMMENT '更新日時'
 ,	updated_by			BIGINT		NOT NULL							COMMENT '更新者'
 ,	CONSTRAINT pk_order_no_seq
-		PRIMARY KEY (company_id, `year`, last_number)
+		PRIMARY KEY (company_id, `year`)
 ,	CONSTRAINT fk_order_seq_company
 		FOREIGN KEY (company_id) REFERENCES company(company_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci

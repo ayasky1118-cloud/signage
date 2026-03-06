@@ -32,15 +32,22 @@ DEFAULT_USER_ID = 1
 @router.get("")
 def search_orders(
     db: Session = Depends(get_db),
-    order_no: str | None = Query(None, description="注文番号（部分一致）"),
+    company_id: int | None = Query(None, description="会社ID（ログイン会社。指定時は当該会社の注文のみ返す）"),
+    customer_id: int | None = Query(None, description="顧客ID（完全一致）"),
+    manager: str | None = Query(None, description="担当者名（部分一致）"),
     order_name: str | None = Query(None, description="注文名（部分一致）"),
-    address: str | None = Query(None, description="住所（部分一致）"),
-    customer_name: str | None = Query(None, description="顧客名（部分一致）"),
     design_type_id: int | None = Query(None, description="デザイン種別ID（完全一致）"),
-    design_type_name: str | None = Query(None, description="デザイン種別名（部分一致）"),
-    update_date_from: str | None = Query(None, description="更新日開始（YYYY-MM-DD）"),
-    update_date_to: str | None = Query(None, description="更新日終了（YYYY-MM-DD）"),
-    updater: str | None = Query(None, description="更新者名（部分一致）"),
+    order_no: str | None = Query(None, description="注文番号（部分一致）"),
+    address: str | None = Query(None, description="住所（部分一致）"),
+    created_date_from: str | None = Query(None, description="登録日開始（YYYY-MM-DD）"),
+    created_date_to: str | None = Query(None, description="登録日終了（YYYY-MM-DD）"),
+    status: str | None = Query(None, description="ステータス（attribute_05、完全一致）"),
+    production_type: str | None = Query(None, description="制作区分（attribute_04、完全一致）"),
+    deadline_dt: str | None = Query(None, description="納期（YYYY-MM-DD、完全一致）"),
+    proofreading_dt: str | None = Query(None, description="校正予定日（YYYY-MM-DD、完全一致）"),
+    note: str | None = Query(None, description="備考（部分一致）"),
+    sort_by: str | None = Query("created_date", description="ソート項目（order_no / created_date）"),
+    sort_order: str | None = Query("asc", description="ソート順（asc / desc）"),
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(10, ge=1, le=100, description="1ページあたり件数"),
 ):
@@ -48,20 +55,29 @@ def search_orders(
     注文一覧を検索する。
 
     検索条件はすべてオプション。指定した条件で AND 検索。
+    担当者名・注文名・住所・備考・注文番号は部分一致。
+    デザイン種別はIDで完全一致。ステータス・制作区分・納期・校正予定日は入力値で完全一致。
     ページネーション対応（サーバー側）。
     """
     try:
         return _search_orders_impl(
             db=db,
-            order_no=order_no,
+            company_id=company_id,
+            customer_id=customer_id,
+            manager=manager,
             order_name=order_name,
-            address=address,
-            customer_name=customer_name,
             design_type_id=design_type_id,
-            design_type_name=design_type_name,
-            update_date_from=update_date_from,
-            update_date_to=update_date_to,
-            updater=updater,
+            order_no=order_no,
+            address=address,
+            created_date_from=created_date_from,
+            created_date_to=created_date_to,
+            status=status,
+            production_type=production_type,
+            deadline_dt=deadline_dt,
+            proofreading_dt=proofreading_dt,
+            note=note,
+            sort_by=sort_by,
+            sort_order=sort_order,
             page=page,
             per_page=per_page,
         )
@@ -75,15 +91,22 @@ def search_orders(
 
 def _search_orders_impl(
     db: Session,
-    order_no: str | None,
+    company_id: int | None,
+    customer_id: int | None,
+    manager: str | None,
     order_name: str | None,
-    address: str | None,
-    customer_name: str | None,
     design_type_id: int | None,
-    design_type_name: str | None,
-    update_date_from: str | None,
-    update_date_to: str | None,
-    updater: str | None,
+    order_no: str | None,
+    address: str | None,
+    created_date_from: str | None,
+    created_date_to: str | None,
+    status: str | None,
+    production_type: str | None,
+    deadline_dt: str | None,
+    proofreading_dt: str | None,
+    note: str | None,
+    sort_by: str | None,
+    sort_order: str | None,
     page: int,
     per_page: int,
 ):
@@ -93,42 +116,68 @@ def _search_orders_impl(
     conditions = ["om.is_deleted = 0"]
     params = {"limit": per_page, "offset": offset}
 
-    if order_no and order_no.strip():
-        conditions.append("om.order_no LIKE :order_no")
-        params["order_no"] = f"%{order_no.strip()}%"
+    if company_id is not None:
+        conditions.append("om.company_id = :company_id")
+        params["company_id"] = company_id
+
+    if customer_id is not None:
+        conditions.append("om.customer_id = :customer_id")
+        params["customer_id"] = customer_id
+
+    if manager and manager.strip():
+        conditions.append("om.manager_name LIKE :manager")
+        params["manager"] = f"%{manager.strip()}%"  # 部分一致（担当者名）
 
     if order_name and order_name.strip():
         conditions.append("om.order_name LIKE :order_name")
-        params["order_name"] = f"%{order_name.strip()}%"
-
-    if address and address.strip():
-        conditions.append("om.order_add LIKE :address")
-        params["address"] = f"%{address.strip()}%"
-
-    if customer_name and customer_name.strip():
-        conditions.append("cus.customer_name LIKE :customer_name")
-        params["customer_name"] = f"%{customer_name.strip()}%"
+        params["order_name"] = f"%{order_name.strip()}%"  # 部分一致
 
     if design_type_id is not None:
         conditions.append("om.design_type_id = :design_type_id")
         params["design_type_id"] = design_type_id
-    if design_type_name and design_type_name.strip():
-        conditions.append("dt.design_type_name LIKE :design_type_name")
-        params["design_type_name"] = f"%{design_type_name.strip()}%"
 
-    if update_date_from and update_date_from.strip():
-        conditions.append("DATE(om.updated_dt) >= :update_date_from")
-        params["update_date_from"] = update_date_from.strip()
+    if order_no and order_no.strip():
+        conditions.append("om.order_no LIKE :order_no")
+        params["order_no"] = f"%{order_no.strip()}%"
 
-    if update_date_to and update_date_to.strip():
-        conditions.append("DATE(om.updated_dt) <= :update_date_to")
-        params["update_date_to"] = update_date_to.strip()
+    if address and address.strip():
+        conditions.append("om.order_add LIKE :address")
+        params["address"] = f"%{address.strip()}%"  # 部分一致
 
-    if updater and updater.strip():
-        conditions.append("u.user_name LIKE :updater")
-        params["updater"] = f"%{updater.strip()}%"
+    if created_date_from and created_date_from.strip():
+        conditions.append("DATE(om.created_dt) >= :created_date_from")
+        params["created_date_from"] = created_date_from.strip()
+
+    if created_date_to and created_date_to.strip():
+        conditions.append("DATE(om.created_dt) <= :created_date_to")
+        params["created_date_to"] = created_date_to.strip()
+
+    if status and status.strip():
+        conditions.append("om.attribute_05 = :status")
+        params["status"] = status.strip()
+
+    if production_type and production_type.strip():
+        conditions.append("om.attribute_04 = :production_type")
+        params["production_type"] = production_type.strip()
+
+    if deadline_dt and deadline_dt.strip():
+        conditions.append("DATE(om.deadline_dt) = :deadline_dt")
+        params["deadline_dt"] = deadline_dt.strip()
+
+    if proofreading_dt and proofreading_dt.strip():
+        conditions.append("DATE(om.proofreading_dt) = :proofreading_dt")
+        params["proofreading_dt"] = proofreading_dt.strip()
+
+    if note and note.strip():
+        conditions.append("om.note LIKE :note")
+        params["note"] = f"%{note.strip()}%"  # 部分一致
 
     where_clause = " AND ".join(conditions)
+
+    # ORDER BY（sort_by: order_no / created_date、sort_order: asc / desc）
+    order_col = "om.order_no" if (sort_by or "").strip().lower() == "order_no" else "om.created_dt"
+    order_dir = "DESC" if (sort_order or "").strip().lower() == "desc" else "ASC"
+    order_clause = f"ORDER BY {order_col} {order_dir}"
 
     # 枝番はサブクエリで取得（order_detail が無い場合は NULL → 空文字に変換して split）
     sql = f"""
@@ -139,40 +188,46 @@ def _search_orders_impl(
             om.order_add,
             om.company_id,
             om.customer_id,
+            om.template_id,
             om.design_type_id,
+            om.deadline_dt,
+            om.proofreading_dt,
             om.attribute_01 AS attribute_01,
             om.attribute_02 AS attribute_02,
             om.attribute_03 AS attribute_03,
             om.attribute_04 AS attribute_04,
             om.attribute_05 AS attribute_05,
+            om.attribute_06 AS attribute_06,
+            om.attribute_07 AS attribute_07,
+            om.attribute_08 AS attribute_08,
+            om.attribute_09 AS attribute_09,
+            om.attribute_10 AS attribute_10,
+            om.note,
             dt.design_type_name,
-            om.updated_dt,
+            om.created_dt,
             cus.customer_name,
-            cus.contact_name AS manager_name,
+            om.manager_name,
             t.template_name,
-            u.user_name AS updater_name,
+            u.user_name AS creator_name,
             (SELECT GROUP_CONCAT(od.branch_no ORDER BY od.branch_no)
              FROM order_detail od
              WHERE od.order_id = om.order_id AND od.is_deleted = 0) AS branches_str
         FROM order_main om
-        LEFT JOIN company c ON om.company_id = c.company_id AND c.is_deleted = 0
         LEFT JOIN customer cus ON om.customer_id = cus.customer_id AND cus.is_deleted = 0
         LEFT JOIN template t ON om.template_id = t.template_id AND t.is_deleted = 0
         LEFT JOIN design_type dt ON om.design_type_id = dt.design_type_id AND dt.is_deleted = 0
-        LEFT JOIN `user` u ON om.updated_by = u.user_id AND u.is_deleted = 0
+        LEFT JOIN `user` u ON om.created_by = u.user_id AND u.is_deleted = 0
         WHERE {where_clause}
-        ORDER BY om.updated_dt DESC
+        {order_clause}
         LIMIT :limit OFFSET :offset
     """
 
     count_sql = f"""
         SELECT COUNT(*) AS total
         FROM order_main om
-        LEFT JOIN company c ON om.company_id = c.company_id AND c.is_deleted = 0
         LEFT JOIN customer cus ON om.customer_id = cus.customer_id AND cus.is_deleted = 0
         LEFT JOIN template t ON om.template_id = t.template_id AND t.is_deleted = 0
         LEFT JOIN design_type dt ON om.design_type_id = dt.design_type_id AND dt.is_deleted = 0
-        LEFT JOIN `user` u ON om.updated_by = u.user_id AND u.is_deleted = 0
         WHERE {where_clause}
     """
 
@@ -190,33 +245,58 @@ def _search_orders_impl(
         branches_str = r.get("branches_str")
         branches = branches_str.split(",") if branches_str else []
 
-        # updated_dt を YYYY/MM/DD 形式に
-        updated_dt = r.get("updated_dt")
-        update_date = ""
-        if updated_dt:
-            if hasattr(updated_dt, "strftime"):
-                update_date = updated_dt.strftime("%Y/%m/%d")
+        # created_dt を YYYY/MM/DD 形式に
+        created_dt = r.get("created_dt")
+        created_date = ""
+        if created_dt:
+            if hasattr(created_dt, "strftime"):
+                created_date = created_dt.strftime("%Y/%m/%d")
             else:
-                update_date = str(updated_dt)[:10].replace("-", "/")
+                created_date = str(created_dt)[:10].replace("-", "/")
+
+        deadline_dt = r.get("deadline_dt")
+        proofreading_dt = r.get("proofreading_dt")
+        deadline_str = ""
+        if deadline_dt:
+            if hasattr(deadline_dt, "strftime"):
+                deadline_str = deadline_dt.strftime("%Y/%m/%d")
+            else:
+                deadline_str = str(deadline_dt)[:10].replace("-", "/")
+        proofreading_str = ""
+        if proofreading_dt:
+            if hasattr(proofreading_dt, "strftime"):
+                proofreading_str = proofreading_dt.strftime("%Y/%m/%d")
+            else:
+                proofreading_str = str(proofreading_dt)[:10].replace("-", "/")
 
         items.append({
+            "orderId": r.get("order_id"),
             "orderNo": r.get("order_no", ""),
             "orderName": r.get("order_name", ""),
             "address": r.get("order_add", ""),
             "companyId": r.get("company_id"),
             "customerId": r.get("customer_id"),
             "customerName": r.get("customer_name") or "",
-            "manager": r.get("manager_name") or "",
+            "manager": r.get("manager_name") or "",  # om.manager_name
+            "templateId": r.get("template_id"),
             "template": r.get("template_name") or "",
             "designTypeId": r.get("design_type_id"),
             "designType": r.get("design_type_name") or "",
+            "deadlineDt": deadline_str,
+            "proofreadingDt": proofreading_str,
             "attribute_01": (r.get("attribute_01") or r.get("om.attribute_01")) or "",
             "attribute_02": (r.get("attribute_02") or r.get("om.attribute_02")) or "",
             "attribute_03": (r.get("attribute_03") or r.get("om.attribute_03")) or "",
             "attribute_04": (r.get("attribute_04") or r.get("om.attribute_04")) or "",
             "attribute_05": (r.get("attribute_05") or r.get("om.attribute_05")) or "",
-            "updateDate": update_date,
-            "updater": r.get("updater_name") or "",
+            "attribute_06": (r.get("attribute_06") or r.get("om.attribute_06")) or "",
+            "attribute_07": (r.get("attribute_07") or r.get("om.attribute_07")) or "",
+            "attribute_08": (r.get("attribute_08") or r.get("om.attribute_08")) or "",
+            "attribute_09": (r.get("attribute_09") or r.get("om.attribute_09")) or "",
+            "attribute_10": (r.get("attribute_10") or r.get("om.attribute_10")) or "",
+            "note": r.get("note") or "",
+            "createdDate": created_date,
+            "creator": r.get("creator_name") or "",
             "branches": branches,
         })
 
@@ -265,12 +345,11 @@ def get_order_by_no(
                     om.attribute_04,
                     om.attribute_05,
                     om.note,
+                    om.manager_name,
                     cus.customer_name,
-                    cus.contact_name AS manager_name,
                     t.template_name,
                     dt.design_type_name
                 FROM order_main om
-                LEFT JOIN company c ON om.company_id = c.company_id AND c.is_deleted = 0
                 LEFT JOIN customer cus ON om.customer_id = cus.customer_id AND cus.is_deleted = 0
                 LEFT JOIN template t ON om.template_id = t.template_id AND t.is_deleted = 0
                 LEFT JOIN design_type dt ON om.design_type_id = dt.design_type_id AND dt.is_deleted = 0
@@ -348,10 +427,9 @@ def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
     """
     受注番号を採番する（order_no_seq に基づく）。
 
-    - ログイン会社（company_id）とシステムの当年が一致する order_no_seq の
-      last_number の最大値を取得。該当行がなければ 0 として扱い、次番号は 1。
-    - 採番した番号を履歴として order_no_seq に新規 INSERT する
-      （同一 company_id・year で last_number を積み上げる設計）。
+    - ログイン会社（company_id）とシステムの当年の order_no_seq を取得。
+    - 取得できた場合: last_number + 1 で UPDATE。
+    - 取得できない場合: last_number = 1 で新規 INSERT。
     - 戻り値: 年4桁 + last_number を0埋め6桁の文字列（例: 2025000001）。
 
     Args:
@@ -364,31 +442,27 @@ def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
     """
     now = datetime.now()
     year = now.year
-    # 該当年・該当会社の既存採番の最大 last_number を取得（無ければ 0）
+    # INSERT ... ON DUPLICATE KEY UPDATE で採番（競合安全）
+    db.execute(
+        text("""
+            INSERT INTO order_no_seq (company_id, `year`, last_number, is_deleted, created_by, updated_by)
+            VALUES (:company_id, :year, 1, 0, :created_by, :updated_by)
+            ON DUPLICATE KEY UPDATE
+                last_number = last_number + 1,
+                updated_by = :updated_by
+        """),
+        {"company_id": company_id, "year": year, "created_by": user_id, "updated_by": user_id},
+    )
+    db.flush()
+    # 採番後の last_number を取得
     r = db.execute(
         text("""
-            SELECT COALESCE(MAX(last_number), 0) AS max_no
-            FROM order_no_seq
+            SELECT last_number FROM order_no_seq
             WHERE company_id = :company_id AND `year` = :year AND is_deleted = 0
         """),
         {"company_id": company_id, "year": year},
     ).fetchone()
-    next_no = (r[0] or 0) + 1
-    # 今回使用する番号を order_no_seq に INSERT（履歴として残し、次回は MAX+1 で採番）
-    db.execute(
-        text("""
-            INSERT INTO order_no_seq (company_id, `year`, last_number, is_deleted, created_by, updated_by)
-            VALUES (:company_id, :year, :last_number, 0, :created_by, :updated_by)
-        """),
-        {
-            "company_id": company_id,
-            "year": year,
-            "last_number": next_no,
-            "created_by": user_id,
-            "updated_by": user_id,
-        },
-    )
-    db.flush()
+    next_no = r[0] if r else 1
     return f"{year:04d}{next_no:06d}"
 
 
@@ -407,6 +481,7 @@ def create_order(
     attribute_04: str = Body("", embed=True, alias="attribute04"),
     attribute_05: str = Body("", embed=True, alias="attribute05"),
     template_items: list[dict] = Body(..., embed=True, alias="templateItems"),
+    manager_name: str | None = Body(None, embed=True, alias="managerName"),
     deadline_dt: str | None = Body(None, embed=True, alias="deadlineDt"),
     proofreading_dt: str | None = Body(None, embed=True, alias="proofreadingDt"),
     note: str | None = Body(None, embed=True, alias="note"),
@@ -483,14 +558,15 @@ def create_order(
         db.execute(
             text("""
                 INSERT INTO order_main
-                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, deadline_dt, proofreading_dt, attribute_01, attribute_02, attribute_03, attribute_04, attribute_05, note, is_deleted, created_by, updated_by)
-                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, :deadline_dt, :proofreading_dt, :attribute_01, :attribute_02, :attribute_03, :attribute_04, :attribute_05, :note, 0, :created_by, :updated_by)
+                (company_id, customer_id, template_id, order_no, order_name, order_add, design_type_id, manager_name, deadline_dt, proofreading_dt, attribute_01, attribute_02, attribute_03, attribute_04, attribute_05, note, is_deleted, created_by, updated_by)
+                VALUES (:company_id, :customer_id, :template_id, :order_no, :order_name, :order_add, :design_type_id, :manager_name, :deadline_dt, :proofreading_dt, :attribute_01, :attribute_02, :attribute_03, :attribute_04, :attribute_05, :note, 0, :created_by, :updated_by)
             """),
             {
                 "company_id": company_id,
                 "customer_id": customer_id,
                 "template_id": template_id,
                 "order_no": order_no,
+                "manager_name": (manager_name or "").strip() or None,
                 "order_name": order_name.strip(),
                 "order_add": order_add.strip(),
                 "design_type_id": design_type_id,

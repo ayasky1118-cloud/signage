@@ -1,4 +1,8 @@
-CREATE TABLE IF NOT EXISTS order_item
+SET NAMES utf8mb4;
+
+DROP TABLE IF EXISTS order_item;
+
+CREATE TABLE order_item
 (
 	order_item_id		BIGINT AUTO_INCREMENT							COMMENT '注文項目ID'
 ,	order_id			BIGINT NOT NULL									COMMENT '受注ID'

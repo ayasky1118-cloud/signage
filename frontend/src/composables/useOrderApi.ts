@@ -13,20 +13,31 @@ function getApiBase(): string {
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 export interface OrderSearchParams {
-  orderNo?: string
+  /** 会社ID（ログイン会社。指定時は当該会社の注文のみ返す） */
+  companyId?: number
+  customerId?: number
+  manager?: string
   orderName?: string
-  address?: string
-  customerName?: string
   designTypeId?: number
-  designTypeName?: string
-  updateDateFrom?: string
-  updateDateTo?: string
-  updater?: string
+  orderNo?: string
+  address?: string
+  createdDateFrom?: string
+  createdDateTo?: string
+  status?: string
+  productionType?: string
+  deadlineDt?: string
+  proofreadingDt?: string
+  note?: string
+  /** ソート項目（orderNo / createdDate）。未指定時は createdDate 昇順 */
+  sortBy?: "orderNo" | "createdDate"
+  /** ソート順（asc / desc）。未指定時は asc */
+  sortOrder?: "asc" | "desc"
   page?: number
   perPage?: number
 }
 
 export interface OrderItem {
+  orderId?: number
   orderNo: string
   orderName: string
   address: string
@@ -34,9 +45,14 @@ export interface OrderItem {
   customerId?: number
   customerName: string
   manager: string
+  templateId?: number
   template: string
   designTypeId?: number
   designType: string
+  /** 納期（Y/m/d） */
+  deadlineDt?: string
+  /** 校正予定日（Y/m/d） */
+  proofreadingDt?: string
   /** 社内CD (attribute_01) */
   attribute_01?: string
   /** 事業所CD (attribute_02) */
@@ -47,8 +63,15 @@ export interface OrderItem {
   attribute_04?: string
   /** ステータス (attribute_05) */
   attribute_05?: string
-  updateDate: string
-  updater: string
+  attribute_06?: string
+  attribute_07?: string
+  attribute_08?: string
+  attribute_09?: string
+  attribute_10?: string
+  /** 備考 */
+  note?: string
+  createdDate: string
+  creator: string
   branches: string[]
 }
 
@@ -194,6 +217,8 @@ export interface CreateOrderParams {
   attribute04?: string
   /** ステータス（attribute_05）。任意 */
   attribute05?: string
+  /** 担当者名。任意 */
+  managerName?: string
   /** 納期（YYYY-MM-DD）。任意 */
   deadlineDt?: string
   /** 校正予定日（YYYY-MM-DD）。任意 */
@@ -216,15 +241,23 @@ export async function searchOrders(
 ): Promise<OrderSearchResult> {
   const searchParams = new URLSearchParams()
 
-  if (params.orderNo?.trim()) searchParams.set("order_no", params.orderNo.trim())
+  if (params.companyId != null) searchParams.set("company_id", String(params.companyId))
+  if (params.customerId != null) searchParams.set("customer_id", String(params.customerId))
+  if (params.manager?.trim()) searchParams.set("manager", params.manager.trim())
   if (params.orderName?.trim()) searchParams.set("order_name", params.orderName.trim())
-  if (params.address?.trim()) searchParams.set("address", params.address.trim())
-  if (params.customerName?.trim()) searchParams.set("customer_name", params.customerName.trim())
   if (params.designTypeId != null) searchParams.set("design_type_id", String(params.designTypeId))
-  if (params.designTypeName?.trim()) searchParams.set("design_type_name", params.designTypeName.trim())
-  if (params.updateDateFrom?.trim()) searchParams.set("update_date_from", params.updateDateFrom.trim())
-  if (params.updateDateTo?.trim()) searchParams.set("update_date_to", params.updateDateTo.trim())
-  if (params.updater?.trim()) searchParams.set("updater", params.updater.trim())
+  if (params.orderNo?.trim()) searchParams.set("order_no", params.orderNo.trim())
+  if (params.address?.trim()) searchParams.set("address", params.address.trim())
+  if (params.createdDateFrom?.trim()) searchParams.set("created_date_from", params.createdDateFrom.trim())
+  if (params.createdDateTo?.trim()) searchParams.set("created_date_to", params.createdDateTo.trim())
+  if (params.status?.trim()) searchParams.set("status", params.status.trim())
+  if (params.productionType?.trim()) searchParams.set("production_type", params.productionType.trim())
+  if (params.deadlineDt?.trim()) searchParams.set("deadline_dt", params.deadlineDt.trim())
+  if (params.proofreadingDt?.trim()) searchParams.set("proofreading_dt", params.proofreadingDt.trim())
+  if (params.note?.trim()) searchParams.set("note", params.note.trim())
+  if (params.sortBy === "orderNo") searchParams.set("sort_by", "order_no")
+  else if (params.sortBy === "createdDate") searchParams.set("sort_by", "created_date")
+  if (params.sortOrder === "asc" || params.sortOrder === "desc") searchParams.set("sort_order", params.sortOrder)
   searchParams.set("page", String(params.page ?? 1))
   searchParams.set("per_page", String(params.perPage ?? 10))
 
@@ -285,6 +318,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
   }
   if (params.attribute04 != null && params.attribute04 !== "") body.attribute04 = params.attribute04
   if (params.attribute05 != null && params.attribute05 !== "") body.attribute05 = params.attribute05
+  if (params.managerName != null && params.managerName !== "") body.managerName = params.managerName
   if (params.deadlineDt != null && params.deadlineDt !== "") body.deadlineDt = params.deadlineDt
   if (params.proofreadingDt != null && params.proofreadingDt !== "") body.proofreadingDt = params.proofreadingDt
   if (params.note != null && params.note !== "") body.note = params.note

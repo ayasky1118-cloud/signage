@@ -17,6 +17,7 @@ export interface CustomerItem {
   companyId: number
   customerName: string
   address: string
+  contactName?: string
 }
 
 export async function fetchCustomers(companyId: number): Promise<CustomerItem[]> {
@@ -31,5 +32,6 @@ export async function fetchCustomers(companyId: number): Promise<CustomerItem[]>
     companyId: Number(r.company_id),
     customerName: String(r.customer_name ?? ""),
     address: String(r.address ?? ""),
+    contactName: String(r.contact_name ?? ""),
   }))
 }
