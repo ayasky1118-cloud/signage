@@ -9,6 +9,7 @@ import { ref, computed, watch, onMounted } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, type OrderItem } from "../composables/useOrderApi"
+import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 
 const router = useRouter()
 const route = useRoute()
@@ -35,6 +36,11 @@ function designTypeLabel(designType: string): string {
   return designType || "—"
 }
 
+/** 空白時は em dash で表示（注文詳細モーダルと合わせる） */
+function orDash(val: string | undefined): string {
+  return (val ?? "").trim() || "—"
+}
+
 /* ルートクエリ: 一覧から遷移時は orderNo, itemCode, mode=edit */
 const cameFromList = computed(() => route.query.mode === "edit" && !!route.query.orderNo)
 const initialOrderNo = computed(() => (route.query.orderNo as string) ?? "")
@@ -57,14 +63,14 @@ const orderDisplay = ref<{
   updateDate: string
   updater: string
 }>({
-  orderName: "-",
-  address: "-",
-  customerName: "-",
-  manager: "-",
-  template: "-",
-  designType: "-",
-  updateDate: "-",
-  updater: "-",
+  orderName: "",
+  address: "",
+  customerName: "",
+  manager: "",
+  template: "",
+  designType: "",
+  updateDate: "",
+  updater: "",
 })
 
 /* 注文番号は一覧から来た場合は読取専用 */
@@ -157,14 +163,14 @@ async function applyOrderBySearch(orderNo: string) {
     if (result.items.length > 0) {
       const o = result.items[0]
       orderDisplay.value = {
-        orderName: o.orderName || "-",
-        address: o.address || "-",
-        customerName: o.customerName || "-",
-        manager: o.manager || "-",
-        template: o.template || "-",
+        orderName: o.orderName ?? "",
+        address: o.address ?? "",
+        customerName: o.customerName ?? "",
+        manager: o.manager ?? "",
+        template: o.template ?? "",
         designType: designTypeLabel(o.designType),
-        updateDate: o.createdDate || "-",
-        updater: o.creator || "-",
+        updateDate: o.createdDate ?? "",
+        updater: o.creator ?? "",
       }
       lastConfirmedOrderNo.value = o.orderNo
       inputOrderNo.value = o.orderNo
@@ -192,13 +198,13 @@ async function applyOrderBySearch(orderNo: string) {
   try {
     const detail = await getOrderByNo(no)
     orderDisplay.value = {
-      orderName: detail.orderName || "-",
-      address: detail.address || "-",
-      customerName: detail.customerName || "-",
-      manager: detail.manager || "-",
-      template: detail.templateName || "-",
+      orderName: detail.orderName ?? "",
+      address: detail.address ?? "",
+      customerName: detail.customerName ?? "",
+      manager: detail.manager ?? "",
+      template: detail.templateName ?? "",
       designType: designTypeLabel(detail.designTypeName),
-      updateDate: detail.deadlineDt || "-",
+      updateDate: detail.deadlineDt ?? "",
       updater: "",
     }
     lastConfirmedOrderNo.value = detail.orderNo
@@ -211,14 +217,14 @@ async function applyOrderBySearch(orderNo: string) {
     hasSearched.value = true
   } catch {
     orderDisplay.value = {
-      orderName: "-",
-      address: "-",
-      customerName: "-",
-      manager: "-",
-      template: "-",
-      designType: "-",
-      updateDate: "-",
-      updater: "-",
+      orderName: "",
+      address: "",
+      customerName: "",
+      manager: "",
+      template: "",
+      designType: "",
+      updateDate: "",
+      updater: "",
     }
     lastConfirmedOrderNo.value = ""
     allBranches.value = []
@@ -231,14 +237,14 @@ async function applyOrderBySearch(orderNo: string) {
 
 function clearOrderInfoExceptOrderNo() {
   orderDisplay.value = {
-    orderName: "-",
-    address: "-",
-    customerName: "-",
-    manager: "-",
-    template: "-",
-    designType: "-",
-    updateDate: "-",
-    updater: "-",
+    orderName: "",
+    address: "",
+    customerName: "",
+    manager: "",
+    template: "",
+    designType: "",
+    updateDate: "",
+    updater: "",
   }
   if (!cameFromList.value) hasSearched.value = false
   allBranches.value = []
@@ -430,10 +436,6 @@ function switchToUpdateMode() {
   pendingAction.value = null
 }
 
-function closeOrderNoSelectModal() {
-  showOrderNoSelectModal.value = false
-}
-
 function closeBranchAddModal() {
   branchAddInput.value = ""
   showBranchAddModal.value = false
@@ -454,12 +456,8 @@ function closeBranchDeleteModal() {
 }
 
 function selectOrderFromList(order: OrderItem) {
-  if (order.orderNo === lastConfirmedOrderNo.value) {
-    closeOrderNoSelectModal()
-    return
-  }
+  if (order.orderNo === lastConfirmedOrderNo.value) return
   if (isDirty.value) {
-    closeOrderNoSelectModal()
     pendingAction.value = { type: "changeOrderNo", orderNo: order.orderNo }
     openBranchSwitchConfirmModal()
     return
@@ -467,7 +465,6 @@ function selectOrderFromList(order: OrderItem) {
   inputOrderNo.value = order.orderNo
   lastConfirmedOrderNo.value = order.orderNo
   clearOrderInfoExceptOrderNo()
-  closeOrderNoSelectModal()
   applyOrderBySearch(order.orderNo)
 }
 
@@ -718,68 +715,64 @@ watch(activeBranch, (newVal, oldVal) => {
 
 <template>
   <main id="order-detail-page" class="max-w-6xl mx-auto py-12 px-8 bg-[#e2e8f0] text-slate-600 min-h-screen">
-    <!-- ページタイトル + 注文情報 -->
+    <!-- ページタイトル + 詳細（注文番号・検索など） -->
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
       <div class="bg-main px-8 py-4">
         <h2 class="text-base font-bold text-white tracking-tight">看板編集</h2>
       </div>
-      <div class="px-6 pt-5 pb-6 md:px-8 md:pt-6 md:pb-7">
-        <div class="flex items-center justify-between gap-4 mb-4 text-main">
-          <div class="flex items-center gap-2">
-            <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-            <h3 class="font-bold text-base tracking-tight">注文情報</h3>
-          </div>
+      <div class="px-6 pt-2 pb-6 md:px-8 md:pt-3 md:pb-7 min-w-0">
+        <!-- 詳細（展開で表示）※注文一覧と同じスタイル -->
+        <div>
           <button
             type="button"
-            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all duration-200"
             :aria-expanded="orderInfoExpanded"
             @click="orderInfoExpanded = !orderInfoExpanded"
           >
             <span
               class="inline-flex transition-transform duration-200"
-              :class="{ 'rotate-180': !orderInfoExpanded }"
+              :class="{ 'rotate-180': orderInfoExpanded }"
             >
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </span>
-            <span>{{ orderInfoExpanded ? "閉じる" : "表示" }}</span>
+            <span>詳細</span>
           </button>
-        </div>
-        <div
-          v-show="orderInfoExpanded"
-          class="grid grid-cols-1 md:[grid-template-columns:380px_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm"
-        >
+          <div v-show="orderInfoExpanded" class="mt-4 space-y-4 min-w-0">
+            <div class="grid grid-cols-1 md:[grid-template-columns:380px_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm">
           <div class="space-y-1.5">
             <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
               <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
               注文番号
             </label>
-            <div class="flex flex-wrap md:flex-nowrap items-center gap-2 md:gap-3">
+            <div class="flex flex-wrap items-center gap-2">
               <input
                 v-model="inputOrderNo"
                 type="text"
-                class="w-[25ch] px-3 py-2 rounded-lg border text-slate-700 font-mono text-sm outline-none transition-all duration-200"
-                :class="
-                  orderNoReadOnly
-                    ? 'bg-slate-50 text-slate-500 border-slate-200'
-                    : 'border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue'
-                "
                 placeholder="注文番号を入力してください"
                 maxlength="20"
                 :readonly="orderNoReadOnly"
+                class="w-48 min-w-[12rem] h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
+                :class="{
+                  'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
+                  'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
+                }"
               />
               <button
                 type="button"
-                class="px-4 md:px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 text-[11px] md:text-xs font-bold text-slate-700 shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                title="選択"
+                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                 :disabled="selectSearchDisabled"
                 @click="openOrderNoSelectModal"
               >
-                選択
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
               </button>
               <button
                 type="button"
-                class="px-4 md:px-5 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-[11px] md:text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                 :disabled="selectSearchDisabled"
                 @click="confirmSearch"
               >
@@ -789,23 +782,25 @@ watch(activeBranch, (newVal, oldVal) => {
           </div>
           <div class="space-y-1 md:pl-6">
             <div class="text-xs text-slate-400 font-semibold">注文名 / 住所</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orderDisplay.orderName }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orderDisplay.address }}</div>
+            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.orderName) }}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.address) }}</div>
           </div>
           <div class="space-y-1 md:pl-6">
             <div class="text-xs text-slate-400 font-semibold">顧客名 / 担当者</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orderDisplay.customerName }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orderDisplay.manager }}</div>
+            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.customerName) }}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.manager) }}</div>
           </div>
           <div class="space-y-1">
             <div class="text-xs text-slate-400 font-semibold">デザイン種別 / テンプレート</div>
-            <div class="text-slate-700 text-sm">{{ orderDisplay.template }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orderDisplay.designType }}</div>
+            <div class="text-slate-700 text-sm">{{ orDash(orderDisplay.designType) }}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.template) }}</div>
           </div>
           <div class="space-y-1 md:pl-6">
             <div class="text-xs text-slate-400 font-semibold">更新日 / 更新者</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orderDisplay.updateDate }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orderDisplay.updater }}</div>
+            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.updateDate) }}</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.updater) }}</div>
+          </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1247,75 +1242,13 @@ watch(activeBranch, (newVal, oldVal) => {
     </div>
   </Teleport>
 
-  <!-- 注文番号選択 -->
-  <Teleport to="body">
-    <div
-      v-if="showOrderNoSelectModal"
-      class="fixed inset-0 z-50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="orderNoSelectModalTitle"
-    >
-      <div class="fixed inset-0 bg-black/40" @click="closeOrderNoSelectModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-5xl overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="orderNoSelectModalTitle" class="text-base font-bold text-white tracking-tight">注文番号を選択</h3>
-          </div>
-          <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-            <table class="w-full text-left text-xs">
-              <thead>
-                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                  <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
-                  <th class="px-3 py-2 font-bold border-b border-slate-200">注文名 / 住所</th>
-                  <th class="px-3 py-2 font-bold border-b border-slate-200">顧客名 / 担当者</th>
-                  <th class="px-3 py-2 font-bold border-b border-slate-200 whitespace-normal min-w-[140px]">デザイン種別 / テンプレート</th>
-                  <th class="px-3 py-2 font-bold border-b border-slate-200">更新日 / 更新者</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr
-                  v-for="o in orderListForSelect"
-                  :key="o.orderNo"
-                  class="hover:bg-slate-100 cursor-pointer transition-colors"
-                  @click="selectOrderFromList(o)"
-                >
-                  <td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">{{ o.orderNo }}</span></td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 font-semibold text-xs">{{ o.orderName }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ o.address }}</div>
-                  </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 font-semibold text-xs">{{ o.customerName }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ o.manager }}</div>
-                  </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 text-xs">{{ o.template }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ designTypeLabel(o.designType) }}</div>
-                  </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-600 text-xs">{{ o.createdDate }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ o.creator }}</div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <p v-if="!isLoadingOrders && orderListForSelect.length === 0" class="py-4 text-sm text-slate-500 text-center">該当する注文がありません</p>
-            <p v-if="isLoadingOrders" class="py-4 text-sm text-slate-500 text-center">読み込み中...</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="closeOrderNoSelectModal"
-            >
-              キャンセル
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <!-- 注文番号選択（共通コンポーネント） -->
+  <OrderNoSelectModal
+    v-model="showOrderNoSelectModal"
+    :items="orderListForSelect"
+    :loading="isLoadingOrders"
+    @select="selectOrderFromList"
+  />
 
   <!-- 枝番追加 -->
   <Teleport to="body">

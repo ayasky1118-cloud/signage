@@ -9,7 +9,10 @@ import { validateAddress } from "../composables/useAddressApi"
 import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
-import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
+import { fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
+import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
+import CustomerSelectModal from "../components/CustomerSelectModal.vue"
+import TemplateSelectModal from "../components/TemplateSelectModal.vue"
 
 const router = useRouter()
 const route = useRoute()
@@ -246,11 +249,6 @@ const registerResultMessage = ref("登録が完了しました。")
 /** 住所検証API実行中（登録ボタン押下時） */
 const isValidatingAddress = ref(false)
 
-/* デザイン種別表示名（APIで名称を返すためそのまま表示） */
-function designTypeLabel(v: string): string {
-  return v || "—"
-}
-
 /* 注文データをフォームに反映（order_item は pendingOrderItems に渡し、template 読込後に反映） */
 function applyOrderData(order: OrderDetail) {
   orderNo.value = order.orderNo ?? ""
@@ -350,7 +348,6 @@ async function openOrderNoSelectModal() {
 function selectOrderNo(order: OrderItem) {
   orderNo.value = order.orderNo ?? ""
   clearOtherFieldsOnOrderNoChange()
-  orderNoSelectModalOpen.value = false
 }
 
 /* 検索ボタン：注文番号で検索してフォームに反映（order_item 含む） */
@@ -391,12 +388,11 @@ function selectCustomer(c: CustomerItem) {
   applyCustomerData(c)
   templateId.value = null
   templateItemValues.value = []
-  customerSelectModalOpen.value = false
 }
 
-function selectTemplateFromModal(id: number) {
-  templateId.value = id
-  templateSelectModalOpen.value = false
+function selectTemplateFromModal(opt: TemplateOption) {
+  templateId.value = opt.templateId
+  templateOptions.value = [opt]
 }
 
 /* 必須バリデーション（フォーカス用の ref 名を返す） */
@@ -717,15 +713,6 @@ onMounted(async () => {
   const loginCompanyId = getLoginCompanyId()
   loadDesignTypes(loginCompanyId)
 
-  isLoadingTemplates.value = true
-  try {
-    templateOptions.value = await fetchTemplates(loginCompanyId)
-  } catch {
-    templateOptions.value = []
-  } finally {
-    isLoadingTemplates.value = false
-  }
-
   const q = route.query
   if (q.mode === "edit" || q.orderNo) {
     cameFromList.value = true
@@ -813,7 +800,7 @@ watch(orderNo, () => {
           <section class="space-y-5 pt-4">
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   注文番号
                 </label>
@@ -854,7 +841,7 @@ watch(orderNo, () => {
                 </div>
               </div>
               <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   社内CD
                 </label>
@@ -868,7 +855,7 @@ watch(orderNo, () => {
                 />
               </div>
               <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   事業所CD
                 </label>
@@ -882,7 +869,7 @@ watch(orderNo, () => {
                 />
               </div>
               <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   現場CD
                 </label>
@@ -896,7 +883,7 @@ watch(orderNo, () => {
                 />
               </div>
               <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   ステータス
                 </label>
                 <select
@@ -913,7 +900,7 @@ watch(orderNo, () => {
             <!-- 制作区分・納期・校正予定日 -->
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-bold text-slate-500 block">制作区分</label>
+                <label class="text-xs font-normal text-slate-500 block">制作区分</label>
                 <select
                   v-model="productionType"
                   class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
@@ -924,7 +911,7 @@ watch(orderNo, () => {
                 </select>
               </div>
               <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-bold text-slate-500 block">納期</label>
+                <label class="text-xs font-normal text-slate-500 block">納期</label>
                 <input
                   ref="inputDeadlineRef"
                   type="text"
@@ -936,7 +923,7 @@ watch(orderNo, () => {
                 />
               </div>
               <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-bold text-slate-500 block">校正予定日</label>
+                <label class="text-xs font-normal text-slate-500 block">校正予定日</label>
                 <input
                   ref="inputProofreadingRef"
                   type="text"
@@ -951,7 +938,7 @@ watch(orderNo, () => {
 
             <!-- 備考（下の行に一項目） -->
             <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                 備考
               </label>
@@ -967,7 +954,7 @@ watch(orderNo, () => {
 
             <!-- 注文名 -->
             <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                 注文名
               </label>
@@ -982,7 +969,7 @@ watch(orderNo, () => {
             </div>
 
             <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                 住所
               </label>
@@ -1003,7 +990,7 @@ watch(orderNo, () => {
             <div class="space-y-2.5">
               <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
                 <div class="space-y-2.5 sm:flex-[2]">
-                  <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                     <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                     顧客
                   </label>
@@ -1031,7 +1018,7 @@ watch(orderNo, () => {
                   </div>
                 </div>
                 <div class="space-y-2.5 sm:flex-1">
-                  <label class="text-xs font-bold text-slate-500">担当者名</label>
+                  <label class="text-xs font-normal text-slate-500">担当者名</label>
                   <input
                     v-model="manager"
                     type="text"
@@ -1044,7 +1031,7 @@ watch(orderNo, () => {
             </div>
             <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
               <div class="space-y-2.5 sm:flex-1">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   デザイン種別
                 </label>
@@ -1067,7 +1054,7 @@ watch(orderNo, () => {
                 </select>
               </div>
               <div class="space-y-2.5 sm:flex-[2]">
-                <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                   <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                   テンプレート
                 </label>
@@ -1108,7 +1095,7 @@ watch(orderNo, () => {
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6">
               <div class="space-y-1.5">
-                <label class="text-xs font-bold text-slate-500">テンプレートプレビュー</label>
+                <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
                 <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
                   <span class="text-slate-400 text-xs">プレビュー</span>
                 </div>
@@ -1121,7 +1108,7 @@ watch(orderNo, () => {
                     :key="item.templateItemId"
                     class="space-y-2.5"
                   >
-                  <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                     <span v-if="item.isRequired" class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
                     {{ item.itemName }}
                   </label>
@@ -1206,167 +1193,30 @@ watch(orderNo, () => {
       </div>
     </Teleport>
 
-    <!-- 注文番号選択モーダル -->
-    <Teleport to="body">
-      <div v-show="orderNoSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="orderNoSelectModalOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">注文番号を選択</h3>
-            </div>
-            <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-              <p v-if="isLoadingOrders" class="text-sm text-slate-500">読み込み中...</p>
-              <table v-else class="w-full text-left text-xs">
-                <thead>
-                  <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                    <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">社内CD<br>事業所CD<br>現場CD</span></th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>担当者</span></th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200">デザイン種別</th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">登録日<br>登録者</span></th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr
-                    v-for="order in orderListForSelect"
-                    :key="order.orderNo"
-                    class="hover:bg-slate-100 cursor-pointer transition-colors"
-                    @click="selectOrderNo(order)"
-                  >
-                    <td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">{{ order.orderNo }}</span></td>
-                    <td class="px-3 py-2 text-slate-600 text-xs">
-                      <div>{{ order.attribute_01 ?? '—' }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.attribute_02 ?? '—' }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.attribute_03 ?? '—' }}</div>
-                    </td>
-                    <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ order.orderName }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.address }}</div>
-                    </td>
-                    <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ order.customerName || "—" }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager?.trim() || "—" }}</div>
-                    </td>
-                    <td class="px-3 py-2 text-slate-600 text-xs">{{ designTypeLabel(order.designType) }}</td>
-                    <td class="px-3 py-2">
-                      <div class="text-slate-600 text-xs">{{ order.createdDate }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ order.creator }}</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <p v-if="!isLoadingOrders && orderListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="orderNoSelectModalOpen = false"
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 注文番号選択モーダル（共通コンポーネント） -->
+    <OrderNoSelectModal
+      v-model="orderNoSelectModalOpen"
+      :items="orderListForSelect"
+      :loading="isLoadingOrders"
+      @select="selectOrderNo"
+    />
 
-    <!-- テンプレート選択モーダル（グリッド） -->
-    <Teleport to="body">
-      <div v-show="templateSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="templateSelectModalOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
-            <div class="px-6 py-3 bg-main flex-shrink-0">
-              <h3 class="text-base font-bold text-white tracking-tight">テンプレートを選択</h3>
-            </div>
-            <div class="px-8 py-6 flex-1 min-h-0 overflow-auto">
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                <button
-                  v-for="opt in templateOptions"
-                  :key="opt.templateId"
-                  type="button"
-                  class="template-select-item flex flex-col rounded-xl border-2 border-slate-200 bg-white overflow-hidden hover:ring-2 hover:ring-main hover:ring-offset-2 focus:ring-2 focus:ring-main focus:ring-offset-2 focus:outline-none transition-all duration-200 text-left"
-                  @click="selectTemplateFromModal(opt.templateId)"
-                >
-                  <div class="h-64 w-full bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    <span class="text-slate-400 text-xs">テンプレート</span>
-                  </div>
-                  <div class="px-3 py-2 text-xs font-semibold text-slate-700">{{ opt.templateName }}</div>
-                </button>
-              </div>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end flex-shrink-0">
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="templateSelectModalOpen = false"
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- テンプレート選択モーダル（共通コンポーネント。ログイン会社ID・顧客IDで抽出） -->
+    <TemplateSelectModal
+      v-model="templateSelectModalOpen"
+      :company-id="getLoginCompanyId()"
+      :customer-id="customerId"
+      @select="selectTemplateFromModal"
+    />
 
-    <!-- 顧客選択モーダル -->
-    <Teleport to="body">
-      <div v-show="customerSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="customerSelectModalOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">顧客選択</h3>
-            </div>
-            <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-              <p v-if="isLoadingCustomers" class="text-sm text-slate-500">読み込み中...</p>
-              <table v-else class="w-full text-left text-xs">
-                <thead>
-                  <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                    <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>住所</span></th>
-                    <th class="px-3 py-2 font-bold border-b border-slate-200">担当者</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr
-                    v-for="c in customerListForSelect"
-                    :key="c.customerId"
-                    class="hover:bg-slate-100 cursor-pointer transition-colors"
-                    @click="selectCustomer(c)"
-                  >
-                    <td class="px-3 py-2">
-                      <div class="text-slate-700 font-semibold text-xs">{{ c.customerName }}</div>
-                      <div class="text-[10px] text-slate-500 mt-0.5">{{ c.address }}</div>
-                    </td>
-                    <td class="px-3 py-2 text-slate-600 text-xs">{{ c.contactName?.trim() || "—" }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <p v-if="!isLoadingCustomers && customerListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="clearCustomer(); customerSelectModalOpen = false"
-              >
-                クリア
-              </button>
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="customerSelectModalOpen = false"
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 顧客選択モーダル（共通コンポーネント） -->
+    <CustomerSelectModal
+      v-model="customerSelectModalOpen"
+      :items="customerListForSelect"
+      :loading="isLoadingCustomers"
+      @select="selectCustomer"
+      @clear="clearCustomer"
+    />
 
     <!-- 新規→変更で入力変更あり案内 -->
     <Teleport to="body">

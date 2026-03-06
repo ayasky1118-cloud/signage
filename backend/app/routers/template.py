@@ -18,17 +18,29 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 def list_templates(
     db: Session = Depends(get_db),
     company_id: int = Query(..., description="会社ID（ログイン会社）"),
+    customer_id: int | None = Query(None, description="顧客ID（指定時は当該顧客に紐づくテンプレートのみ返す）"),
 ):
     """
     指定会社に紐づくテンプレート一覧を表示順で返す。
+    customer_id を指定した場合はその顧客に紐づくテンプレートのみ返す。
     """
-    sql = text("""
-        SELECT template_id, company_id, template_name, display_order
-        FROM template
-        WHERE company_id = :company_id AND is_deleted = 0
-        ORDER BY display_order, template_id
-    """)
-    rows = db.execute(sql, {"company_id": company_id}).mappings().all()
+    if customer_id is not None:
+        sql = text("""
+            SELECT template_id, company_id, template_name, display_order
+            FROM template
+            WHERE company_id = :company_id AND customer_id = :customer_id AND is_deleted = 0
+            ORDER BY display_order, template_id
+        """)
+        params = {"company_id": company_id, "customer_id": customer_id}
+    else:
+        sql = text("""
+            SELECT template_id, company_id, template_name, display_order
+            FROM template
+            WHERE company_id = :company_id AND is_deleted = 0
+            ORDER BY display_order, template_id
+        """)
+        params = {"company_id": company_id}
+    rows = db.execute(sql, params).mappings().all()
     return [
         {
             "templateId": r["template_id"],

@@ -9,6 +9,8 @@ import "../assets/styles/order-list.css"
 import { searchOrders, type OrderItem } from "../composables/useOrderApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
+import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
+import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 
 const router = useRouter()
 const route = useRoute()
@@ -306,10 +308,10 @@ function openCustomerSelectModal() {
   }
 }
 
+/** 顧客選択時。一覧画面では担当者名は検索条件に反映しない */
 function selectCustomer(c: CustomerItem) {
   searchCustomerId.value = c.customerId
   searchCustomerName.value = c.customerName
-  customerSelectModalOpen.value = false
 }
 
 function clearCustomer() {
@@ -332,7 +334,6 @@ async function openOrderNoSelectModal() {
 
 function selectOrderNo(order: OrderItem) {
   searchOrderNo.value = order.orderNo ?? ""
-  orderNoSelectModalOpen.value = false
 }
 
 onMounted(async () => {
@@ -587,66 +588,13 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 注文番号選択モーダル -->
-      <Teleport to="body">
-        <div v-show="orderNoSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-          <div class="fixed inset-0 bg-black/40" @click="orderNoSelectModalOpen = false"></div>
-          <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-              <div class="px-6 py-3 bg-main">
-                <h3 class="text-base font-bold text-white tracking-tight">注文番号を選択</h3>
-              </div>
-              <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-                <p v-if="isLoadingOrders" class="text-sm text-slate-500">読み込み中...</p>
-                <table v-else class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                      <th class="px-3 py-2 font-bold border-b border-slate-200">注文番号</th>
-                      <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
-                      <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>担当者</span></th>
-                      <th class="px-3 py-2 font-bold border-b border-slate-200">デザイン種別</th>
-                      <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">登録日<br>登録者</span></th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    <tr
-                      v-for="order in orderListForSelect"
-                      :key="order.orderNo"
-                      class="hover:bg-slate-100 cursor-pointer transition-colors"
-                      @click="selectOrderNo(order)"
-                    >
-                      <td class="px-3 py-2"><span class="font-mono text-xs font-bold text-slate-700">{{ order.orderNo }}</span></td>
-                      <td class="px-3 py-2">
-                        <div class="text-slate-700 font-semibold text-xs">{{ order.orderName }}</div>
-                        <div class="text-[10px] text-slate-500 mt-0.5 truncate">{{ order.address }}</div>
-                      </td>
-                      <td class="px-3 py-2">
-                        <div class="text-slate-700 font-semibold text-xs">{{ order.customerName || "—" }}</div>
-                        <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager?.trim() || "—" }}</div>
-                      </td>
-                      <td class="px-3 py-2 text-slate-600 text-xs">{{ designTypeLabel(order.designType) }}</td>
-                      <td class="px-3 py-2">
-                        <div class="text-slate-600 text-xs">{{ order.createdDate }}</div>
-                        <div class="text-[10px] text-slate-500 mt-0.5">{{ order.creator }}</div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p v-if="!isLoadingOrders && orderListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
-              </div>
-              <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
-                <button
-                  type="button"
-                  class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                  @click="orderNoSelectModalOpen = false"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Teleport>
+      <!-- 注文番号選択モーダル（共通コンポーネント） -->
+      <OrderNoSelectModal
+        v-model="orderNoSelectModalOpen"
+        :items="orderListForSelect"
+        :loading="isLoadingOrders"
+        @select="selectOrderNo"
+      />
 
       <!-- 注文詳細モーダル -->
       <Teleport to="body">
@@ -784,59 +732,14 @@ onUnmounted(() => {
         </div>
       </Teleport>
 
-      <!-- 顧客選択モーダル -->
-      <Teleport to="body">
-        <div v-show="customerSelectModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-          <div class="fixed inset-0 bg-black/40" @click="customerSelectModalOpen = false"></div>
-          <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-              <div class="px-6 py-3 bg-main">
-                <h3 class="text-base font-bold text-white tracking-tight">顧客を選択</h3>
-              </div>
-              <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-                <p v-if="isLoadingCustomers" class="text-sm text-slate-500">読み込み中...</p>
-                <table v-else class="w-full text-left text-xs">
-                  <thead>
-                    <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                      <th class="px-3 py-2 font-bold border-b border-slate-200"><span class="header-2line">顧客名<br>住所</span></th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    <tr
-                      v-for="c in customerListForSelect"
-                      :key="c.customerId"
-                      class="hover:bg-slate-100 cursor-pointer transition-colors"
-                      @click="selectCustomer(c)"
-                    >
-                      <td class="px-3 py-2">
-                        <div class="text-slate-700 font-semibold text-xs">{{ c.customerName }}</div>
-                        <div class="text-[10px] text-slate-500 mt-0.5">{{ c.address }}</div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p v-if="!isLoadingCustomers && customerListForSelect.length === 0" class="text-sm text-slate-500">データがありません</p>
-              </div>
-              <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-                <button
-                  type="button"
-                  class="px-6 py-2 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                  @click="clearCustomer(); customerSelectModalOpen = false"
-                >
-                  クリア
-                </button>
-                <button
-                  type="button"
-                  class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                  @click="customerSelectModalOpen = false"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Teleport>
+      <!-- 顧客選択モーダル（共通コンポーネント。一覧から起動時は担当者名は反映しない） -->
+      <CustomerSelectModal
+        v-model="customerSelectModalOpen"
+        :items="customerListForSelect"
+        :loading="isLoadingCustomers"
+        @select="selectCustomer"
+        @clear="clearCustomer"
+      />
 
       <!-- 該当データなしダイアログ -->
       <div
@@ -993,11 +896,11 @@ onUnmounted(() => {
                     </RouterLink>
                   </td>
                   <td class="px-5 py-2">
-                    <div class="text-slate-600 font-semibold text-[12px]">{{ order.orderName }}</div>
+                    <div class="text-slate-600 text-[12px]">{{ order.orderName }}</div>
                     <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.address }}</div>
                   </td>
                   <td class="px-5 py-2">
-                    <div class="text-slate-600 font-semibold text-[12px]">{{ order.customerName || "—" }}</div>
+                    <div class="text-slate-600 text-[12px]">{{ order.customerName || "—" }}</div>
                     <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.manager?.trim() || "—" }}</div>
                   </td>
                   <td class="col-design px-4 py-2">

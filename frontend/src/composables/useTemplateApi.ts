@@ -28,12 +28,16 @@ export interface TemplateItemItem {
   displayOrder: number
 }
 
-/** ログイン会社に紐づくテンプレート一覧（注文フォームのセレクト用） */
-export async function fetchTemplates(companyId: number): Promise<TemplateOption[]> {
+/** ログイン会社（と顧客）に紐づくテンプレート一覧。customerId 指定時は当該顧客のテンプレートのみ返す */
+export async function fetchTemplates(
+  companyId: number,
+  customerId?: number | null
+): Promise<TemplateOption[]> {
   const base = getApiBase()
-  const res = await fetch(
-    `${base}${API_PREFIX}/templates?company_id=${encodeURIComponent(companyId)}`
-  )
+  const params = new URLSearchParams()
+  params.set("company_id", String(companyId))
+  if (customerId != null) params.set("customer_id", String(customerId))
+  const res = await fetch(`${base}${API_PREFIX}/templates?${params.toString()}`)
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`)
   }
