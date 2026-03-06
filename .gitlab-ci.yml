@@ -25,6 +25,8 @@ deploy_to_amplify:
   dependencies:
     - build_site
   script:
+    - aws sts get-caller-identity
+    - aws amplify list-apps
     - cd frontend
     - cd dist && zip -r ../build.zip . && cd ..
     - aws amplify create-deployment --app-id $AMPLIFY_APP_ID --branch-name $CI_COMMIT_BRANCH --region $AWS_DEFAULT_REGION > deploy_info.json
