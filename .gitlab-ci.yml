@@ -1,0 +1,43 @@
+stages:
+  - build
+  - deploy
+
+before_script:
+  - apt-get update
+  - apt-get install -y python3 python3-pip zip curl
+  - pip3 install awscli
+
+build_site:
+  stage: build
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+  only:
+    changes:
+      - frontend/**
+  artifacts:
+    paths:
+      - frontend/dist
+    expire_in: 1 hour
+
+deploy_to_amplify:
+  stage: deploy
+  dependencies:
+    - build_site
+  script:
+    - cd frontend
+    - cd dist && zip -r ../build.zip . && cd ..
+    - aws amplify create-deployment --app-id $AMPLIFY_APP_ID --branch-name $CI_COMMIT_BRANCH --region $AWS_DEFAULT_REGION > deploy_info.json
+    - UPLOAD_URL=$(python3 -c "import json; print(json.load(open('deploy_info.json'))['zipUploadUrl'])")
+    - JOB_ID=$(python3 -c "import json; print(json.load(open('deploy_info.json'))['jobId'])")
+    - curl -X PUT --upload-file build.zip "$UPLOAD_URL"
+    - aws amplify start-deployment --app-id $AMPLIFY_APP_ID --branch-name $CI_COMMIT_BRANCH --job-id $JOB_ID --region $AWS_DEFAULT_REGION
+  variables:
+    AMPLIFY_APP_ID: "d2cn6ahkb6lb3r"
+    AWS_DEFAULT_REGION: "ap-northeast-1"
+  only:
+    refs:
+      - main
+    changes:
+      - frontend/**

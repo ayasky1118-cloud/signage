@@ -1,0 +1,1365 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
+import { RouterLink, useRouter, useRoute } from "vue-router"
+import flatpickr from "flatpickr"
+import { Japanese } from "flatpickr/dist/l10n/ja"
+import "flatpickr/dist/flatpickr.min.css"
+import "../assets/styles/flatpickr-theme.css"
+import { validateAddress } from "../composables/useAddressApi"
+import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
+import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
+import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
+import { fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
+import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
+import CustomerSelectModal from "../components/CustomerSelectModal.vue"
+import TemplateSelectModal from "../components/TemplateSelectModal.vue"
+
+const router = useRouter()
+const route = useRoute()
+
+/* モード: 新規 / 変更 */
+const mode = ref<"new" | "change">("new")
+const cameFromList = ref(false)
+const hasSearchedInChangeMode = ref(false)
+
+/* フォーム */
+const orderNo = ref("")
+const companyCd = ref("")
+const officeCd = ref("")
+const siteCd = ref("")
+const orderName = ref("")
+const address = ref("")
+const customerId = ref<number | null>(null)
+const customerName = ref("")
+const manager = ref("")
+const templateId = ref<number | null>(null)
+const designTypeId = ref<number | null>(null)
+const templateItemValues = ref<string[]>([])
+/** 納期（Y/m/d 表示。Flatpickr と同期） */
+const deadlineDate = ref("")
+/** 校正予定日（Y/m/d 表示。Flatpickr と同期） */
+const proofreadingDate = ref("")
+/** ステータス（attribute_05）。固定値ドロップダウン */
+const status = ref("")
+const STATUS_OPTIONS = [
+  "依頼中",
+  "製作中",
+  "確認中",
+  "確認完了",
+  "製作完了",
+  "納品完了",
+  "キャンセル",
+] as const
+/** 制作区分（attribute_04）。固定値ドロップダウン */
+const productionType = ref("")
+const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
+/** 備考（デフォルトテンプレート。画面上は入力必須） */
+const NOTE_DEFAULT = "営業担当者：\n制作担当者："
+const note = ref(NOTE_DEFAULT)
+
+/* テンプレート選択肢（ログイン会社でAPI取得） */
+const templateOptions = ref<TemplateOption[]>([])
+const isLoadingTemplates = ref(false)
+/* 選択されたテンプレートに紐づく template_item（項目名・必須・種別。表示は今回全てテキスト） */
+const templateItems = ref<TemplateItemItem[]>([])
+const isLoadingTemplateItems = ref(false)
+
+/* デザイン種別（ログイン会社に紐づく。マウント時にAPIで取得） */
+const designTypeOptions = ref<DesignTypeItem[]>([])
+const isLoadingDesignTypes = ref(false)
+
+/** ログイン会社ID（将来は認証ストアから取得。開発時は VITE_LOGIN_COMPANY_ID または 1） */
+function getLoginCompanyId(): number {
+  const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
+  if (v != null && v !== "") {
+    const n = Number(v)
+    if (!Number.isNaN(n)) return n
+  }
+  return 1
+}
+
+const showTemplateItemsSection = computed(() => templateItems.value.length > 0)
+
+/* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる。pendingOrderItems があれば order_item の値を反映 */
+watch(templateId, async (val) => {
+  templateItems.value = []
+  templateItemValues.value = []
+  templateItemInputRefs.value = []
+  if (val == null) return
+  isLoadingTemplateItems.value = true
+  try {
+    const items = await fetchTemplateItems(val)
+    templateItems.value = items
+    const pending = pendingOrderItems.value
+    if (pending?.length) {
+      templateItemValues.value = items.map((item, i) => {
+        const found = pending.find((oi) => oi.templateItemId === item.templateItemId)
+        return found ? found.orderItemVal : (templateItemValues.value[i] ?? "")
+      })
+      pendingOrderItems.value = null
+    } else {
+      templateItemValues.value = items.map((_, i) => templateItemValues.value[i] ?? "")
+    }
+  } catch {
+    templateItems.value = []
+    templateItemValues.value = []
+    templateItemInputRefs.value = []
+    pendingOrderItems.value = null
+  } finally {
+    isLoadingTemplateItems.value = false
+    /* 注文読み込み直後のテンプレート項目反映が終わったら、その時点をデフォルト値として記録 */
+    if (deferInitialChangeStateAfterOrderLoad.value) {
+      initialChangeState.value = getFormState()
+      deferInitialChangeStateAfterOrderLoad.value = false
+    }
+  }
+})
+
+/* 変更モード時：注文番号・会社名以外は編集可能。他項目は未検索かつ一覧以外からの遷移でない場合のみ無効 */
+const otherFieldsDisabled = computed(
+  () => mode.value === "change" && !hasSearchedInChangeMode.value && !cameFromList.value
+)
+
+/* 変更モードでは注文番号は常に読取専用（一覧から遷移時または検索済み時）。新規時は自動採番のため読取 */
+const orderNoReadOnly = computed(
+  () => mode.value !== "change" || cameFromList.value || hasSearchedInChangeMode.value
+)
+
+const orderNoPlaceholder = computed(() =>
+  mode.value === "change" ? "注文番号を入力してください" : "新規時は自動で採番されます"
+)
+
+const searchAndListDisabled = computed(() => !(mode.value === "change" && !cameFromList.value))
+
+const customerSelectDisabled = computed(() => mode.value === "change")
+
+const templateDisabled = computed(() => {
+  if (mode.value === "change") return !hasSearchedInChangeMode.value && !cameFromList.value
+  return !customerName.value.trim()
+})
+
+const templateSelectPlaceholder = computed(() =>
+  isLoadingTemplates.value ? "読み込み中..." : "レイアウトテンプレートを選択してください"
+)
+
+const registerButtonLabel = computed(() => (mode.value === "change" ? "更新" : "登録"))
+
+const registerButtonDisabled = computed(
+  () =>
+    isValidatingAddress.value ||
+    (mode.value === "change" &&
+      !cameFromList.value &&
+      !hasSearchedInChangeMode.value)
+)
+
+const orderDetailLinkDisabled = computed(
+  () => !(mode.value === "change" && hasSearchedInChangeMode.value)
+)
+
+/* 新規モードでラジオを無効化（一覧から遷移時） */
+const newModeRadioDisabled = computed(() => cameFromList.value)
+
+/* フォーム状態（未保存変更判定用。デフォルト値からの差分がある場合のみ「変更あり」とする） */
+function getFormState(): string {
+  return [
+    orderNo.value.trim(),
+    companyCd.value.trim(),
+    officeCd.value.trim(),
+    siteCd.value.trim(),
+    deadlineDate.value.trim(),
+    proofreadingDate.value.trim(),
+    productionType.value.trim(),
+    status.value.trim(),
+    note.value.trim(),
+    orderName.value.trim(),
+    address.value.trim(),
+    customerName.value.trim(),
+    manager.value.trim(),
+    templateId.value ?? "",
+    designTypeId.value ?? "",
+    templateItemValues.value.join(","),
+  ].join("|")
+}
+
+const initialNewState = ref("")
+const initialChangeState = ref("")
+
+/* 入力の可否ではなく、デフォルト値（初期状態）から値が変わった場合のみ true */
+const hasUnsavedChanges = computed(() => {
+  const current = getFormState()
+  if (mode.value === "new") return current !== initialNewState.value
+  return current !== initialChangeState.value
+})
+
+/* 注文番号選択モーダル用 */
+const orderListForSelect = ref<OrderItem[]>([])
+const orderNoSelectModalOpen = ref(false)
+const isLoadingOrders = ref(false)
+
+/* 顧客選択モーダル用 */
+const customerListForSelect = ref<CustomerItem[]>([])
+const customerSelectModalOpen = ref(false)
+const isLoadingCustomers = ref(false)
+
+/* テンプレート選択モーダル（グリッド） */
+const templateSelectModalOpen = ref(false)
+
+/* 各種確認モーダル */
+const unsavedConfirmOpen = ref(false)
+const unsavedConfirmMessage = ref("入力内容に変更があります。変更は破棄されます。よろしいですか？")
+const unsavedConfirmOkText = ref("破棄する")
+const pendingUnsavedAction = ref<(() => void) | null>(null)
+
+const changeNoticeModalOpen = ref(false)
+
+const requiredValidationOpen = ref(false)
+const requiredValidationMessage = ref("必須項目が未入力です。")
+/** 必須エラー時にフォーカスする要素の ref 名 */
+const requiredValidationFocusRef = ref<string | null>(null)
+
+/* フォーカス用テンプレート ref */
+const orderNoInputRef = ref<HTMLInputElement | null>(null)
+const orderNoSearchBtnRef = ref<HTMLButtonElement | null>(null)
+const inputDeadlineRef = ref<HTMLInputElement | null>(null)
+const inputProofreadingRef = ref<HTMLInputElement | null>(null)
+const companyCdInputRef = ref<HTMLInputElement | null>(null)
+const officeCdInputRef = ref<HTMLInputElement | null>(null)
+const siteCdInputRef = ref<HTMLInputElement | null>(null)
+const orderNameInputRef = ref<HTMLInputElement | null>(null)
+const addressInputRef = ref<HTMLInputElement | null>(null)
+const customerSelectBtnRef = ref<HTMLButtonElement | null>(null)
+const templateSelectRef = ref<HTMLSelectElement | null>(null)
+const designTypeSelectRef = ref<HTMLSelectElement | null>(null)
+const noteInputRef = ref<HTMLTextAreaElement | null>(null)
+/** テンプレート項目入力欄の ref（必須チェック時のフォーカス用） */
+const templateItemInputRefs = ref<(HTMLInputElement | null)[]>([])
+
+/* 変更モードで注文取得時に、テンプレート項目取得後に order_item の値を反映するための待ち行列 */
+const pendingOrderItems = ref<OrderDetailItem[] | null>(null)
+/* 注文データ反映後、テンプレート項目読込完了時に initialChangeState を更新するフラグ（デフォルト値は読み込み完了時点のみ） */
+const deferInitialChangeStateAfterOrderLoad = ref(false)
+
+const registerConfirmOpen = ref(false)
+const registerConfirmTitle = ref("登録の確認")
+const registerConfirmMessage = ref("この内容で登録してよろしいですか？")
+
+const registerResultOpen = ref(false)
+const registerResultMessage = ref("登録が完了しました。")
+
+/** 住所検証API実行中（登録ボタン押下時） */
+const isValidatingAddress = ref(false)
+
+/* 注文データをフォームに反映（order_item は pendingOrderItems に渡し、template 読込後に反映） */
+function applyOrderData(order: OrderDetail) {
+  orderNo.value = order.orderNo ?? ""
+  companyCd.value = order.attribute_01 ?? ""
+  officeCd.value = order.attribute_02 ?? ""
+  siteCd.value = order.attribute_03 ?? ""
+  deadlineDate.value = order.deadlineDt ?? ""
+  proofreadingDate.value = order.proofreadingDt ?? ""
+  productionType.value = order.attribute_04 ?? ""
+  status.value = order.attribute_05 ?? ""
+  note.value = order.note?.trim() ? order.note : NOTE_DEFAULT
+  orderName.value = order.orderName ?? ""
+  address.value = order.address ?? ""
+  customerId.value = order.customerId ?? null
+  customerName.value = order.customerName ?? ""
+  manager.value = order.manager ?? ""
+  designTypeId.value = order.designTypeId ?? null
+  pendingOrderItems.value = order.orderItems?.length ? [...order.orderItems] : null
+  templateId.value = order.templateId ?? null
+  /* テンプレート項目は非同期で反映するため、反映完了後に initialChangeState を更新する（deferInitialChangeStateAfterOrderLoad） */
+  deferInitialChangeStateAfterOrderLoad.value = true
+}
+
+/* 選択した顧客をフォームに反映。デザイン種別はログイン会社で取得するためここでは取得しない */
+function applyCustomerData(c: CustomerItem) {
+  customerId.value = c.customerId
+  customerName.value = c.customerName
+  manager.value = c.contactName ?? ""  // 顧客の担当者名を初期設定（編集可）
+  designTypeId.value = null
+}
+
+async function loadDesignTypes(companyId: number) {
+  isLoadingDesignTypes.value = true
+  try {
+    designTypeOptions.value = await fetchDesignTypes(companyId)
+  } catch {
+    designTypeOptions.value = []
+  } finally {
+    isLoadingDesignTypes.value = false
+  }
+}
+
+function clearCustomer() {
+  customerId.value = null
+  customerName.value = ""
+  manager.value = ""
+  designTypeId.value = null
+  templateId.value = null
+  templateItemValues.value = []
+}
+
+/* 注文番号変更時（変更モード）他項目クリア */
+function clearOtherFieldsOnOrderNoChange() {
+  if (mode.value !== "change") return
+  companyCd.value = ""
+  officeCd.value = ""
+  siteCd.value = ""
+  deadlineDate.value = ""
+  proofreadingDate.value = ""
+  productionType.value = ""
+  status.value = ""
+  note.value = NOTE_DEFAULT
+  fpDeadline?.clear()
+  fpProofreading?.clear()
+  orderName.value = ""
+  address.value = ""
+  customerName.value = ""
+  customerId.value = null
+  manager.value = ""
+  designTypeId.value = null
+  templateId.value = null
+  templateItemValues.value = []
+  hasSearchedInChangeMode.value = false
+}
+
+/* 注文番号選択モーダルを開く → APIで一覧取得。データが無い場合はメッセージダイアログのみ表示 */
+async function openOrderNoSelectModal() {
+  isLoadingOrders.value = true
+  try {
+    const result = await searchOrders({ companyId: getLoginCompanyId(), perPage: 50, page: 1 })
+    orderListForSelect.value = result.items
+    if (result.items.length === 0) {
+      requiredValidationMessage.value = "データがありません"
+      requiredValidationOpen.value = true
+      return
+    }
+    orderNoSelectModalOpen.value = true
+  } catch {
+    orderListForSelect.value = []
+    requiredValidationMessage.value = "データの取得に失敗しました。"
+    requiredValidationOpen.value = true
+  } finally {
+    isLoadingOrders.value = false
+  }
+}
+
+function selectOrderNo(order: OrderItem) {
+  orderNo.value = order.orderNo ?? ""
+  clearOtherFieldsOnOrderNoChange()
+}
+
+/* 検索ボタン：注文番号で検索してフォームに反映（order_item 含む） */
+async function doSearchByOrderNo() {
+  const no = orderNo.value.trim()
+  if (!no) {
+    requiredValidationMessage.value = "「注文番号」を選択してください。"
+    requiredValidationFocusRef.value = "orderNoSearch"
+    requiredValidationOpen.value = true
+    return
+  }
+  try {
+    const order = await getOrderByNo(no)
+    applyOrderData(order)
+    hasSearchedInChangeMode.value = true
+  } catch (e) {
+    requiredValidationMessage.value = e instanceof Error ? e.message : "該当する注文が見つかりませんでした。"
+    requiredValidationOpen.value = true
+  }
+}
+
+/* 顧客選択モーダルを開く */
+async function openCustomerSelectModal() {
+  customerSelectModalOpen.value = true
+  if (customerListForSelect.value.length === 0) {
+    isLoadingCustomers.value = true
+    try {
+      customerListForSelect.value = await fetchCustomers(getLoginCompanyId())
+    } catch {
+      customerListForSelect.value = []
+    } finally {
+      isLoadingCustomers.value = false
+    }
+  }
+}
+
+function selectCustomer(c: CustomerItem) {
+  applyCustomerData(c)
+  templateId.value = null
+  templateItemValues.value = []
+}
+
+function selectTemplateFromModal(opt: TemplateOption) {
+  templateId.value = opt.templateId
+  templateOptions.value = [opt]
+}
+
+/* 必須バリデーション（フォーカス用の ref 名を返す） */
+function validateRequired(): { valid: boolean; message: string; focusRef?: string } {
+  if (mode.value === "change" && !orderNo.value.trim()) {
+    return { valid: false, message: "「注文番号」を選択してください。", focusRef: "orderNoSearch" }
+  }
+  if (!companyCd.value.trim()) return { valid: false, message: "「社内CD」を入力してください。", focusRef: "companyCd" }
+  if (!officeCd.value.trim()) return { valid: false, message: "「事業所CD」を入力してください。", focusRef: "officeCd" }
+  if (!siteCd.value.trim()) return { valid: false, message: "「現場CD」を入力してください。", focusRef: "siteCd" }
+  if (!orderName.value.trim()) return { valid: false, message: "「注文名」を入力してください。", focusRef: "orderName" }
+  if (!address.value.trim()) return { valid: false, message: "「住所」を入力してください。", focusRef: "address" }
+  if (!customerName.value.trim()) return { valid: false, message: "「顧客」を選択してください。", focusRef: "customerSelect" }
+  if (templateId.value == null) return { valid: false, message: "「テンプレート」を選択してください。", focusRef: "template" }
+  if (designTypeId.value == null) return { valid: false, message: "「デザイン種別」を選択してください。", focusRef: "designType" }
+  if (!note.value.trim()) return { valid: false, message: "「備考」を入力してください。", focusRef: "note" }
+  for (let i = 0; i < templateItems.value.length; i++) {
+    const item = templateItems.value[i]
+    if (item.isRequired && !(templateItemValues.value[i] ?? "").trim()) {
+      return {
+        valid: false,
+        message: `「${item.itemName}」を入力してください。`,
+        focusRef: `templateItem_${i}`,
+      }
+    }
+  }
+  return { valid: true, message: "" }
+}
+
+function setTemplateItemInputRef(el: unknown, idx: number) {
+  if (el instanceof HTMLInputElement) {
+    while (templateItemInputRefs.value.length <= idx) templateItemInputRefs.value.push(null)
+    templateItemInputRefs.value[idx] = el
+  }
+}
+
+function getFocusElement(key: string | null | undefined): HTMLElement | null {
+  if (!key) return null
+  if (key.startsWith("templateItem_")) {
+    const i = parseInt(key.replace("templateItem_", ""), 10)
+    if (!Number.isNaN(i) && templateItemInputRefs.value[i]) return templateItemInputRefs.value[i]
+    return null
+  }
+  switch (key) {
+    case "orderNoSearch":
+      return (orderNoSearchBtnRef.value ?? orderNoInputRef.value) as HTMLElement | null
+    case "companyCd":
+      return companyCdInputRef.value
+    case "officeCd":
+      return officeCdInputRef.value
+    case "siteCd":
+      return siteCdInputRef.value
+    case "orderName":
+      return orderNameInputRef.value
+    case "address":
+      return addressInputRef.value
+    case "customerSelect":
+      return customerSelectBtnRef.value
+    case "template":
+      return templateSelectRef.value
+    case "designType":
+      return designTypeSelectRef.value
+    case "note":
+      return noteInputRef.value
+    default:
+      return null
+  }
+}
+
+function focusValidationTarget(key: string | null | undefined) {
+  const el = getFocusElement(key)
+  if (!el) return
+  el.scrollIntoView({ behavior: "auto", block: "nearest" })
+  el.focus()
+}
+
+function closeRequiredValidationModal() {
+  const focusKey = requiredValidationFocusRef.value
+  requiredValidationFocusRef.value = null
+  requiredValidationOpen.value = false
+  nextTick(() => {
+    focusValidationTarget(focusKey)
+  })
+}
+
+async function openRegisterConfirm() {
+  const result = validateRequired()
+  if (!result.valid) {
+    requiredValidationMessage.value = result.message
+    requiredValidationFocusRef.value = result.focusRef ?? null
+    requiredValidationOpen.value = true
+    return
+  }
+  isValidatingAddress.value = true
+  try {
+    const addressResult = await validateAddress(address.value)
+    if (addressResult.valid !== true) {
+      requiredValidationMessage.value = addressResult.message ?? "住所を正しく入力してください。"
+      requiredValidationFocusRef.value = "address"
+      requiredValidationOpen.value = true
+      return
+    }
+  } catch (_e) {
+    requiredValidationMessage.value = "住所の検証中にエラーが発生しました。"
+    requiredValidationFocusRef.value = "address"
+    requiredValidationOpen.value = true
+    return
+  } finally {
+    isValidatingAddress.value = false
+  }
+  registerConfirmTitle.value = mode.value === "change" ? "更新の確認" : "登録の確認"
+  registerConfirmMessage.value =
+    mode.value === "change" ? "この内容で更新してよろしいですか？" : "この内容で登録してよろしいですか？"
+  registerConfirmOpen.value = true
+}
+
+/**
+ * 登録確認モーダルで OK 押下時の処理。
+ * 新規: createOrder API を呼び、成功時に採番された orderNo を反映して結果モーダル表示。
+ * 変更: 更新 API は未実装のため結果メッセージのみ表示。
+ */
+async function doRegisterConfirm() {
+  if (mode.value === "new") {
+    const loginCompanyId = getLoginCompanyId()
+    if (
+      customerId.value == null ||
+      templateId.value == null ||
+      designTypeId.value == null
+    ) {
+      return
+    }
+    // テンプレート項目は可変のため、template_item 順で ID と入力値をペアにして送信
+    const templateItemsPayload = templateItems.value.map((item, idx) => ({
+      templateItemId: item.templateItemId,
+      orderItemVal: templateItemValues.value[idx] ?? "",
+    }))
+    try {
+      const result = await createOrder({
+        loginCompanyId,
+        orderName: orderName.value.trim(),
+        orderAdd: address.value.trim(),
+        customerId: customerId.value,
+        templateId: templateId.value,
+        designTypeId: designTypeId.value,
+        attribute01: companyCd.value.trim(),
+        attribute02: officeCd.value.trim(),
+        attribute03: siteCd.value.trim(),
+        attribute04: productionType.value.trim() || undefined,
+        attribute05: status.value.trim() || undefined,
+        note: note.value.trim() || undefined,
+        deadlineDt: deadlineDate.value.trim() ? deadlineDate.value.trim().replace(/\//g, "-") : undefined,
+        proofreadingDt: proofreadingDate.value.trim() ? proofreadingDate.value.trim().replace(/\//g, "-") : undefined,
+        templateItems: templateItemsPayload,
+        managerName: manager.value.trim() || undefined,
+      })
+      registerConfirmOpen.value = false
+      orderNo.value = result.orderNo
+      registerResultMessage.value = "登録が完了しました。"
+      registerResultOpen.value = true
+      initialNewState.value = getFormState()
+      initialChangeState.value = getFormState()
+    } catch (e) {
+      registerConfirmOpen.value = false
+      const msg = e instanceof Error ? e.message : "登録に失敗しました。"
+      requiredValidationMessage.value = msg
+      requiredValidationOpen.value = true
+    }
+    return
+  }
+  registerConfirmOpen.value = false
+  registerResultMessage.value = "更新が完了しました。"
+  registerResultOpen.value = true
+}
+
+/* 看板編集へのリンク（変更モード・検索済み時） */
+const orderDetailTo = computed(() => {
+  if (!orderDetailLinkDisabled.value && orderNo.value) {
+    return {
+      path: "/order/detail",
+      query: { orderNo: orderNo.value, itemCode: "01", mode: "edit" },
+    }
+  }
+  return { path: "/order/detail" }
+})
+
+/* 戻る */
+function goBack() {
+  if (hasUnsavedChanges.value) {
+    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。戻ってよろしいですか？"
+    unsavedConfirmOkText.value = "破棄して戻る"
+    pendingUnsavedAction.value = () => router.back()
+    unsavedConfirmOpen.value = true
+  } else {
+    router.back()
+  }
+}
+
+function executePendingUnsaved() {
+  const fn = pendingUnsavedAction.value
+  pendingUnsavedAction.value = null
+  unsavedConfirmOpen.value = false
+  if (fn) fn()
+}
+
+/* 新規→変更で入力変更あり（ラジオはすでに変更になっているので新規に戻す） */
+function onModeChangeToChange() {
+  if (getFormState() !== initialNewState.value) {
+    changeNoticeModalOpen.value = true
+    mode.value = "new" // モーダル表示中は新規のまま
+  }
+}
+
+function changeNoticeDiscard() {
+  orderNo.value = ""
+  companyCd.value = ""
+  officeCd.value = ""
+  siteCd.value = ""
+  deadlineDate.value = ""
+  proofreadingDate.value = ""
+  productionType.value = ""
+  status.value = ""
+  note.value = NOTE_DEFAULT
+  orderName.value = ""
+  address.value = ""
+  customerName.value = ""
+  customerId.value = null
+  manager.value = ""
+  designTypeId.value = null
+  templateId.value = null
+  templateItemValues.value = []
+  initialNewState.value = getFormState()
+  initialChangeState.value = getFormState()
+  mode.value = "change"
+  hasSearchedInChangeMode.value = false
+  changeNoticeModalOpen.value = false
+}
+
+function changeNoticeRegister() {
+  changeNoticeModalOpen.value = false
+  openRegisterConfirm()
+}
+
+/* 変更→新規で未保存変更あり（ラジオはすでに新規になっているので、確認時は変更に戻す） */
+function onModeChangeToNew() {
+  if (getFormState() !== initialChangeState.value) {
+    unsavedConfirmMessage.value = "入力内容に変更があります。新規に切り替えますか？変更は破棄されます。"
+    unsavedConfirmOkText.value = "破棄して新規へ"
+    pendingUnsavedAction.value = () => {
+      orderNo.value = ""
+      companyCd.value = ""
+      officeCd.value = ""
+      siteCd.value = ""
+      deadlineDate.value = ""
+      proofreadingDate.value = ""
+      productionType.value = ""
+      status.value = ""
+      note.value = NOTE_DEFAULT
+      orderName.value = ""
+      address.value = ""
+      customerName.value = ""
+      customerId.value = null
+      manager.value = ""
+      designTypeId.value = null
+      templateId.value = null
+      templateItemValues.value = []
+      initialNewState.value = getFormState()
+      initialChangeState.value = getFormState()
+      mode.value = "new"
+      hasSearchedInChangeMode.value = false
+    }
+    unsavedConfirmOpen.value = true
+    mode.value = "change" // モーダル表示中は変更のまま
+  } else {
+    orderNo.value = ""
+    companyCd.value = ""
+    officeCd.value = ""
+    siteCd.value = ""
+    deadlineDate.value = ""
+    proofreadingDate.value = ""
+    productionType.value = ""
+    status.value = ""
+    note.value = NOTE_DEFAULT
+    orderName.value = ""
+    address.value = ""
+    customerName.value = ""
+    customerId.value = null
+    manager.value = ""
+    designTypeId.value = null
+    templateId.value = null
+    templateItemValues.value = []
+    initialNewState.value = getFormState()
+    initialChangeState.value = getFormState()
+    mode.value = "new"
+  }
+}
+
+/* リンククリック時：未保存変更があれば確認 */
+function handleOrderDetailClick(e: MouseEvent) {
+  if (orderDetailLinkDisabled.value) {
+    e.preventDefault()
+    return
+  }
+  if (hasUnsavedChanges.value) {
+    e.preventDefault()
+    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。移動してよろしいですか？"
+    unsavedConfirmOkText.value = "破棄して移動する"
+    pendingUnsavedAction.value = () => router.push(orderDetailTo.value)
+    unsavedConfirmOpen.value = true
+  }
+}
+
+/* Flatpickr インスタンス（納期・校正予定日） */
+let fpDeadline: flatpickr.Instance | null = null
+let fpProofreading: flatpickr.Instance | null = null
+
+/* 初期化：URL パラメータ */
+onMounted(async () => {
+  const loginCompanyId = getLoginCompanyId()
+  loadDesignTypes(loginCompanyId)
+
+  const q = route.query
+  if (q.mode === "edit" || q.orderNo) {
+    cameFromList.value = true
+    hasSearchedInChangeMode.value = true
+    mode.value = "change"
+    const no = (q.orderNo as string)?.trim()
+    if (no) {
+      orderNo.value = no
+      try {
+        const order = await getOrderByNo(no)
+        applyOrderData(order)
+      } catch {
+        // 注文番号だけ入れておく
+      }
+    }
+  }
+  initialNewState.value = getFormState()
+  initialChangeState.value = getFormState()
+
+  nextTick(() => {
+    const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
+    if (inputDeadlineRef.value) {
+      fpDeadline = flatpickr(inputDeadlineRef.value, {
+        ...opts,
+        onChange(_selectedDates, dateStr) {
+          deadlineDate.value = dateStr || ""
+        },
+      })
+    }
+    if (inputProofreadingRef.value) {
+      fpProofreading = flatpickr(inputProofreadingRef.value, {
+        ...opts,
+        onChange(_selectedDates, dateStr) {
+          proofreadingDate.value = dateStr || ""
+        },
+      })
+    }
+  })
+})
+
+onUnmounted(() => {
+  fpDeadline?.destroy()
+  fpProofreading?.destroy()
+})
+
+/* 注文番号入力変更時（変更モード） */
+watch(orderNo, () => {
+  if (mode.value === "change") clearOtherFieldsOnOrderNoChange()
+})
+</script>
+
+<template>
+  <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
+    <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
+      <div class="bg-main px-8 py-4">
+        <h2 class="text-base font-bold text-white tracking-tight">注文（新規・変更）</h2>
+      </div>
+
+      <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
+        <div>
+          <div class="pb-4 border-b border-slate-100">
+            <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden bg-slate-100 min-w-[11rem] mode-radio-group">
+              <label
+                class="cursor-pointer flex-1 min-w-[5rem] mode-radio-label"
+                :class="{ 'pointer-events-none opacity-60': newModeRadioDisabled }"
+              >
+                <input
+                  v-model="mode"
+                  type="radio"
+                  name="mode"
+                  value="new"
+                  class="sr-only peer"
+                  :disabled="newModeRadioDisabled"
+                  @change="onModeChangeToNew"
+                />
+                <span class="block w-full px-5 py-2 text-center text-xs font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 border-r border-slate-200 whitespace-nowrap peer-checked:bg-main peer-checked:text-white peer-checked:border-slate-200/40">新規</span>
+              </label>
+              <label class="cursor-pointer flex-1 min-w-[5rem] mode-radio-label">
+                <input v-model="mode" type="radio" name="mode" value="change" class="sr-only peer" @change="onModeChangeToChange" />
+                <span class="block w-full px-5 py-2 text-center text-xs font-semibold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 peer-checked:bg-main peer-checked:text-white whitespace-nowrap">変更</span>
+              </label>
+            </div>
+          </div>
+
+          <section class="space-y-5 pt-4">
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  注文番号
+                </label>
+                <div class="flex flex-wrap items-center gap-2">
+                  <input
+                    ref="orderNoInputRef"
+                    v-model="orderNo"
+                    type="text"
+                    :readonly="orderNoReadOnly"
+                    :placeholder="orderNoPlaceholder"
+                    class="w-48 min-w-[12rem] h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
+                    :class="{
+                      'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
+                      'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
+                    }"
+                  />
+                  <button
+                    type="button"
+                    title="選択"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    :disabled="searchAndListDisabled"
+                    @click="openOrderNoSelectModal"
+                  >
+                    <!-- リストから選択（注文一覧を開く） -->
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button
+                    ref="orderNoSearchBtnRef"
+                    type="button"
+                    class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    :disabled="searchAndListDisabled"
+                    @click="doSearchByOrderNo"
+                  >
+                    検索
+                  </button>
+                </div>
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  社内CD
+                </label>
+                <input
+                  ref="companyCdInputRef"
+                  v-model="companyCd"
+                  type="text"
+                  placeholder="社内CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  事業所CD
+                </label>
+                <input
+                  ref="officeCdInputRef"
+                  v-model="officeCd"
+                  type="text"
+                  placeholder="事業所CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  現場CD
+                </label>
+                <input
+                  ref="siteCdInputRef"
+                  v-model="siteCd"
+                  type="text"
+                  placeholder="現場CDを入力してください"
+                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-2.5 shrink-0">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  ステータス
+                </label>
+                <select
+                  v-model="status"
+                  class="min-w-[8rem] w-[8rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                >
+                  <option value="">ステータスを選択してください</option>
+                  <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 制作区分・納期・校正予定日 -->
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-normal text-slate-500 block">制作区分</label>
+                <select
+                  v-model="productionType"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                >
+                  <option value="">制作区分を選択してください</option>
+                  <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </div>
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-normal text-slate-500 block">納期</label>
+                <input
+                  ref="inputDeadlineRef"
+                  type="text"
+                  readonly
+                  placeholder="納期を選択"
+                  :value="deadlineDate"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+              <div class="space-y-1.5 shrink-0">
+                <label class="text-xs font-normal text-slate-500 block">校正予定日</label>
+                <input
+                  ref="inputProofreadingRef"
+                  type="text"
+                  readonly
+                  placeholder="校正予定日を選択"
+                  :value="proofreadingDate"
+                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
+            </div>
+
+            <!-- 備考（下の行に一項目） -->
+            <div class="space-y-2.5">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                備考
+              </label>
+              <textarea
+                ref="noteInputRef"
+                v-model="note"
+                rows="3"
+                placeholder="営業担当者・制作担当者を入力してください"
+                class="w-full min-h-[4.5rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none resize-y disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                :disabled="otherFieldsDisabled"
+              />
+            </div>
+
+            <!-- 注文名 -->
+            <div class="space-y-2.5">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                注文名
+              </label>
+              <input
+                ref="orderNameInputRef"
+                v-model="orderName"
+                type="text"
+                placeholder="注文名を入力してください"
+                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                :disabled="otherFieldsDisabled"
+              />
+            </div>
+
+            <div class="space-y-2.5">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                住所
+              </label>
+              <input
+                ref="addressInputRef"
+                v-model="address"
+                type="text"
+                placeholder="例: サンプル県サンプル市サンプル区サンプル町1-1-1"
+                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                :disabled="otherFieldsDisabled"
+              />
+            </div>
+          </section>
+        </div>
+
+        <section>
+          <div class="grid grid-cols-1 gap-5">
+            <div class="space-y-2.5">
+              <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+                <div class="space-y-2.5 sm:flex-[2]">
+                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                    <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                    顧客
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      v-model="customerName"
+                      type="text"
+                      readonly
+                      placeholder="顧客を選択してください"
+                      class="flex-1 min-w-0 h-[2.25rem] box-border bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                      :disabled="otherFieldsDisabled"
+                    />
+                    <button
+                      ref="customerSelectBtnRef"
+                      type="button"
+                      title="選択"
+                      class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                      :disabled="customerSelectDisabled"
+                      @click="openCustomerSelectModal"
+                    >
+                      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="space-y-2.5 sm:flex-1">
+                  <label class="text-xs font-normal text-slate-500">担当者名</label>
+                  <input
+                    v-model="manager"
+                    type="text"
+                    placeholder="担当者を入力してください"
+                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue focus:border-subBlue outline-none transition-all duration-200 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    :disabled="otherFieldsDisabled"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
+              <div class="space-y-2.5 sm:flex-1">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  デザイン種別
+                </label>
+                <select
+                  ref="designTypeSelectRef"
+                  v-model="designTypeId"
+                  class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  :disabled="otherFieldsDisabled || isLoadingDesignTypes"
+                >
+                  <option :value="null">
+                    {{ isLoadingDesignTypes ? "読み込み中..." : "デザイン種別を選択してください" }}
+                  </option>
+                  <option
+                    v-for="opt in designTypeOptions"
+                    :key="opt.designTypeId"
+                    :value="opt.designTypeId"
+                  >
+                    {{ opt.designTypeName }}
+                  </option>
+                </select>
+              </div>
+              <div class="space-y-2.5 sm:flex-[2]">
+                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                  テンプレート
+                </label>
+                <div class="flex items-center gap-2">
+                  <select
+                    ref="templateSelectRef"
+                    v-model="templateId"
+                    class="flex-1 min-w-0 h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    :disabled="templateDisabled"
+                  >
+                    <option :value="null">{{ templateSelectPlaceholder }}</option>
+                    <option v-for="opt in templateOptions" :key="opt.templateId" :value="opt.templateId">
+                      {{ opt.templateName }}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    title="選択"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    :disabled="templateDisabled"
+                    @click="templateSelectModalOpen = true"
+                  >
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-show="showTemplateItemsSection" class="mt-4">
+          <div class="border-t border-slate-100 pt-5">
+            <div class="flex items-center gap-2 mb-3 text-main">
+              <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
+              <h3 class="font-bold text-base tracking-tight">テンプレート項目</h3>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6">
+              <div class="space-y-1.5">
+                <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
+                <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
+                  <span class="text-slate-400 text-xs">プレビュー</span>
+                </div>
+              </div>
+              <div class="space-y-4">
+                <p v-if="isLoadingTemplateItems" class="text-sm text-slate-500">読み込み中...</p>
+                <template v-else>
+                  <div
+                    v-for="(item, idx) in templateItems"
+                    :key="item.templateItemId"
+                    class="space-y-2.5"
+                  >
+                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                    <span v-if="item.isRequired" class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                    {{ item.itemName }}
+                  </label>
+                  <input
+                    :ref="(el) => setTemplateItemInputRef(el, idx)"
+                    v-model="templateItemValues[idx]"
+                    type="text"
+                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    :disabled="isLoadingTemplateItems"
+                  />
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </section>
+      </form>
+    </div>
+
+    <div class="mt-8 flex items-center gap-4">
+      <div class="flex-1">
+        <button
+          type="button"
+          class="inline-block px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200"
+          @click="goBack"
+        >
+          戻る
+        </button>
+      </div>
+      <div class="flex-1 text-center">
+        <button
+          type="button"
+          class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-lg shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+          :disabled="registerButtonDisabled"
+          @click="openRegisterConfirm"
+        >
+          {{ isValidatingAddress ? "住所を確認中..." : registerButtonLabel }}
+        </button>
+      </div>
+      <div class="flex-1 text-right">
+        <RouterLink
+          :to="orderDetailTo"
+          class="inline-block px-10 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 disabled:opacity-50 cursor-not-allowed pointer-events-none"
+          :class="{ 'opacity-50 cursor-not-allowed pointer-events-none': orderDetailLinkDisabled }"
+          @click="handleOrderDetailClick"
+        >
+          看板編集
+        </RouterLink>
+      </div>
+    </div>
+
+    <!-- 未保存変更確認モーダル -->
+    <Teleport to="body">
+      <div v-show="unsavedConfirmOpen" class="fixed inset-0 z-50" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
+            <div class="px-6 py-3 bg-main">
+              <h3 class="text-base font-bold text-white tracking-tight">変更の確認</h3>
+            </div>
+            <div class="px-8 py-6">
+              <p class="text-sm text-slate-600">{{ unsavedConfirmMessage }}</p>
+            </div>
+            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                @click="executePendingUnsaved"
+              >
+                {{ unsavedConfirmOkText }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 注文番号選択モーダル（共通コンポーネント） -->
+    <OrderNoSelectModal
+      v-model="orderNoSelectModalOpen"
+      :items="orderListForSelect"
+      :loading="isLoadingOrders"
+      @select="selectOrderNo"
+    />
+
+    <!-- テンプレート選択モーダル（共通コンポーネント。ログイン会社ID・顧客IDで抽出） -->
+    <TemplateSelectModal
+      v-model="templateSelectModalOpen"
+      :company-id="getLoginCompanyId()"
+      :customer-id="customerId"
+      @select="selectTemplateFromModal"
+    />
+
+    <!-- 顧客選択モーダル（共通コンポーネント） -->
+    <CustomerSelectModal
+      v-model="customerSelectModalOpen"
+      :items="customerListForSelect"
+      :loading="isLoadingCustomers"
+      @select="selectCustomer"
+      @clear="clearCustomer"
+    />
+
+    <!-- 新規→変更で入力変更あり案内 -->
+    <Teleport to="body">
+      <div v-show="changeNoticeModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="changeNoticeModalOpen = false"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
+            <div class="px-6 py-3 bg-main">
+              <h3 class="text-base font-bold text-white tracking-tight">変更の確認</h3>
+            </div>
+            <div class="px-8 py-6">
+              <p class="text-sm text-slate-600">入力内容に変更があります。登録してから変更に切り替えますか？</p>
+            </div>
+            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="changeNoticeModalOpen = false"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="changeNoticeDiscard"
+              >
+                破棄して切り替え
+              </button>
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                @click="changeNoticeRegister"
+              >
+                登録して切り替え
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 必須項目未入力 -->
+    <Teleport to="body">
+      <div v-show="requiredValidationOpen" class="fixed inset-0 z-50" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="closeRequiredValidationModal"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
+            <div class="px-8 pt-8 pb-6 text-center">
+              <p class="text-sm text-slate-600">{{ requiredValidationMessage }}</p>
+            </div>
+            <div class="px-8 py-5 flex flex-nowrap justify-center">
+              <button
+                type="button"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                @click="closeRequiredValidationModal"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 登録確認 -->
+    <Teleport to="body">
+      <div v-show="registerConfirmOpen" class="fixed inset-0 z-50" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="registerConfirmOpen = false"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
+            <div class="px-6 py-3 bg-main">
+              <h3 class="text-base font-bold text-white tracking-tight">{{ registerConfirmTitle }}</h3>
+            </div>
+            <div class="px-8 py-6">
+              <p class="text-sm text-slate-600">{{ registerConfirmMessage }}</p>
+            </div>
+            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+              <button
+                type="button"
+                class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="registerConfirmOpen = false"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                @click="doRegisterConfirm"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- 登録結果 -->
+    <Teleport to="body">
+      <div v-show="registerResultOpen" class="fixed inset-0 z-[60]" aria-hidden="false">
+        <div class="fixed inset-0 bg-black/40" @click="registerResultOpen = false"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
+            <div class="px-6 py-3 bg-main">
+              <h3 class="text-base font-bold text-white tracking-tight">処理結果</h3>
+            </div>
+            <div class="px-8 py-6">
+              <p class="text-sm text-slate-600">{{ registerResultMessage }}</p>
+            </div>
+            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+              <RouterLink
+                :to="{ path: '/order/detail', query: { orderNo: orderNo, itemCode: '01', mode: 'edit' } }"
+                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                @click="registerResultOpen = false"
+              >
+                看板編集
+              </RouterLink>
+              <RouterLink
+                :to="{ path: '/order/list', query: orderNo ? { orderNo } : {} }"
+                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="registerResultOpen = false"
+              >
+                注文一覧
+              </RouterLink>
+              <button
+                type="button"
+                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                @click="registerResultOpen = false"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </main>
+</template>
+
+<style>
+/* フォーカスが当たったらキャレットを表示（空欄でも入力中でも） */
+.order-main-form input:not([readonly]):not(:disabled):focus,
+.order-main-form textarea:not([readonly]):not(:disabled):focus {
+  caret-color: #334155 !important;
+}
+</style>

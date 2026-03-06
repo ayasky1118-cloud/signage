@@ -1,93 +1,116 @@
-# signage_dev
+# 簡易地図作成アプリ-仮称
 
+フロントエンド（Vue 3）とバックエンド（FastAPI）を組み合わせたプロジェクト。
+ローカル開発では MySQL（Docker）、本番は AWS Lambda 上での動作を想定。
 
+**地図看板の作成には [MapTiler](https://www.maptiler.com/) を利用しています。** 商用利用のため MapTiler との契約を締結済み、または締結を進めています。
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## 技術スタック
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+| 領域 | 技術 |
+|------|------|
+| **フロントエンド** | Vue 3, Vite, Vue Router, Tailwind CSS v4, TypeScript |
+| **バックエンド** | Python 3.12, FastAPI, SQLAlchemy 2.x |
+| **データベース** | MySQL 8.0（Docker） |
+| **インフラ** | AWS SAM（ローカル開発 / 本番デプロイ） |
 
-## Add your files
+---
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## ディレクトリ構成
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.dev-ci.jp/tokyo/cgs/signage_dev.git
-git branch -M main
-git push -uf origin main
+signage/
+├── frontend/           # Vue 3 + Vite + Vue Router + Tailwind
+│   ├── src/
+│   │   ├── pages/      # ページコンポーネント（Menu, OrderList など）
+│   │   ├── components/
+│   │   └── router/
+│   └── package.json
+│
+├── backend/            # FastAPI + SQLAlchemy
+│   ├── app/
+│   │   ├── main.py     # エントリポイント（CORS, Router登録）
+│   │   ├── core/       # 設定（config.py）
+│   │   ├── db/         # DB接続（session.py）
+│   │   ├── models/     # SQLAlchemyモデル
+│   │   └── routers/    # APIルーター（/companies, /orders など）
+│   └── requirements.txt
+│
+├── docs/               # 手順書・仕様書
+│   ├── 101.環境構築ステップ.md
+│   ├── 102.Node・npm 環境確認.md
+│   └── ...（詳細は docs/README.md）
+│
+└── docker-compose.yml  # MySQL用（プロジェクトルート）
 ```
 
-## Integrate with your tools
+---
 
-- [ ] [Set up project integrations](https://gitlab.dev-ci.jp/tokyo/cgs/signage_dev/-/settings/integrations)
+## クイックスタート
 
-## Collaborate with your team
+### 初回セットアップ
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+初めてプロジェクトを動かす場合は、[docs/101.環境構築ステップ.md](docs/101.環境構築ステップ.md) に従って以下を準備してください。
 
-## Test and Deploy
+- Docker Desktop（MySQL用）
+- Node.js v18以上
+- Python 3.12
+- AWS CLI & AWS SAM CLI
 
-Use the built-in continuous integration in GitLab.
+### 1. MySQL 起動
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+signage プロジェクトのルートで実行する。
 
-***
+```bash
+docker compose up -d
+```
 
-# Editing this README
+**データのバックアップ（推奨）**  
+コンテナ入れ替えやスキーマ変更の前に、`./db/backup.sh` を実行すると `db/backups/` にダンプが保存されます。
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### 2. フロントエンド起動
 
-## Suggestions for a good README
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+ブラウザで `http://localhost:5173/` を開く（メニュー画面が表示されます）。
 
-## Name
-Choose a self-explaining name for your project.
+### 3. バックエンド起動（オプション）
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+API を利用する場合：
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+API は `http://localhost:8000` で動作します。
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+| エンドポイント | 説明 |
+|----------------|------|
+| `GET /health` | ヘルスチェック |
+| `GET /companies` | 会社一覧（DB疎通確認用） |
+| `GET /address/validate?address=...` | 住所検証（MapTiler Geocoding） |
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+**住所検証（MapTiler）**  
+注文情報の「住所」は登録ボタン押下時に MapTiler Geocoding API で検証します。  
+- ローカル: `backend/.env.example` をコピーして `backend/.env` を作成し、`MAPTILER_API_KEY` を設定。**`.env` を変更したらバックエンドを再起動すること。**  
+- 本番: 環境変数 `MAPTILER_API_KEY` で設定（`.env` に秘密を置かない）。  
+未設定の場合は検証をスキップし、登録はそのまま進みます。詳細は [docs/203.本番環境の環境変数.md](docs/203.本番環境の環境変数.md) を参照。
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+---
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## ドキュメント
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+| 内容 | 参照先 |
+|------|--------|
+| 環境構築・開発手順の一覧 | [docs/README.md](docs/README.md) |
+| 機能制御仕様 | [docs/mock/docs/機能制御仕様.md](docs/mock/docs/機能制御仕様.md) |
