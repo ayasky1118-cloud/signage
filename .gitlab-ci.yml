@@ -3,9 +3,8 @@ stages:
   - deploy
 
 before_script:
-  - apt-get update
-  - apt-get install -y python3 python3-pip zip curl
-  - pip3 install awscli
+  - python3 --version
+  - pip3 install awscli --break-system-packages --quiet
 
 build_site:
   stage: build
