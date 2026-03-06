@@ -9,7 +9,7 @@ import { validateAddress } from "../composables/useAddressApi"
 import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
-import { fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
+import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 import TemplateSelectModal from "../components/TemplateSelectModal.vue"
@@ -85,15 +85,31 @@ function getLoginCompanyId(): number {
 /** テンプレートに項目が紐づいている場合のみ「テンプレート項目」セクションを表示する */
 const showTemplateItemsSection = computed(() => templateItems.value.length > 0)
 
+/* 顧客設定時にテンプレート一覧をAPI取得してドロップダウンに反映する */
+watch(customerId, async (val) => {
+  templateOptions.value = []
+  if (val == null) return
+  isLoadingTemplates.value = true
+  try {
+    templateOptions.value = await fetchTemplates(getLoginCompanyId(), val)
+  } catch {
+    templateOptions.value = []
+  } finally {
+    isLoadingTemplates.value = false
+  }
+})
+
 /* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる。pendingOrderItems があれば order_item の値を反映 */
 watch(templateId, async (val) => {
   templateItems.value = []
   templateItemValues.value = []
   templateItemInputRefs.value = []
   if (val == null) return
+  const id = typeof val === "string" ? parseInt(val, 10) : val
+  if (Number.isNaN(id)) return
   isLoadingTemplateItems.value = true
   try {
-    const items = await fetchTemplateItems(val)
+    const items = await fetchTemplateItems(id)
     templateItems.value = items
     const pending = pendingOrderItems.value
     if (pending?.length) {
@@ -154,10 +170,11 @@ const templateSelectPlaceholder = computed(() =>
 /** 登録ボタンのラベル（新規時は「登録」、変更時は「更新」） */
 const registerButtonLabel = computed(() => (mode.value === "change" ? "更新" : "登録"))
 
-/** 住所検証中、または変更モードで未検索のときは登録ボタンを無効にする */
+/** 住所検証中、テンプレート項目読み込み中、または変更モードで未検索のときは登録ボタンを無効にする */
 const registerButtonDisabled = computed(
   () =>
     isValidatingAddress.value ||
+    isLoadingTemplateItems.value ||
     (mode.value === "change" &&
       !cameFromList.value &&
       !hasSearchedInChangeMode.value)
@@ -412,8 +429,11 @@ function selectCustomer(c: CustomerItem) {
 
 /** テンプレート選択モーダルで選択したテンプレートをフォームに反映する */
 function selectTemplateFromModal(opt: TemplateOption) {
+  /* templateOptions を先に更新してから templateId を設定（select 再レンダで templateId がリセットされるのを防ぐ） */
+  if (!templateOptions.value.some((o) => o.templateId === opt.templateId)) {
+    templateOptions.value = [opt, ...templateOptions.value]
+  }
   templateId.value = opt.templateId
-  templateOptions.value = [opt]
 }
 
 /** 必須項目のバリデーション。不正時はメッセージとフォーカス用 ref 名を返す */
@@ -430,6 +450,7 @@ function validateRequired(): { valid: boolean; message: string; focusRef?: strin
   if (templateId.value == null) return { valid: false, message: "「テンプレート」を選択してください。", focusRef: "template" }
   if (designTypeId.value == null) return { valid: false, message: "「デザイン種別」を選択してください。", focusRef: "designType" }
   if (!note.value.trim()) return { valid: false, message: "「備考」を入力してください", focusRef: "note" }
+  if (isLoadingTemplateItems.value) return { valid: false, message: "テンプレート項目を読み込み中です。", focusRef: "template" }
   for (let i = 0; i < templateItems.value.length; i++) {
     const item = templateItems.value[i]
     if (item.isRequired && !(templateItemValues.value[i] ?? "").trim()) {
@@ -454,11 +475,13 @@ function setTemplateItemInputRef(el: unknown, idx: number) {
 /** バリデーション用キー（ref 名）からフォーカス対象の DOM 要素を返す */
 function getFocusElement(key: string | null | undefined): HTMLElement | null {
   if (!key) return null
+  // テンプレート項目（templateItem_0 等）
   if (key.startsWith("templateItem_")) {
     const i = parseInt(key.replace("templateItem_", ""), 10)
     if (!Number.isNaN(i) && templateItemInputRefs.value[i]) return templateItemInputRefs.value[i]
     return null
   }
+  // フォーム各項目の ref
   switch (key) {
     case "orderNoSearch":
       return (orderNoSearchBtnRef.value ?? orderNoInputRef.value) as HTMLElement | null
@@ -505,6 +528,7 @@ function closeRequiredValidationModal() {
 
 /** 登録ボタン押下時。必須チェック・住所検証ののち登録確認モーダルを開く */
 async function openRegisterConfirm() {
+  // 1) 必須項目チェック
   const result = validateRequired()
   if (!result.valid) {
     requiredValidationMessage.value = result.message
@@ -512,6 +536,7 @@ async function openRegisterConfirm() {
     requiredValidationOpen.value = true
     return
   }
+  // 2) 住所検証 API
   isValidatingAddress.value = true
   try {
     const addressResult = await validateAddress(address.value)
@@ -529,6 +554,7 @@ async function openRegisterConfirm() {
   } finally {
     isValidatingAddress.value = false
   }
+  // 3) 登録確認モーダルを開く
   registerConfirmTitle.value = mode.value === "change" ? "更新の確認" : "登録の確認"
   registerConfirmMessage.value =
     mode.value === "change" ? "この内容で更新してよろしいですか" : "この内容で登録してよろしいですか"
@@ -550,12 +576,13 @@ async function doRegisterConfirm() {
     ) {
       return
     }
-    // テンプレート項目は可変のため、template_item 順で ID と入力値をペアにして送信
+    // テンプレート項目を API 用に整形（template_item 順で ID と値をペア）
     const templateItemsPayload = templateItems.value.map((item, idx) => ({
       templateItemId: item.templateItemId,
       orderItemVal: templateItemValues.value[idx] ?? "",
     }))
     try {
+      // createOrder API 呼び出し
       const result = await createOrder({
         loginCompanyId,
         orderName: orderName.value.trim(),
@@ -574,6 +601,7 @@ async function doRegisterConfirm() {
         templateItems: templateItemsPayload,
         managerName: manager.value.trim() || undefined,
       })
+      // 成功時：採番された orderNo を反映し、未保存判定用の基準を更新
       registerConfirmOpen.value = false
       orderNo.value = result.orderNo
       registerResultMessage.value = "登録が完了しました"
@@ -588,6 +616,7 @@ async function doRegisterConfirm() {
     }
     return
   }
+  // 変更モード：更新 API 未実装のため結果メッセージのみ表示
   registerConfirmOpen.value = false
   registerResultMessage.value = "更新が完了しました"
   registerResultOpen.value = true
@@ -667,6 +696,7 @@ function changeNoticeRegister() {
 /** モードを変更→新規に切り替えたとき、未保存変更があれば破棄確認を出し、OK でフォームをクリアして新規にする */
 function onModeChangeToNew() {
   if (getFormState() !== initialChangeState.value) {
+    // 未保存変更あり：確認モーダルを出し、OK でフォームクリア＋新規へ
     unsavedConfirmMessage.value = "入力内容に変更があります。新規に切り替えますか？変更は破棄されます。"
     unsavedConfirmOkText.value = "破棄して新規へ"
     pendingUnsavedAction.value = () => {
@@ -695,6 +725,7 @@ function onModeChangeToNew() {
     unsavedConfirmOpen.value = true
     mode.value = "change" // モーダル表示中は変更のまま
   } else {
+    // 未保存変更なし：そのままフォームクリア＋新規へ
     orderNo.value = ""
     companyCd.value = ""
     officeCd.value = ""
@@ -794,16 +825,17 @@ watch(orderNo, () => {
 </script>
 
 <template>
+  <!-- === 画面：注文（新規・変更） === -->
   <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
-    <!-- 注文登録フォームカード -->
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
+      <!-- -- カードヘッダー -- -->
       <div class="bg-main px-8 py-4">
         <h2 class="text-base font-normal text-white tracking-tight">注文（新規・変更）</h2>
       </div>
 
       <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
         <div>
-          <!-- 新規／変更のモード切替（一覧から遷移時は新規を無効化） -->
+          <!-- -- モード切替（新規／変更） -- -->
           <div class="pb-4 border-b border-slate-100">
             <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden bg-slate-100 min-w-[11rem] mode-radio-group">
               <label
@@ -828,7 +860,7 @@ watch(orderNo, () => {
             </div>
           </div>
 
-          <!-- 注文番号・社内CD・事業所CD・現場CD・ステータス（1行目） -->
+          <!-- -- 入力ブロック1：注文番号・社内CD・事業所CD・現場CD・ステータス -- -->
           <section class="space-y-5 pt-4">
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-2.5 shrink-0">
@@ -929,7 +961,7 @@ watch(orderNo, () => {
               </div>
             </div>
 
-            <!-- 制作区分・納期・校正予定日 -->
+            <!-- -- 入力ブロック2：制作区分・納期・校正予定日 -- -->
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-1.5 shrink-0">
                 <label class="text-xs font-normal text-slate-500 block">制作区分</label>
@@ -968,7 +1000,7 @@ watch(orderNo, () => {
               </div>
             </div>
 
-            <!-- 備考（下の行に一項目） -->
+            <!-- -- 入力ブロック3：備考 -- -->
             <div class="space-y-2.5">
               <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -984,7 +1016,7 @@ watch(orderNo, () => {
               />
             </div>
 
-            <!-- 注文名 -->
+            <!-- -- 入力ブロック4：注文名・住所 -- -->
             <div class="space-y-2.5">
               <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
                 <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
@@ -1017,7 +1049,7 @@ watch(orderNo, () => {
           </section>
         </div>
 
-        <!-- 顧客・担当者・デザイン種別・テンプレート（顧客未選択時はテンプレート無効） -->
+        <!-- -- 入力ブロック5：顧客・担当者・デザイン種別・テンプレート -- -->
         <section>
           <div class="grid grid-cols-1 gap-5">
             <div class="space-y-2.5">
@@ -1094,7 +1126,7 @@ watch(orderNo, () => {
                 <div class="flex items-center gap-2">
                   <select
                     ref="templateSelectRef"
-                    v-model="templateId"
+                    v-model.number="templateId"
                     class="flex-1 min-w-0 h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                     :disabled="templateDisabled"
                   >
@@ -1120,7 +1152,7 @@ watch(orderNo, () => {
           </div>
         </section>
 
-        <!-- テンプレート項目（選択テンプレートに紐づく入力項目。必須あり） -->
+        <!-- -- 入力ブロック6：テンプレート項目（選択テンプレートに紐づく） -- -->
         <section v-show="showTemplateItemsSection" class="mt-4">
           <div class="border-t border-slate-100 pt-5">
             <div class="flex items-center gap-2 mb-3 text-main">
@@ -1131,7 +1163,12 @@ watch(orderNo, () => {
               <div class="space-y-1.5">
                 <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
                 <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
-                  <span class="text-slate-400 text-xs">プレビュー</span>
+                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                    <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                  </svg>
                 </div>
               </div>
               <div class="space-y-4">
@@ -1162,7 +1199,7 @@ watch(orderNo, () => {
       </form>
     </div>
 
-    <!-- 画面下部：戻る／登録・更新／看板編集リンク -->
+    <!-- -- 画面下部：戻る／登録・更新／看板編集 -- -->
     <div class="mt-8 flex items-center gap-4">
       <div class="flex-1">
         <button

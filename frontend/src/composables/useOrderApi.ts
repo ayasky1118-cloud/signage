@@ -73,6 +73,10 @@ export interface OrderItem {
   createdDate: string
   creator: string
   branches: string[]
+  /** 枝番ごとのデザイン編集データ（order_detail.design_data）。地図のルート・テキスト・画像等 */
+  designDataByBranch?: Record<string, unknown>
+  /** 枝番ごとの備考（order_detail.note） */
+  noteByBranch?: Record<string, string>
 }
 
 export interface OrderSearchResult {
@@ -290,6 +294,61 @@ export async function searchOrders(
     throw new Error(`API error: ${detail}`)
   }
 
+  return res.json()
+}
+
+/** 枝番毎の登録・更新用 */
+export interface OrderDetailBranch {
+  branchNo: string
+  note?: string
+  designData?: unknown
+}
+
+/**
+ * 注文詳細（枝番毎の備考・design_data）を登録・更新する（PATCH /orders/by-no/details）。
+ * 失敗時は Error を throw。
+ */
+export async function updateOrderDetails(
+  orderNo: string,
+  branches: OrderDetailBranch[]
+): Promise<{ orderNo: string; updated: boolean }> {
+  const no = orderNo?.trim()
+  if (!no) throw new Error("注文番号を指定してください。")
+  const base = getApiBase()
+  const url = `${base}${API_PREFIX}/orders/by-no/details?order_no=${encodeURIComponent(no)}`
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ branches }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("接続がタイムアウトしました。")
+    }
+    throw e
+  }
+  clearTimeout(timeoutId)
+  if (res.status === 404) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body?.detail ?? "該当する注文が見つかりませんでした")
+  }
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const data = (await res.json()) as { detail?: string; error?: string }
+      if (data?.detail && typeof data.detail === "string") detail = data.detail
+      else if (data?.error && typeof data.error === "string") detail = data.error
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail)
+  }
   return res.json()
 }
 

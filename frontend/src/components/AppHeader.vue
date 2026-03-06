@@ -1,11 +1,13 @@
 <template>
-  <!-- 共通ヘッダー：メニューリンク（左）・ログイン表示・ログアウト（右） -->
+  <!-- === 共通ヘッダー === -->
   <header id="app-header" class="bg-main text-white px-8 py-4 flex justify-between items-center shadow-md">
+    <!-- -- 左：メニューリンク -- -->
     <h1 class="header-menu-link text-xl font-normal tracking-wider">
       <RouterLink to="/menu" class="text-white hover:opacity-90 transition-opacity duration-200">
         メインメニュー
       </RouterLink>
     </h1>
+    <!-- -- 右：ログイン表示・ログアウト -- -->
     <div class="flex items-center gap-6">
       <span class="text-sm opacity-90">ログイン中: {{ loginName }}</span>
       <button

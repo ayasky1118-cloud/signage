@@ -2,13 +2,13 @@
 /**
  * 看板編集ページ（order_detail.html モックの実装）
  * - 注文情報の表示・検索・選択
- * - 枝番タブ・追加・削除・備考・地図出力/読込
+ * - 枝番タブ・追加・削除・備考・地図出力/読込（JSON形式）
  * - 全画面編集オーバーレイ・登録/更新・各種モーダル
  */
 import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
-import { searchOrders, getOrderByNo, type OrderItem } from "../composables/useOrderApi"
+import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 
@@ -192,6 +192,7 @@ async function loadOrderListForSelect() {
 async function applyOrderBySearch(orderNo: string) {
   const no = orderNo.trim()
   if (!no) return
+  // 1) まず searchOrders で一覧APIから取得（枝番 branches が取れる）
   try {
     const result = await searchOrders({
       companyId: getLoginCompanyId(),
@@ -216,6 +217,25 @@ async function applyOrderBySearch(orderNo: string) {
       const branches = o.branches && o.branches.length > 0 ? [...o.branches] : []
       allBranches.value = branches
       visibleStartIndex.value = 0
+      // 枝番ごとの design_data を mapDataByBranch に初期化（地図出力・読込・編集のベース）
+      const ddb = o.designDataByBranch
+      if (ddb && typeof ddb === "object") {
+        const next: Record<string, MapDataJson> = {}
+        for (const bn of branches) {
+          next[bn] = normalizeDesignDataToMapData(ddb[bn], bn, o.orderNo)
+        }
+        mapDataByBranch.value = next
+      } else {
+        mapDataByBranch.value = {}
+      }
+      // 枝番ごとの備考を branchMemoByBranch に初期化
+      const nbb = o.noteByBranch
+      if (nbb && typeof nbb === "object") {
+        branchMemoByBranch.value = { ...nbb }
+      } else {
+        branchMemoByBranch.value = {}
+      }
+      // 枝番あり：初期表示する枝番を決定（URL の itemCode または先頭）
       if (branches.length > 0) {
         let initial = initialItemCode.value ? normalizeBranchNo(initialItemCode.value) : branches[0]
         if (branches.indexOf(initial) < 0) initial = branches[0]
@@ -234,6 +254,7 @@ async function applyOrderBySearch(orderNo: string) {
   } catch {
     /* ignore */
   }
+  // 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空）
   try {
     const detail = await getOrderByNo(no)
     orderDisplay.value = {
@@ -252,9 +273,11 @@ async function applyOrderBySearch(orderNo: string) {
     visibleStartIndex.value = 0
     activeBranch.value = ""
     branchMemo.value = ""
+    mapDataByBranch.value = {}
     setOriginalBranchValues("", "")
     hasSearched.value = true
   } catch {
+    // 3) どちらも失敗：該当なしモーダルを表示
     orderDisplay.value = {
       orderName: "",
       address: "",
@@ -270,6 +293,7 @@ async function applyOrderBySearch(orderNo: string) {
     allBranches.value = []
     activeBranch.value = ""
     branchMemo.value = ""
+    mapDataByBranch.value = {}
     setOriginalBranchValues("", "")
     hasSearched.value = false
     showOrderSearchNoResultModal.value = true
@@ -317,6 +341,7 @@ function clearOrderInfoExceptOrderNo() {
   allBranches.value = []
   activeBranch.value = ""
   branchMemo.value = ""
+  mapDataByBranch.value = {}
   setOriginalBranchValues("", "")
 }
 
@@ -467,10 +492,12 @@ function openBranchSwitchConfirmModal(action?: PendingAction | null) {
   if (action) pendingAction.value = action
   const pa = pendingAction.value
   const verb = pageMode.value === "edit" ? "更新して" : "登録して"
+  // デフォルトメッセージ
   let message = `変更が保存されていません。${verb}から枝番を切り替えますか`
   let discard = "破棄して切り替え"
   let register = `${verb}切り替え`
   hideBranchSwitchRegisterButton.value = false
+  // 保留アクション種別ごとにメッセージ・ラベルを上書き
   if (pa?.type === "navigate" && pa.labels) {
     message = pa.labels.message
     discard = pa.labels.discard
@@ -595,10 +622,30 @@ function confirmSearch() {
   applyOrderBySearch(no)
 }
 
-/** 登録/更新確認で OK を押したとき。確認モーダルを閉じ、結果モーダルを表示する */
-function confirmRegister() {
+/** 登録/更新確認で OK を押したとき。order_detail を API で保存し、結果モーダルを表示する */
+async function confirmRegister() {
   closeRegisterConfirmModal()
-  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
+  const orderNo = lastConfirmedOrderNo.value?.trim()
+  if (!orderNo) {
+    openRegisterResultModal("注文番号がありません")
+    return
+  }
+  // 現在の枝番の備考を branchMemoByBranch に反映してから送信
+  const bn = normalizeBranchNo(activeBranch.value)
+  if (bn) branchMemoByBranch.value[bn] = branchMemo.value
+
+  const branches = allBranches.value.map((b) => ({
+    branchNo: b,
+    note: (branchMemoByBranch.value[b] ?? "").trim() || undefined,
+    designData: mapDataByBranch.value[b] ?? undefined,
+  }))
+
+  try {
+    await updateOrderDetails(orderNo, branches)
+    openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
+  } catch (e) {
+    openRegisterResultModal(e instanceof Error ? e.message : "登録に失敗しました")
+  }
 }
 
 /** 枝番追加モーダルで OK を押したとき。入力値を正規化し、新規追加または既存枝番へ切り替える */
@@ -610,11 +657,13 @@ function confirmBranchAdd() {
   }
   const branchNo = normalizeBranchNo(value)
   const exists = branchExistsInOrder(branchNo)
+  // 上限チェック（新規追加時のみ）
   if (!exists && allBranches.value.length >= MAX_BRANCH_COUNT) {
     closeBranchAddModal()
     return
   }
   if (!exists) {
+    // 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
     if (allBranches.value.length === 1) {
       activeBranch.value = branchNo
@@ -627,6 +676,7 @@ function confirmBranchAdd() {
     setOriginalBranchValues(branchNo, branchMemo.value)
     lastAddedBranchNo.value = branchNo
   } else {
+    // 既存枝番：その枝番へ切り替え（未保存変更があれば confirmBranchSwitchDiscard 側で処理済みの想定ではないが、ここに来る場合は直接追加）
     ensureVisible(branchNo)
     switchToBranch(branchNo)
   }
@@ -640,24 +690,28 @@ function confirmBranchSwitchDiscard() {
     closeBranchSwitchConfirmModal()
     return
   }
+  // 枝番タブ切り替え
   if (pa.type === "branch" && pa.branchNo) {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     performBranchSwitch(pa.branchNo)
     return
   }
+  // リンク遷移（看板編集等）
   if (pa.type === "navigate" && pa.url) {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     router.push(pa.url)
     return
   }
+  // 戻る
   if (pa.type === "back") {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     router.back()
     return
   }
+  // 注文番号変更（選択モーダルから別注文を選んだ）
   if (pa.type === "changeOrderNo" && pa.orderNo !== undefined) {
     closeBranchSwitchConfirmModal()
     inputOrderNo.value = pa.orderNo
@@ -667,12 +721,14 @@ function confirmBranchSwitchDiscard() {
     pendingAction.value = null
     return
   }
+  // 枝番入力欄で既存枝番へ切り替え（switchOnly）
   if (pa.type === "applyBranchInput" && pa.branchNo) {
     closeBranchSwitchConfirmModal()
     doApplyActiveBranchDisplayValue(pa.branchNo, true)
     pendingAction.value = null
     return
   }
+  // 枝番追加：直前追加分を破棄してから追加モーダルを開く
   if (pa.type === "addBranch") {
     if (lastAddedBranchNo.value) {
       const idx = allBranches.value.indexOf(lastAddedBranchNo.value)
@@ -727,9 +783,11 @@ function executeBranchDelete() {
   }
   const idx = allBranches.value.indexOf(target)
   if (idx >= 0) {
+    // 枝番一覧から削除
     allBranches.value = allBranches.value.filter((_, i) => i !== idx)
     if (target === lastAddedBranchNo.value) lastAddedBranchNo.value = null
   }
+  // 削除後のアクティブ枝番を決定（削除した枝番がアクティブだった場合は隣へ）
   if (allBranches.value.length > 0) {
     const wasActive = normalizeBranchNo(activeBranch.value) === target
     const nextIdx = Math.min(idx, allBranches.value.length - 1)
@@ -808,24 +866,130 @@ function onPreview() {
   // TODO: 枝番のプレビュー表示
 }
 
-/** 出力ボタン押下（選択フォーマットで出力・未実装） */
+/** 出力ボタン押下（表示中の枝番を選択フォーマットで出力・未実装） */
 function onOutput() {
-  // TODO: 枝番を選択フォーマットで出力
+  // TODO: 表示中の枝番を選択フォーマットで出力
 }
 
-/** SVG出力ボタン押下（地図 SVG 出力・未実装） */
-function onSvgOutput() {
-  // TODO: 地図 SVG 出力
+/** 全枝番出力ボタン押下（全枝番をまとめて選択フォーマットで出力・未実装） */
+function onOutputAllBranches() {
+  // TODO: 全枝番を選択フォーマットでまとめて出力
 }
 
-/** SVGファイルを選択したとき。ファイルを読込み枝番に反映する（未実装） */
-function onSvgLoad(e: Event) {
+/** 地図データのJSON形式（枝番ごとのルート・テキスト・画像・吹き出し等） */
+interface MapDataJson {
+  version: number
+  branchNo: string
+  orderNo?: string
+  routes?: unknown[]
+  texts?: unknown[]
+  images?: unknown[]
+  callouts?: unknown[]
+}
+
+/** 枝番ごとの地図データを保持（design_data のフロントエンド表現。編集・出力・読込で使用） */
+const mapDataByBranch = ref<Record<string, MapDataJson>>({})
+
+/** 表示中の枝番の design_data（プレビューエリアで表示） */
+const activeBranchDesignData = computed(() => {
+  const bn = normalizeBranchNo(activeBranch.value)
+  if (!bn) return null
+  return mapDataByBranch.value[bn] ?? null
+})
+
+/** 現在の枝番に design_data があるか（地図出力ボタンの有効/無効に使用。null/空の場合は押下不可） */
+const canExportMap = computed(() => {
+  const bn = normalizeBranchNo(activeBranch.value)
+  if (!bn) return false
+  const data = mapDataByBranch.value[bn]
+  if (!data) return false
+  const hasContent =
+    (Array.isArray(data.routes) && data.routes.length > 0) ||
+    (Array.isArray(data.texts) && data.texts.length > 0) ||
+    (Array.isArray(data.images) && data.images.length > 0) ||
+    (Array.isArray(data.callouts) && data.callouts.length > 0)
+  return hasContent
+})
+
+/** API の design_data を MapDataJson 形式に正規化する */
+function normalizeDesignDataToMapData(
+  raw: unknown,
+  branchNo: string,
+  orderNo: string
+): MapDataJson {
+  if (raw && typeof raw === "object" && raw !== null) {
+    const r = raw as Record<string, unknown>
+    return {
+      version: typeof r.version === "number" ? r.version : 1,
+      branchNo,
+      orderNo: (r.orderNo as string) ?? orderNo,
+      routes: Array.isArray(r.routes) ? r.routes : [],
+      texts: Array.isArray(r.texts) ? r.texts : [],
+      images: Array.isArray(r.images) ? r.images : [],
+      callouts: Array.isArray(r.callouts) ? r.callouts : [],
+    }
+  }
+  return {
+    version: 1,
+    branchNo,
+    orderNo: orderNo || undefined,
+    routes: [],
+    texts: [],
+    images: [],
+    callouts: [],
+  }
+}
+
+/** 地図出力ボタン押下（現在の枝番の地図データをJSONファイルでダウンロード） */
+function onMapOutput() {
+  const branchNo = normalizeBranchNo(activeBranch.value)
+  if (!branchNo) return
+  const data: MapDataJson = mapDataByBranch.value[branchNo] ?? {
+    version: 1,
+    branchNo,
+    orderNo: lastConfirmedOrderNo.value || undefined,
+    routes: [],
+    texts: [],
+    images: [],
+    callouts: [],
+  }
+  const json = JSON.stringify(data, null, 2)
+  const blob = new Blob([json], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `map_${lastConfirmedOrderNo.value || "unknown"}_${branchNo}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+/** JSONファイルを選択したとき。別枝番で保存した design_data を読込み、現在の枝番に適用する（読込後に編集可能） */
+function onMapLoad(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input?.files?.[0]
   if (!file) return
   const reader = new FileReader()
   reader.onload = () => {
-    // TODO: 枝番に SVG を読込・反映
+    try {
+      const text = reader.result as string
+      const data = JSON.parse(text) as MapDataJson
+      if (typeof data !== "object" || data === null) return
+      const branchNo = normalizeBranchNo(activeBranch.value)
+      if (!branchNo) return
+      const normalized: MapDataJson = {
+        version: data.version ?? 1,
+        branchNo,
+        orderNo: data.orderNo ?? (lastConfirmedOrderNo.value || undefined),
+        routes: Array.isArray(data.routes) ? data.routes : [],
+        texts: Array.isArray(data.texts) ? data.texts : [],
+        images: Array.isArray(data.images) ? data.images : [],
+        callouts: Array.isArray(data.callouts) ? data.callouts : [],
+      }
+      mapDataByBranch.value = { ...mapDataByBranch.value, [branchNo]: normalized }
+      // TODO: 地図編集コンポーネントに反映（MapLibre等実装時に連携）
+    } catch {
+      // JSONパースエラー時は何もしない
+    }
   }
   reader.readAsText(file)
   input.value = ""
@@ -871,14 +1035,16 @@ watch(orderDetailModalOpen, (open) => {
 </script>
 
 <template>
+  <!-- === 画面：看板編集 === -->
   <main id="order-detail-page" class="max-w-6xl mx-auto py-12 px-8 bg-[#e2e8f0] text-slate-600 min-h-screen">
-    <!-- ページタイトル + 詳細（注文番号・検索など） -->
+    <!-- === 注文情報カード（タイトル＋検索・表示エリア） === -->
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
+      <!-- -- ヘッダー -- -->
       <div class="bg-main px-8 py-4">
         <h2 class="text-base font-normal text-white tracking-tight">看板編集</h2>
       </div>
       <div class="px-6 pt-1 pb-6 md:px-8 md:pt-2 md:pb-7 min-w-0">
-        <!-- 詳細（展開で表示）※注文一覧の詳細トグルと同じスタイル（線は重なるため border-t なし） -->
+        <!-- -- 詳細エリア（開閉トグル） -- -->
         <div class="pt-2">
           <button
             type="button"
@@ -978,11 +1144,12 @@ watch(orderDetailModalOpen, (open) => {
       </div>
     </div>
 
-    <!-- 看板情報（検索済み時のみ表示） -->
+    <!-- === 看板情報カード（検索済み時のみ表示） === -->
     <section
       v-show="hasSearched"
       class="bg-white rounded-2xl card-shadow border border-slate-200/80 mb-8"
     >
+      <!-- -- カードヘッダー -- -->
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
@@ -991,7 +1158,7 @@ watch(orderDetailModalOpen, (open) => {
       </div>
 
       <div class="px-6 pt-5 pb-6 space-y-6">
-        <!-- 枝番タブ：スライドボタン・タブ一覧（クリックで切り替え）。削除／枝番を追加は右端 -->
+        <!-- -- 枝番タブ（スライド・タブ一覧・削除／追加ボタン） -- -->
         <div>
           <div class="flex justify-end mb-3">
             <div class="flex flex-wrap items-center gap-2">
@@ -1001,6 +1168,9 @@ watch(orderDetailModalOpen, (open) => {
                 :disabled="!hasBranches"
                 @click="clickDeleteBranch"
               >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                </svg>
                 削除
               </button>
               <button
@@ -1011,7 +1181,7 @@ watch(orderDetailModalOpen, (open) => {
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                枝番を追加
+                追加
               </button>
             </div>
           </div>
@@ -1068,11 +1238,12 @@ watch(orderDetailModalOpen, (open) => {
           </div>
         </div>
 
-        <!-- 枝番詳細：左カラム＝枝番入力・地図出力/読込・プレビュー・備考。右カラム＝レイアウト/マッププレビュー・全画面編集 -->
+        <!-- -- 枝番詳細（2カラム：左＝枝番・地図・備考／右＝レイアウトプレビュー） -- -->
         <div
           v-show="hasBranches"
           class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6"
         >
+          <!-- 左カラム -->
           <div class="space-y-4">
             <div class="space-y-1.5">
               <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
@@ -1091,21 +1262,27 @@ watch(orderDetailModalOpen, (open) => {
                 />
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
-                  @click="onSvgOutput"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  :disabled="!canExportMap"
+                  @click="onMapOutput"
                 >
                   地図出力
                 </button>
                 <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 cursor-pointer">
                   地図読込
-                  <input type="file" accept=".svg" class="sr-only" @change="onSvgLoad" />
+                  <input type="file" accept=".json,application/json" class="sr-only" @change="onMapLoad" />
                 </label>
               </div>
             </div>
             <div class="space-y-1.5">
               <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
               <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
-                <span class="text-slate-400 text-sm">プレビュー</span>
+                <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                  <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                  <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                </svg>
               </div>
             </div>
             <div class="space-y-1.5">
@@ -1119,6 +1296,7 @@ watch(orderDetailModalOpen, (open) => {
             </div>
           </div>
 
+          <!-- 右カラム：レイアウト／マッププレビュー・全画面編集・出力 -->
           <div class="space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <span class="text-xs font-normal text-slate-500">レイアウト / マッププレビュー</span>
@@ -1155,15 +1333,48 @@ watch(orderDetailModalOpen, (open) => {
                   >
                     出力
                   </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    :disabled="!hasBranches"
+                    @click="onOutputAllBranches"
+                  >
+                    全枝番出力
+                  </button>
                 </div>
               </div>
             </div>
             <div class="relative bg-slate-100 border border-dashed border-slate-300 rounded-xl aspect-square w-full flex items-center justify-center overflow-hidden">
               <div class="absolute inset-0 bg-gradient-to-br from-main/5 via-subBlue/5 to-slate-200/20 pointer-events-none"></div>
-              <div class="relative z-10 text-center space-y-2">
-                <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-main text-white text-sm font-normal mb-1">A</div>
-                <p class="text-sm font-normal text-slate-700">ここに看板レイアウトのプレビューが入ります</p>
-                <p class="text-xs text-slate-500">実装時は地図やレイアウト編集コンポーネントを埋め込んでください</p>
+              <div class="relative z-10 w-full h-full flex flex-col p-4 overflow-hidden">
+                <template v-if="!hasBranches">
+                  <div class="flex-1 flex flex-col items-center justify-center text-center">
+                    <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </div>
+                </template>
+                <template v-else-if="!activeBranchDesignData">
+                  <div class="flex-1 flex flex-col items-center justify-center text-center">
+                    <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="flex-shrink-0 text-xs text-slate-500 mb-2">
+                    枝番 {{ activeBranchDesignData.branchNo }} の design_data
+                  </div>
+                  <div class="flex-1 min-h-0 overflow-auto rounded-lg bg-white/80 border border-slate-200/60 p-3">
+                    <pre class="text-xs text-slate-700 font-mono whitespace-pre-wrap break-words">{{ JSON.stringify(activeBranchDesignData, null, 2) }}</pre>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -1171,7 +1382,7 @@ watch(orderDetailModalOpen, (open) => {
       </div>
     </section>
 
-    <!-- 戻る／登録・更新ボタン -->
+    <!-- -- 画面下部：戻る／登録・更新 -- -->
     <div class="relative flex flex-col sm:flex-row items-center gap-4 pt-2 pb-4">
       <button
         type="button"

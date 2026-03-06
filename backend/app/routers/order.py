@@ -12,6 +12,7 @@
   3. order_item: テンプレート項目ごとに1行、入力値を order_item_val に格納（可変項目）。
 """
 
+import json
 import logging
 from datetime import datetime
 
@@ -239,6 +240,36 @@ def _search_orders_impl(
     # 一覧取得
     rows = db.execute(text(sql), params).mappings().all()
 
+    # 枝番ごとの design_data を取得（order_detail）
+    order_ids = [r.get("order_id") for r in rows if r.get("order_id")]
+    design_by_order: dict[int, dict[str, object]] = {}
+    if order_ids:
+        id_placeholders = ", ".join(str(i) for i in order_ids)
+        detail_rows = db.execute(
+            text(f"""
+                SELECT order_id, branch_no, design_data, note
+                FROM order_detail
+                WHERE order_id IN ({id_placeholders}) AND is_deleted = 0
+            """),
+        ).mappings().all()
+        note_by_order: dict[int, dict[str, str]] = {}
+        for oid in order_ids:
+            design_by_order[oid] = {}
+            note_by_order[oid] = {}
+        for d in detail_rows:
+            oid = d.get("order_id")
+            bn = d.get("branch_no")
+            dd = d.get("design_data")
+            note_val = d.get("note")
+            if oid and bn is not None:
+                if isinstance(dd, str):
+                    try:
+                        dd = json.loads(dd) if dd else None
+                    except json.JSONDecodeError:
+                        dd = None
+                design_by_order[oid][str(bn)] = dd
+                note_by_order[oid][str(bn)] = (note_val or "").strip() if note_val else ""
+
     # レスポンス形式に変換
     items = []
     for r in rows:
@@ -298,6 +329,8 @@ def _search_orders_impl(
             "createdDate": created_date,
             "creator": r.get("creator_name") or "",
             "branches": branches,
+            "designDataByBranch": design_by_order.get(r.get("order_id"), {}),
+            "noteByBranch": note_by_order.get(r.get("order_id"), {}),
         })
 
     return {
@@ -415,6 +448,98 @@ def get_order_by_no(
         return JSONResponse(
             status_code=500,
             content={"detail": "サーバーでエラーが発生しました。", "error": str(e)},
+        )
+
+
+# -----------------------------
+# 注文詳細（枝番）の登録・更新
+# -----------------------------
+
+
+@router.patch("/by-no/details")
+def update_order_details(
+    db: Session = Depends(get_db),
+    order_no: str = Query(..., description="注文番号（完全一致）"),
+    branches: list[dict] = Body(..., embed=True, alias="branches"),
+):
+    """
+    注文番号で指定した注文の order_detail（枝番毎の備考・design_data）を登録・更新する。
+
+    リクエスト Body: { "branches": [ { "branchNo": "01", "note": "...", "designData": {...} }, ... ] }
+    - branchNo: 枝番（必須）
+    - note: 備考（任意）
+    - designData: デザイン編集データ（任意。JSON オブジェクト）
+
+    既存の order_detail 行があれば UPDATE、なければ INSERT。
+    """
+    try:
+        no = (order_no or "").strip()
+        if not no:
+            return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
+        row = db.execute(
+            text("SELECT order_id FROM order_main WHERE order_no = :order_no AND is_deleted = 0"),
+            {"order_no": no},
+        ).fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"detail": "該当する注文が見つかりませんでした。"})
+        order_id = row[0]
+        user_id = DEFAULT_USER_ID
+
+        for b in branches:
+            bn = (b.get("branchNo") or "").strip()
+            if not bn or len(bn) > 2:
+                continue
+            note_val = (b.get("note") or "").strip() or None
+            dd = b.get("designData")
+            dd_json = json.dumps(dd) if dd is not None else None
+
+            existing = db.execute(
+                text("""
+                    SELECT order_detail_id FROM order_detail
+                    WHERE order_id = :order_id AND branch_no = :branch_no AND is_deleted = 0
+                """),
+                {"order_id": order_id, "branch_no": bn},
+            ).fetchone()
+
+            if existing:
+                db.execute(
+                    text("""
+                        UPDATE order_detail
+                        SET note = :note, design_data = :design_data, updated_by = :updated_by
+                        WHERE order_id = :order_id AND branch_no = :branch_no AND is_deleted = 0
+                    """),
+                    {
+                        "order_id": order_id,
+                        "branch_no": bn,
+                        "note": note_val,
+                        "design_data": dd_json,
+                        "updated_by": user_id,
+                    },
+                )
+            else:
+                db.execute(
+                    text("""
+                        INSERT INTO order_detail
+                        (order_id, branch_no, note, design_data, is_deleted, created_by, updated_by)
+                        VALUES (:order_id, :branch_no, :note, :design_data, 0, :created_by, :updated_by)
+                    """),
+                    {
+                        "order_id": order_id,
+                        "branch_no": bn,
+                        "note": note_val,
+                        "design_data": dd_json,
+                        "created_by": user_id,
+                        "updated_by": user_id,
+                    },
+                )
+        db.commit()
+        return {"orderNo": no, "updated": True}
+    except Exception as e:
+        db.rollback()
+        logger.exception("注文詳細の登録・更新でエラー")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "注文詳細の登録に失敗しました。", "error": str(e)},
         )
 
 

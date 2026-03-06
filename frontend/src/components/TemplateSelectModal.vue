@@ -58,7 +58,7 @@ function onSelect(opt: TemplateOption) {
 
 <template>
   <Teleport to="body">
-    <!-- テンプレート選択モーダル：開いたときに companyId/customerId で一覧取得。カードクリックで select(option) 発火 -->
+    <!-- === テンプレート選択モーダル === -->
     <div
       v-show="modelValue"
       class="fixed inset-0 z-50"
@@ -67,13 +67,15 @@ function onSelect(opt: TemplateOption) {
       aria-modal="true"
       aria-labelledby="templateSelectModalTitle"
     >
+      <!-- -- オーバーレイ -- -->
       <div class="fixed inset-0 bg-black/40" @click="close"></div>
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+          <!-- -- ヘッダー -- -->
           <div class="px-6 py-3 bg-main flex-shrink-0">
             <h3 id="templateSelectModalTitle" class="text-base font-normal text-white tracking-tight">テンプレートを選択</h3>
           </div>
-          <!-- テンプレートカードグリッド（2列〜5列） -->
+          <!-- -- 本文：テンプレートカードグリッド（カードクリックで select） -- -->
           <div class="px-8 py-6 flex-1 min-h-0 overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
             <div v-else class="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -85,13 +87,19 @@ function onSelect(opt: TemplateOption) {
                 @click="onSelect(opt)"
               >
                 <div class="h-64 w-full bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <span class="text-slate-400 text-xs">テンプレート</span>
+                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                    <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                  </svg>
                 </div>
                 <div class="px-3 py-2 text-xs font-normal text-slate-700">{{ opt.templateName }}</div>
               </button>
             </div>
             <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>
           </div>
+          <!-- -- フッター -- -->
           <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end flex-shrink-0">
             <button
               type="button"

@@ -28,8 +28,9 @@ function close() {
 
 <template>
   <Teleport to="body">
-    <!-- 注文詳細モーダル：OrderItem の読み取り専用表示（一覧ダブルクリック・看板編集の「注文詳細」から表示） -->
+    <!-- === 注文詳細モーダル（OrderItem 読み取り専用） === -->
     <div v-show="modelValue" class="fixed inset-0 z-50" aria-hidden="false">
+      <!-- -- オーバーレイ -- -->
       <div class="fixed inset-0 bg-black/40" @click="close"></div>
       <div class="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
         <div
@@ -37,9 +38,11 @@ function close() {
           class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden my-8"
           @click.stop
         >
+          <!-- -- ヘッダー -- -->
           <div class="px-6 py-3 bg-main">
             <h3 class="text-base font-normal text-white tracking-tight">注文詳細</h3>
           </div>
+          <!-- -- 本文（スクロール） -- -->
           <div class="px-6 pt-6 pb-8 md:px-8 md:pt-8 md:pb-10 space-y-6 max-h-[85vh] overflow-y-auto">
             <!-- 基本情報 -->
             <section>
@@ -147,6 +150,7 @@ function close() {
               </dl>
             </section>
           </div>
+          <!-- -- フッター -- -->
           <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-center">
             <button
               type="button"

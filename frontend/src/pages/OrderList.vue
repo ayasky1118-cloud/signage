@@ -167,6 +167,7 @@ async function fetchOrders() {
   isLoading.value = true
   apiError.value = ""
   try {
+    // 日付系は DOM から取得（Flatpickr が値を保持）
     const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
     const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
     const inputDeadline = document.getElementById("inputDeadline") as HTMLInputElement
@@ -176,6 +177,7 @@ async function fetchOrders() {
     const deadlineDt = inputDeadline?.value ? toApiDate(inputDeadline.value) : ""
     const proofreadingDt = inputProofreading?.value ? toApiDate(inputProofreading.value) : ""
 
+    // searchOrders API 呼び出し
     const result = await searchOrders({
       companyId: getLoginCompanyId(),
       customerId: searchCustomerId.value ?? undefined,
@@ -196,6 +198,7 @@ async function fetchOrders() {
       page: currentPage.value,
       perPage: PER_PAGE,
     })
+    // 成功時：結果を反映。0件のときは該当データなしダイアログを表示
     orderItems.value = result.items
     totalCount.value = result.total
     showNoDataDialog.value = result.total === 0
@@ -384,15 +387,17 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- === 画面：注文一覧 === -->
   <main id="order-list-page" class="bg-[#e2e8f0] text-slate-600 min-h-screen">
     <div class="max-w-6xl mx-auto py-12 px-8">
-      <!-- 検索条件カード -->
+      <!-- === 検索条件カード === -->
       <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-4">
+        <!-- -- ヘッダー -- -->
         <div class="bg-main px-8 py-4">
           <h2 class="text-base md:text-lg font-normal text-white tracking-tight">注文一覧</h2>
         </div>
         <div class="px-6 pt-4 pb-6 md:px-8 md:pt-5 md:pb-7 min-w-0">
-          <!-- 主項目（常時表示）：顧客、担当者名、注文名、デザイン種別 -->
+          <!-- -- 主検索（常時表示） -- -->
           <div class="flex flex-col gap-4 min-w-0">
             <div class="flex flex-col lg:flex-row lg:items-end lg:gap-4 gap-3 min-w-0">
               <div class="space-y-1.5 flex-1 min-w-0">
@@ -464,7 +469,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- 詳細検索（展開で表示） -->
+            <!-- -- 詳細検索（展開で表示） -- -->
             <div class="border-t border-slate-200/80 pt-4 mt-2">
               <button
                 type="button"
@@ -700,8 +705,9 @@ onUnmounted(() => {
         読み込み中...
       </div>
 
-      <!-- 検索結果一覧（データがある場合のみ表示） -->
+      <!-- === 検索結果一覧 === -->
       <div v-show="hasSearched && !isLoading && orderItems.length > 0" class="orderListSection">
+        <!-- -- 該当件数 -- -->
         <div class="flex justify-end items-center gap-4 mb-2 pl-6 pr-6">
           <span class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs">
             <span class="text-slate-500 font-medium">該当</span>
@@ -710,6 +716,7 @@ onUnmounted(() => {
           </span>
         </div>
 
+        <!-- -- 結果テーブル -- -->
         <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="order-list-table w-full text-left">
@@ -859,7 +866,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 戻るボタン -->
+      <!-- -- 戻るボタン -- -->
       <div class="mt-8 flex justify-start">
         <button
           type="button"
