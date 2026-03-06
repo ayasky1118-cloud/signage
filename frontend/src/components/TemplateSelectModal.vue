@@ -20,9 +20,12 @@ const emit = defineEmits<{
   select: [option: TemplateOption]
 }>()
 
+/** モーダルに表示するテンプレート一覧（companyId / customerId で API 取得） */
 const items = ref<TemplateOption[]>([])
+/** テンプレート一覧の取得中フラグ */
 const loading = ref(false)
 
+/** ログイン会社ID・顧客IDを条件にテンプレート一覧をAPI取得する */
 async function loadTemplates() {
   loading.value = true
   try {
@@ -41,10 +44,12 @@ watch(
   }
 )
 
+/** モーダルを閉じる（v-model を false に更新） */
 function close() {
   emit("update:modelValue", false)
 }
 
+/** テンプレートを選択し select イベントを発火してからモーダルを閉じる */
 function onSelect(opt: TemplateOption) {
   emit("select", opt)
   close()
@@ -53,6 +58,7 @@ function onSelect(opt: TemplateOption) {
 
 <template>
   <Teleport to="body">
+    <!-- テンプレート選択モーダル：開いたときに companyId/customerId で一覧取得。カードクリックで select(option) 発火 -->
     <div
       v-show="modelValue"
       class="fixed inset-0 z-50"
@@ -65,8 +71,9 @@ function onSelect(opt: TemplateOption) {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-3 bg-main flex-shrink-0">
-            <h3 id="templateSelectModalTitle" class="text-base font-bold text-white tracking-tight">テンプレートを選択</h3>
+            <h3 id="templateSelectModalTitle" class="text-base font-normal text-white tracking-tight">テンプレートを選択</h3>
           </div>
+          <!-- テンプレートカードグリッド（2列〜5列） -->
           <div class="px-8 py-6 flex-1 min-h-0 overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
             <div v-else class="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -80,7 +87,7 @@ function onSelect(opt: TemplateOption) {
                 <div class="h-64 w-full bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                   <span class="text-slate-400 text-xs">テンプレート</span>
                 </div>
-                <div class="px-3 py-2 text-xs font-semibold text-slate-700">{{ opt.templateName }}</div>
+                <div class="px-3 py-2 text-xs font-normal text-slate-700">{{ opt.templateName }}</div>
               </button>
             </div>
             <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>

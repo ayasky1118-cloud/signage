@@ -16,14 +16,17 @@ const emit = defineEmits<{
   select: [order: OrderItem]
 }>()
 
+/** デザイン種別の表示用。空の場合は — を返す */
 function designTypeLabel(value: string): string {
   return value || "—"
 }
 
+/** モーダルを閉じる（v-model を false に更新） */
 function close() {
   emit("update:modelValue", false)
 }
 
+/** 注文を選択し select イベントを発火してからモーダルを閉じる */
 function onSelect(order: OrderItem) {
   emit("select", order)
   close()
@@ -32,6 +35,7 @@ function onSelect(order: OrderItem) {
 
 <template>
   <Teleport to="body">
+    <!-- 注文番号選択モーダル：行クリックで select(order) 発火 -->
     <div
       v-show="modelValue"
       class="fixed inset-0 z-50"
@@ -44,8 +48,9 @@ function onSelect(order: OrderItem) {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl overflow-hidden">
           <div class="px-6 py-3 bg-main">
-            <h3 id="orderNoSelectModalTitle" class="text-base font-bold text-white tracking-tight">注文番号を選択</h3>
+            <h3 id="orderNoSelectModalTitle" class="text-base font-normal text-white tracking-tight">注文番号を選択</h3>
           </div>
+          <!-- 注文一覧テーブル（親から items を渡す） -->
           <div class="px-8 py-6 max-h-[60vh] overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
             <table v-else class="w-full text-left text-xs">

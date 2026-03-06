@@ -15,10 +15,12 @@ const emit = defineEmits<{
   "update:modelValue": [value: boolean]
 }>()
 
+/** 値が空・未定義の場合は em dash（—）を返す表示用ヘルパー */
 function orDash(val: string | undefined): string {
   return (val ?? "").trim() || "—"
 }
 
+/** モーダルを閉じる（v-model を false に更新） */
 function close() {
   emit("update:modelValue", false)
 }
@@ -26,6 +28,7 @@ function close() {
 
 <template>
   <Teleport to="body">
+    <!-- 注文詳細モーダル：OrderItem の読み取り専用表示（一覧ダブルクリック・看板編集の「注文詳細」から表示） -->
     <div v-show="modelValue" class="fixed inset-0 z-50" aria-hidden="false">
       <div class="fixed inset-0 bg-black/40" @click="close"></div>
       <div class="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
@@ -35,42 +38,42 @@ function close() {
           @click.stop
         >
           <div class="px-6 py-3 bg-main">
-            <h3 class="text-base font-bold text-white tracking-tight">注文詳細</h3>
+            <h3 class="text-base font-normal text-white tracking-tight">注文詳細</h3>
           </div>
           <div class="px-6 pt-6 pb-8 md:px-8 md:pt-8 md:pb-10 space-y-6 max-h-[85vh] overflow-y-auto">
             <!-- 基本情報 -->
             <section>
               <div class="flex items-center gap-2 mb-4 text-main">
                 <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-                <h3 class="font-bold text-base tracking-tight">基本情報</h3>
+                <h3 class="font-normal text-base tracking-tight">基本情報</h3>
               </div>
               <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">注文番号</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">注文番号</dt>
                   <dd class="font-mono text-sm font-normal text-slate-700">{{ order.orderNo }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">注文名</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">注文名</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.orderName) }}</dd>
                 </div>
                 <div class="space-y-1 sm:col-span-2">
-                  <dt class="text-[10px] font-bold text-slate-400">住所</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">住所</dt>
                   <dd class="text-sm text-slate-700 whitespace-pre-wrap">{{ orDash(order.address) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">顧客名</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">顧客名</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.customerName) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">担当者</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">担当者</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.manager) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">デザイン種別</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">デザイン種別</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.designType) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">テンプレート</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">テンプレート</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.template) }}</dd>
                 </div>
               </dl>
@@ -80,36 +83,36 @@ function close() {
             <section>
               <div class="flex items-center gap-2 mb-4 text-main">
                 <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-                <h3 class="font-bold text-base tracking-tight">社内情報</h3>
+                <h3 class="font-normal text-base tracking-tight">社内情報</h3>
               </div>
               <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">社内CD</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">社内CD</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.attribute_01) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">事業所CD</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">事業所CD</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.attribute_02) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">現場CD</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">現場CD</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.attribute_03) }}</dd>
                 </div>
                 <div class="space-y-1"></div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">制作区分</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">制作区分</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.attribute_04) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">ステータス</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">ステータス</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.attribute_05) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">納期</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">納期</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.deadlineDt) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">校正予定日</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">校正予定日</dt>
                   <dd class="text-sm text-slate-700">{{ orDash(order.proofreadingDt) }}</dd>
                 </div>
               </dl>
@@ -119,7 +122,7 @@ function close() {
             <section v-if="order.note?.trim()">
               <div class="flex items-center gap-2 mb-4 text-main">
                 <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-                <h3 class="font-bold text-base tracking-tight">備考</h3>
+                <h3 class="font-normal text-base tracking-tight">備考</h3>
               </div>
               <div class="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
                 {{ order.note }}
@@ -130,15 +133,15 @@ function close() {
             <section class="pt-4 border-t border-slate-200">
               <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">登録日</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">登録日</dt>
                   <dd class="text-sm text-slate-600">{{ orDash(order.createdDate) }}</dd>
                 </div>
                 <div class="space-y-1">
-                  <dt class="text-[10px] font-bold text-slate-400">登録者</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">登録者</dt>
                   <dd class="text-sm text-slate-600">{{ orDash(order.creator) }}</dd>
                 </div>
                 <div v-if="order.branches?.length" class="space-y-1 sm:col-span-2">
-                  <dt class="text-[10px] font-bold text-slate-400">枝番</dt>
+                  <dt class="text-[10px] font-normal text-slate-400">枝番</dt>
                   <dd class="text-sm text-slate-600 font-mono">{{ order.branches.join(", ") }}</dd>
                 </div>
               </dl>

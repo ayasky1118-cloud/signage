@@ -1,5 +1,5 @@
 <template>
-  <!-- 共通レイアウト：ヘッダー + ルートに応じたページコンテンツ -->
+  <!-- 共通レイアウト：AppHeader + router-view（ページコンテンツ） -->
   <div class="min-h-screen w-full min-w-0 bg-[#e2e8f0] text-slate-600 flex flex-col">
     <AppHeader />
     <div class="flex-1 w-full min-w-0">

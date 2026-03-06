@@ -18,15 +18,18 @@ const emit = defineEmits<{
   clear: []
 }>()
 
+/** モーダルを閉じる（v-model を false に更新） */
 function close() {
   emit("update:modelValue", false)
 }
 
+/** 顧客を選択し select イベントを発火してからモーダルを閉じる */
 function onSelect(c: CustomerItem) {
   emit("select", c)
   close()
 }
 
+/** クリアを選択し clear イベントを発火してからモーダルを閉じる */
 function onClear() {
   emit("clear")
   close()
@@ -35,6 +38,7 @@ function onClear() {
 
 <template>
   <Teleport to="body">
+    <!-- 顧客選択モーダル：オーバーレイ＋中央パネル -->
     <div
       v-show="modelValue"
       class="fixed inset-0 z-50"
@@ -47,8 +51,9 @@ function onClear() {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
           <div class="px-6 py-3 bg-main">
-            <h3 id="customerSelectModalTitle" class="text-base font-bold text-white tracking-tight">顧客を選択</h3>
+            <h3 id="customerSelectModalTitle" class="text-base font-normal text-white tracking-tight">顧客を選択</h3>
           </div>
+          <!-- 顧客一覧（行クリックで選択 → select 発火） -->
           <div class="px-8 py-6 max-h-[60vh] overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
             <table v-else class="w-full text-left text-xs">
@@ -75,6 +80,7 @@ function onClear() {
             </table>
             <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>
           </div>
+          <!-- フッター：クリア（clear 発火）／キャンセル（閉じるのみ） -->
           <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
             <button
               type="button"

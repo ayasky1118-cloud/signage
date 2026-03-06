@@ -19,7 +19,9 @@ const route = useRoute()
 
 /* モード: 新規 / 変更 */
 const mode = ref<"new" | "change">("new")
+/** 注文一覧画面から遷移してきた場合 true（注文番号をクリアできない等の制御に使用） */
 const cameFromList = ref(false)
+/** 変更モードで注文番号を検索してヒットした場合 true（他項目の編集可否に使用） */
 const hasSearchedInChangeMode = ref(false)
 
 /* フォーム */
@@ -41,6 +43,7 @@ const deadlineDate = ref("")
 const proofreadingDate = ref("")
 /** ステータス（attribute_05）。固定値ドロップダウン */
 const status = ref("")
+/** ステータス（attribute_05）の選択肢。API と整合させる固定値 */
 const STATUS_OPTIONS = [
   "依頼中",
   "製作中",
@@ -52,6 +55,7 @@ const STATUS_OPTIONS = [
 ] as const
 /** 制作区分（attribute_04）。固定値ドロップダウン */
 const productionType = ref("")
+/** 制作区分（attribute_04）の選択肢。API と整合させる固定値 */
 const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
 /** 備考（デフォルトテンプレート。画面上は入力必須） */
 const NOTE_DEFAULT = "営業担当者：\n制作担当者："
@@ -68,7 +72,7 @@ const isLoadingTemplateItems = ref(false)
 const designTypeOptions = ref<DesignTypeItem[]>([])
 const isLoadingDesignTypes = ref(false)
 
-/** ログイン会社ID（将来は認証ストアから取得。開発時は VITE_LOGIN_COMPANY_ID または 1） */
+/** ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得） */
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -78,6 +82,7 @@ function getLoginCompanyId(): number {
   return 1
 }
 
+/** テンプレートに項目が紐づいている場合のみ「テンプレート項目」セクションを表示する */
 const showTemplateItemsSection = computed(() => templateItems.value.length > 0)
 
 /* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる。pendingOrderItems があれば order_item の値を反映 */
@@ -125,14 +130,18 @@ const orderNoReadOnly = computed(
   () => mode.value !== "change" || cameFromList.value || hasSearchedInChangeMode.value
 )
 
+/** 注文番号入力欄のプレースホルダー（新規/変更で文言を切り替え） */
 const orderNoPlaceholder = computed(() =>
   mode.value === "change" ? "注文番号を入力してください" : "新規時は自動で採番されます"
 )
 
+/** 変更モードかつ一覧以外から来たときのみ「選択」「検索」ボタンを有効にする */
 const searchAndListDisabled = computed(() => !(mode.value === "change" && !cameFromList.value))
 
+/** 変更モードでは顧客の再選択を禁止する */
 const customerSelectDisabled = computed(() => mode.value === "change")
 
+/** 変更モードで未検索のときは無効。新規のときは顧客未選択なら無効 */
 const templateDisabled = computed(() => {
   if (mode.value === "change") return !hasSearchedInChangeMode.value && !cameFromList.value
   return !customerName.value.trim()
@@ -142,8 +151,10 @@ const templateSelectPlaceholder = computed(() =>
   isLoadingTemplates.value ? "読み込み中..." : "レイアウトテンプレートを選択してください"
 )
 
+/** 登録ボタンのラベル（新規時は「登録」、変更時は「更新」） */
 const registerButtonLabel = computed(() => (mode.value === "change" ? "更新" : "登録"))
 
+/** 住所検証中、または変更モードで未検索のときは登録ボタンを無効にする */
 const registerButtonDisabled = computed(
   () =>
     isValidatingAddress.value ||
@@ -152,6 +163,7 @@ const registerButtonDisabled = computed(
       !hasSearchedInChangeMode.value)
 )
 
+/** 変更モードで検索済みのときのみ「看板編集」リンクを有効にする */
 const orderDetailLinkDisabled = computed(
   () => !(mode.value === "change" && hasSearchedInChangeMode.value)
 )
@@ -159,7 +171,7 @@ const orderDetailLinkDisabled = computed(
 /* 新規モードでラジオを無効化（一覧から遷移時） */
 const newModeRadioDisabled = computed(() => cameFromList.value)
 
-/* フォーム状態（未保存変更判定用。デフォルト値からの差分がある場合のみ「変更あり」とする） */
+/** フォーム全体の値を1文字列にまとめ、未保存変更の有無判定に使う */
 function getFormState(): string {
   return [
     orderNo.value.trim(),
@@ -181,7 +193,9 @@ function getFormState(): string {
   ].join("|")
 }
 
+/** 新規モード時のフォーム初期値（未保存変更判定の基準） */
 const initialNewState = ref("")
+/** 変更モード時のフォーム初期値（注文読込完了時点。未保存変更判定の基準） */
 const initialChangeState = ref("")
 
 /* 入力の可否ではなく、デフォルト値（初期状態）から値が変わった場合のみ true */
@@ -208,8 +222,10 @@ const templateSelectModalOpen = ref(false)
 const unsavedConfirmOpen = ref(false)
 const unsavedConfirmMessage = ref("入力内容に変更があります。変更は破棄されます。よろしいですか")
 const unsavedConfirmOkText = ref("破棄する")
+/** 未保存変更確認で「破棄する」を選んだときに実行するコールバック（戻る／遷移など） */
 const pendingUnsavedAction = ref<(() => void) | null>(null)
 
+/** 新規→変更に切り替えた際の「登録してから変更」確認モーダル */
 const changeNoticeModalOpen = ref(false)
 
 const requiredValidationOpen = ref(false)
@@ -234,9 +250,9 @@ const noteInputRef = ref<HTMLTextAreaElement | null>(null)
 /** テンプレート項目入力欄の ref（必須チェック時のフォーカス用） */
 const templateItemInputRefs = ref<(HTMLInputElement | null)[]>([])
 
-/* 変更モードで注文取得時に、テンプレート項目取得後に order_item の値を反映するための待ち行列 */
+/** 変更モードで注文取得時、テンプレート項目取得後に order_item の値を反映するための一時保持 */
 const pendingOrderItems = ref<OrderDetailItem[] | null>(null)
-/* 注文データ反映後、テンプレート項目読込完了時に initialChangeState を更新するフラグ（デフォルト値は読み込み完了時点のみ） */
+/** 注文読込後、テンプレート項目読込完了時に initialChangeState を更新するフラグ（変更モードの未保存判定を正しくするため） */
 const deferInitialChangeStateAfterOrderLoad = ref(false)
 
 const registerConfirmOpen = ref(false)
@@ -249,7 +265,7 @@ const registerResultMessage = ref("登録が完了しました")
 /** 住所検証API実行中（登録ボタン押下時） */
 const isValidatingAddress = ref(false)
 
-/* 注文データをフォームに反映（order_item は pendingOrderItems に渡し、template 読込後に反映） */
+/** 取得した注文詳細をフォーム各項目に反映する（テンプレート項目は非同期で後から反映） */
 function applyOrderData(order: OrderDetail) {
   orderNo.value = order.orderNo ?? ""
   companyCd.value = order.attribute_01 ?? ""
@@ -272,7 +288,7 @@ function applyOrderData(order: OrderDetail) {
   deferInitialChangeStateAfterOrderLoad.value = true
 }
 
-/* 選択した顧客をフォームに反映。デザイン種別はログイン会社で取得するためここでは取得しない */
+/** 選択した顧客のID・名前・担当者をフォームに反映する（デザイン種別は別途APIで取得） */
 function applyCustomerData(c: CustomerItem) {
   customerId.value = c.customerId
   customerName.value = c.customerName
@@ -280,6 +296,7 @@ function applyCustomerData(c: CustomerItem) {
   designTypeId.value = null
 }
 
+/** ログイン会社に紐づくデザイン種別一覧をAPIで取得する */
 async function loadDesignTypes(companyId: number) {
   isLoadingDesignTypes.value = true
   try {
@@ -291,6 +308,7 @@ async function loadDesignTypes(companyId: number) {
   }
 }
 
+/** 顧客選択をクリアし、関連するテンプレート・デザイン種別もリセットする */
 function clearCustomer() {
   customerId.value = null
   customerName.value = ""
@@ -300,7 +318,7 @@ function clearCustomer() {
   templateItemValues.value = []
 }
 
-/* 注文番号変更時（変更モード）他項目クリア */
+/** 変更モードで注文番号が変わったときに、注文番号以外の入力項目をすべてクリアする */
 function clearOtherFieldsOnOrderNoChange() {
   if (mode.value !== "change") return
   companyCd.value = ""
@@ -324,7 +342,7 @@ function clearOtherFieldsOnOrderNoChange() {
   hasSearchedInChangeMode.value = false
 }
 
-/* 注文番号選択モーダルを開く → APIで一覧取得。データが無い場合はメッセージダイアログのみ表示 */
+/** 注文番号選択モーダルを開く。APIで一覧取得し、0件のときはメッセージのみ表示 */
 async function openOrderNoSelectModal() {
   isLoadingOrders.value = true
   try {
@@ -345,12 +363,13 @@ async function openOrderNoSelectModal() {
   }
 }
 
+/** 注文番号選択モーダルで選択した注文の番号をフォームにセットし、他項目をクリアする */
 function selectOrderNo(order: OrderItem) {
   orderNo.value = order.orderNo ?? ""
   clearOtherFieldsOnOrderNoChange()
 }
 
-/* 検索ボタン：注文番号で検索してフォームに反映（order_item 含む） */
+/** 検索ボタン押下時。注文番号でAPI検索し、取得した注文詳細をフォームに反映する */
 async function doSearchByOrderNo() {
   const no = orderNo.value.trim()
   if (!no) {
@@ -369,7 +388,7 @@ async function doSearchByOrderNo() {
   }
 }
 
-/* 顧客選択モーダルを開く */
+/** 顧客選択モーダルを開く。未取得の場合はAPIで顧客一覧を取得してから表示する */
 async function openCustomerSelectModal() {
   customerSelectModalOpen.value = true
   if (customerListForSelect.value.length === 0) {
@@ -384,18 +403,20 @@ async function openCustomerSelectModal() {
   }
 }
 
+/** 顧客選択モーダルで選択した顧客をフォームに反映し、テンプレートをリセットする */
 function selectCustomer(c: CustomerItem) {
   applyCustomerData(c)
   templateId.value = null
   templateItemValues.value = []
 }
 
+/** テンプレート選択モーダルで選択したテンプレートをフォームに反映する */
 function selectTemplateFromModal(opt: TemplateOption) {
   templateId.value = opt.templateId
   templateOptions.value = [opt]
 }
 
-/* 必須バリデーション（フォーカス用の ref 名を返す） */
+/** 必須項目のバリデーション。不正時はメッセージとフォーカス用 ref 名を返す */
 function validateRequired(): { valid: boolean; message: string; focusRef?: string } {
   if (mode.value === "change" && !orderNo.value.trim()) {
     return { valid: false, message: "「注文番号」を選択してください。", focusRef: "orderNoSearch" }
@@ -422,6 +443,7 @@ function validateRequired(): { valid: boolean; message: string; focusRef?: strin
   return { valid: true, message: "" }
 }
 
+/** テンプレート項目の入力欄を ref 配列に登録する（必須エラー時のフォーカス用） */
 function setTemplateItemInputRef(el: unknown, idx: number) {
   if (el instanceof HTMLInputElement) {
     while (templateItemInputRefs.value.length <= idx) templateItemInputRefs.value.push(null)
@@ -429,6 +451,7 @@ function setTemplateItemInputRef(el: unknown, idx: number) {
   }
 }
 
+/** バリデーション用キー（ref 名）からフォーカス対象の DOM 要素を返す */
 function getFocusElement(key: string | null | undefined): HTMLElement | null {
   if (!key) return null
   if (key.startsWith("templateItem_")) {
@@ -462,6 +485,7 @@ function getFocusElement(key: string | null | undefined): HTMLElement | null {
   }
 }
 
+/** 必須エラー時に指定キーに対応する入力欄へスクロール・フォーカスする */
 function focusValidationTarget(key: string | null | undefined) {
   const el = getFocusElement(key)
   if (!el) return
@@ -469,6 +493,7 @@ function focusValidationTarget(key: string | null | undefined) {
   el.focus()
 }
 
+/** 必須項目エラーモーダルを閉じ、該当項目へフォーカスを移す */
 function closeRequiredValidationModal() {
   const focusKey = requiredValidationFocusRef.value
   requiredValidationFocusRef.value = null
@@ -478,6 +503,7 @@ function closeRequiredValidationModal() {
   })
 }
 
+/** 登録ボタン押下時。必須チェック・住所検証ののち登録確認モーダルを開く */
 async function openRegisterConfirm() {
   const result = validateRequired()
   if (!result.valid) {
@@ -511,7 +537,7 @@ async function openRegisterConfirm() {
 
 /**
  * 登録確認モーダルで OK 押下時の処理。
- * 新規: createOrder API を呼び、成功時に採番された orderNo を反映して結果モーダル表示。
+ * 新規: createOrder API を呼び、採番された orderNo を反映して結果モーダル表示。
  * 変更: 更新 API は未実装のため結果メッセージのみ表示。
  */
 async function doRegisterConfirm() {
@@ -567,7 +593,7 @@ async function doRegisterConfirm() {
   registerResultOpen.value = true
 }
 
-/* 看板編集へのリンク（変更モード・検索済み時） */
+/** 看板編集画面へのルート（変更モードかつ検索済みかつ注文番号ありのときのみ有効なパスを返す） */
 const orderDetailTo = computed(() => {
   if (!orderDetailLinkDisabled.value && orderNo.value) {
     return {
@@ -578,7 +604,7 @@ const orderDetailTo = computed(() => {
   return { path: "/order/detail" }
 })
 
-/* 戻る */
+/** 戻るボタン押下。未保存変更があれば確認モーダルを出し、OK で履歴を戻す */
 function goBack() {
   if (hasUnsavedChanges.value) {
     unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。戻ってよろしいですか"
@@ -590,6 +616,7 @@ function goBack() {
   }
 }
 
+/** 未保存変更確認で「破棄する」を選んだときに、保留していたアクション（戻る／遷移など）を実行する */
 function executePendingUnsaved() {
   const fn = pendingUnsavedAction.value
   pendingUnsavedAction.value = null
@@ -597,7 +624,7 @@ function executePendingUnsaved() {
   if (fn) fn()
 }
 
-/* 新規→変更で入力変更あり（ラジオはすでに変更になっているので新規に戻す） */
+/** モードを新規→変更に切り替えたとき、入力に変更があれば「登録してから変更」等の確認モーダルを表示する */
 function onModeChangeToChange() {
   if (getFormState() !== initialNewState.value) {
     changeNoticeModalOpen.value = true
@@ -605,6 +632,7 @@ function onModeChangeToChange() {
   }
 }
 
+/** 新規→変更の確認で「破棄して切り替え」を選んだとき、フォームをクリアして変更モードにする */
 function changeNoticeDiscard() {
   orderNo.value = ""
   companyCd.value = ""
@@ -630,12 +658,13 @@ function changeNoticeDiscard() {
   changeNoticeModalOpen.value = false
 }
 
+/** 新規→変更の確認で「登録して切り替え」を選んだとき、登録確認モーダルを開く */
 function changeNoticeRegister() {
   changeNoticeModalOpen.value = false
   openRegisterConfirm()
 }
 
-/* 変更→新規で未保存変更あり（ラジオはすでに新規になっているので、確認時は変更に戻す） */
+/** モードを変更→新規に切り替えたとき、未保存変更があれば破棄確認を出し、OK でフォームをクリアして新規にする */
 function onModeChangeToNew() {
   if (getFormState() !== initialChangeState.value) {
     unsavedConfirmMessage.value = "入力内容に変更があります。新規に切り替えますか？変更は破棄されます。"
@@ -689,7 +718,7 @@ function onModeChangeToNew() {
   }
 }
 
-/* リンククリック時：未保存変更があれば確認 */
+/** 看板編集リンククリック時。未保存変更があれば破棄確認を出し、OK で看板編集画面へ遷移する */
 function handleOrderDetailClick(e: MouseEvent) {
   if (orderDetailLinkDisabled.value) {
     e.preventDefault()
@@ -766,13 +795,15 @@ watch(orderNo, () => {
 
 <template>
   <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
+    <!-- 注文登録フォームカード -->
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
       <div class="bg-main px-8 py-4">
-        <h2 class="text-base font-bold text-white tracking-tight">注文（新規・変更）</h2>
+        <h2 class="text-base font-normal text-white tracking-tight">注文（新規・変更）</h2>
       </div>
 
       <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
         <div>
+          <!-- 新規／変更のモード切替（一覧から遷移時は新規を無効化） -->
           <div class="pb-4 border-b border-slate-100">
             <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden bg-slate-100 min-w-[11rem] mode-radio-group">
               <label
@@ -788,15 +819,16 @@ watch(orderNo, () => {
                   :disabled="newModeRadioDisabled"
                   @change="onModeChangeToNew"
                 />
-                <span class="block w-full px-5 py-2 text-center text-xs font-bold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 border-r border-slate-200 whitespace-nowrap peer-checked:bg-main peer-checked:text-white peer-checked:border-slate-200/40">新規</span>
+                <span class="block w-full px-5 py-2 text-center text-xs font-normal transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 border-r border-slate-200 whitespace-nowrap peer-checked:bg-main peer-checked:text-white peer-checked:border-slate-200/40">新規</span>
               </label>
               <label class="cursor-pointer flex-1 min-w-[5rem] mode-radio-label">
                 <input v-model="mode" type="radio" name="mode" value="change" class="sr-only peer" @change="onModeChangeToChange" />
-                <span class="block w-full px-5 py-2 text-center text-xs font-semibold transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 peer-checked:bg-main peer-checked:text-white whitespace-nowrap">変更</span>
+                <span class="block w-full px-5 py-2 text-center text-xs font-normal transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 peer-checked:bg-main peer-checked:text-white whitespace-nowrap">変更</span>
               </label>
             </div>
           </div>
 
+          <!-- 注文番号・社内CD・事業所CD・現場CD・ステータス（1行目） -->
           <section class="space-y-5 pt-4">
             <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
               <div class="space-y-2.5 shrink-0">
@@ -832,7 +864,7 @@ watch(orderNo, () => {
                   <button
                     ref="orderNoSearchBtnRef"
                     type="button"
-                    class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                     :disabled="searchAndListDisabled"
                     @click="doSearchByOrderNo"
                   >
@@ -985,6 +1017,7 @@ watch(orderNo, () => {
           </section>
         </div>
 
+        <!-- 顧客・担当者・デザイン種別・テンプレート（顧客未選択時はテンプレート無効） -->
         <section>
           <div class="grid grid-cols-1 gap-5">
             <div class="space-y-2.5">
@@ -1087,11 +1120,12 @@ watch(orderNo, () => {
           </div>
         </section>
 
+        <!-- テンプレート項目（選択テンプレートに紐づく入力項目。必須あり） -->
         <section v-show="showTemplateItemsSection" class="mt-4">
           <div class="border-t border-slate-100 pt-5">
             <div class="flex items-center gap-2 mb-3 text-main">
               <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-              <h3 class="font-bold text-base tracking-tight">テンプレート項目</h3>
+              <h3 class="font-normal text-base tracking-tight">テンプレート項目</h3>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6">
               <div class="space-y-1.5">
@@ -1128,6 +1162,7 @@ watch(orderNo, () => {
       </form>
     </div>
 
+    <!-- 画面下部：戻る／登録・更新／看板編集リンク -->
     <div class="mt-8 flex items-center gap-4">
       <div class="flex-1">
         <button
@@ -1141,7 +1176,7 @@ watch(orderNo, () => {
       <div class="flex-1 text-center">
         <button
           type="button"
-          class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-lg shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+          class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-lg shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
           :disabled="registerButtonDisabled"
           @click="openRegisterConfirm"
         >
@@ -1167,7 +1202,7 @@ watch(orderNo, () => {
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">変更の確認</h3>
+              <h3 class="text-base font-normal text-white tracking-tight">変更の確認</h3>
             </div>
             <div class="px-8 py-6">
               <p class="text-sm text-slate-600">{{ unsavedConfirmMessage }}</p>
@@ -1182,7 +1217,7 @@ watch(orderNo, () => {
               </button>
               <button
                 type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="executePendingUnsaved"
               >
                 {{ unsavedConfirmOkText }}
@@ -1225,7 +1260,7 @@ watch(orderNo, () => {
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">変更の確認</h3>
+              <h3 class="text-base font-normal text-white tracking-tight">変更の確認</h3>
             </div>
             <div class="px-8 py-6">
               <p class="text-sm text-slate-600">入力内容に変更があります。登録してから変更に切り替えますか？</p>
@@ -1247,7 +1282,7 @@ watch(orderNo, () => {
               </button>
               <button
                 type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="changeNoticeRegister"
               >
                 登録して切り替え
@@ -1270,7 +1305,7 @@ watch(orderNo, () => {
             <div class="px-8 py-5 flex flex-nowrap justify-center">
               <button
                 type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="closeRequiredValidationModal"
               >
                 OK
@@ -1288,7 +1323,7 @@ watch(orderNo, () => {
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">{{ registerConfirmTitle }}</h3>
+              <h3 class="text-base font-normal text-white tracking-tight">{{ registerConfirmTitle }}</h3>
             </div>
             <div class="px-8 py-6">
               <p class="text-sm text-slate-600">{{ registerConfirmMessage }}</p>
@@ -1303,7 +1338,7 @@ watch(orderNo, () => {
               </button>
               <button
                 type="button"
-                class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="doRegisterConfirm"
               >
                 OK
@@ -1321,7 +1356,7 @@ watch(orderNo, () => {
         <div class="fixed inset-0 flex items-center justify-center p-4">
           <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
             <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-bold text-white tracking-tight">処理結果</h3>
+              <h3 class="text-base font-normal text-white tracking-tight">処理結果</h3>
             </div>
             <div class="px-8 py-6">
               <p class="text-sm text-slate-600">{{ registerResultMessage }}</p>
@@ -1329,7 +1364,7 @@ watch(orderNo, () => {
             <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
               <RouterLink
                 :to="{ path: '/order/detail', query: { orderNo: orderNo, itemCode: '01', mode: 'edit' } }"
-                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
                 @click="registerResultOpen = false"
               >
                 看板編集
