@@ -5,11 +5,12 @@
  * - 枝番タブ・追加・削除・備考・地図出力/読込
  * - 全画面編集オーバーレイ・登録/更新・各種モーダル
  */
-import { ref, computed, watch, onMounted } from "vue"
+import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, type OrderItem } from "../composables/useOrderApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
+import OrderDetailModal from "../components/OrderDetailModal.vue"
 
 const router = useRouter()
 const route = useRoute()
@@ -41,6 +42,15 @@ function orDash(val: string | undefined): string {
   return (val ?? "").trim() || "—"
 }
 
+/**
+ * 詳細エリアのフィールド表示: 初期表示・クリア時は空白、データ取得済みで null の場合は —
+ */
+function fieldDisplay(val: string | undefined): string {
+  if (!hasSearched.value) return ""
+  const s = (val ?? "").trim()
+  return s || "—"
+}
+
 /* ルートクエリ: 一覧から遷移時は orderNo, itemCode, mode=edit */
 const cameFromList = computed(() => route.query.mode === "edit" && !!route.query.orderNo)
 const initialOrderNo = computed(() => (route.query.orderNo as string) ?? "")
@@ -49,8 +59,13 @@ const initialItemCode = computed(() => (route.query.itemCode as string) ?? "")
 /* 注文情報の開閉 */
 const orderInfoExpanded = ref(true)
 
+function toggleOrderInfo() {
+  orderInfoExpanded.value = !orderInfoExpanded.value
+}
+
 /* 注文番号・検索済み・表示用データ */
 const inputOrderNo = ref("")
+const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const hasSearched = ref(false)
 const lastConfirmedOrderNo = ref("")
 const orderDisplay = ref<{
@@ -227,11 +242,37 @@ async function applyOrderBySearch(orderNo: string) {
       updater: "",
     }
     lastConfirmedOrderNo.value = ""
+    inputOrderNo.value = no
     allBranches.value = []
     activeBranch.value = ""
     branchMemo.value = ""
     setOriginalBranchValues("", "")
     hasSearched.value = false
+    showOrderSearchNoResultModal.value = true
+  }
+}
+
+function closeOrderSearchNoResultModal() {
+  showOrderSearchNoResultModal.value = false
+}
+
+/** 注文詳細モーダルを開く（注文一覧APIで取得した OrderItem を表示） */
+async function openOrderDetailModal() {
+  const no = lastConfirmedOrderNo.value?.trim()
+  if (!no || !hasSearched.value) return
+  try {
+    const result = await searchOrders({
+      companyId: getLoginCompanyId(),
+      orderNo: no,
+      page: 1,
+      perPage: 1,
+    })
+    if (result.items.length > 0) {
+      orderDetailForModal.value = result.items[0]
+      orderDetailModalOpen.value = true
+    }
+  } catch {
+    orderDetailForModal.value = null
   }
 }
 
@@ -320,8 +361,10 @@ function doApplyActiveBranchDisplayValue(branchNo: string, switchOnly: boolean) 
   lastAddedBranchNo.value = branchNo
 }
 
-/* モーダル: 検索バリデーション・登録確認・登録結果・注文選択・枝番追加・枝番切り替え確認・枝番存在・枝番削除 */
+/* モーダル: 検索バリデーション・登録確認・登録結果・注文選択・枝番追加・枝番切り替え確認・枝番存在・枝番削除・注文詳細 */
 const showOrderSearchValidationModal = ref(false)
+const orderDetailModalOpen = ref(false)
+const orderDetailForModal = ref<OrderItem | null>(null)
 const showRegisterConfirmModal = ref(false)
 const showRegisterResultModal = ref(false)
 const registerResultMessage = ref("")
@@ -336,6 +379,8 @@ const hideBranchSwitchRegisterButton = ref(false)
 const showBranchExistsModal = ref(false)
 const showBranchDeleteModal = ref(false)
 const branchDeleteTargetNo = ref("")
+const showOrderNoResetConfirmModal = ref(false)
+const showOrderSearchNoResultModal = ref(false)
 
 type PendingAction =
   | { type: "branch"; branchNo: string }
@@ -380,7 +425,7 @@ function openBranchSwitchConfirmModal(action?: PendingAction | null) {
   if (action) pendingAction.value = action
   const pa = pendingAction.value
   const verb = pageMode.value === "edit" ? "更新して" : "登録して"
-  let message = `変更が保存されていません。${verb}から枝番を切り替えますか？`
+  let message = `変更が保存されていません。${verb}から枝番を切り替えますか`
   let discard = "破棄して切り替え"
   let register = `${verb}切り替え`
   hideBranchSwitchRegisterButton.value = false
@@ -393,12 +438,12 @@ function openBranchSwitchConfirmModal(action?: PendingAction | null) {
     discard = pa.labels.discard
     register = pa.labels.register
   } else if (pa?.type === "changeOrderNo") {
-    message = "看板情報に変更があります。注文番号を変更しますか？変更は破棄されます。"
+    message = "看板情報に変更があります。注文番号を変更しますか。変更は破棄されます"
     discard = "破棄して変更"
     register = `${verb}変更`
     hideBranchSwitchRegisterButton.value = true
   } else if (pa?.type === "addBranch") {
-    message = `変更が保存されていません。枝番を追加しますか？変更は破棄されます。`
+    message = `変更が保存されていません。枝番を追加しますか。変更は破棄されます`
     discard = "破棄して追加"
     register = `${verb}追加`
     hideBranchSwitchRegisterButton.value = true
@@ -420,6 +465,7 @@ function openBranchDeleteModal(branchNo: string) {
 
 function closeOrderSearchValidationModal() {
   showOrderSearchValidationModal.value = false
+  nextTick(() => orderNoInputRef.value?.focus())
 }
 
 function closeRegisterConfirmModal() {
@@ -455,6 +501,21 @@ function closeBranchDeleteModal() {
   branchDeleteTargetNo.value = ""
 }
 
+function openOrderNoResetConfirmModal() {
+  showOrderNoResetConfirmModal.value = true
+}
+
+function closeOrderNoResetConfirmModal() {
+  showOrderNoResetConfirmModal.value = false
+}
+
+function confirmOrderNoReset() {
+  const no = lastConfirmedOrderNo.value
+  inputOrderNo.value = no
+  closeOrderNoResetConfirmModal()
+  if (no) applyOrderBySearch(no)
+}
+
 function selectOrderFromList(order: OrderItem) {
   if (order.orderNo === lastConfirmedOrderNo.value) return
   if (isDirty.value) {
@@ -479,7 +540,7 @@ function confirmSearch() {
 
 function confirmRegister() {
   closeRegisterConfirmModal()
-  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました。" : "登録が完了しました。")
+  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
 }
 
 function confirmBranchAdd() {
@@ -579,7 +640,7 @@ function confirmBranchSwitchDiscard() {
 
 function confirmBranchSwitchRegister() {
   closeBranchSwitchConfirmModal(false)
-  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました。" : "登録が完了しました。")
+  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
 }
 
 function onRegisterResultModalOk() {
@@ -651,7 +712,7 @@ function handleBackClick(e: Event) {
   pendingAction.value = {
     type: "back",
     labels: {
-      message: `変更が保存されていません。${verb}から戻りますか？`,
+      message: `変更が保存されていません。${verb}から戻りますか`,
       discard: "破棄して戻る",
       register: `${verb}戻る`,
     },
@@ -699,6 +760,26 @@ function onSvgLoad(e: Event) {
   input.value = ""
 }
 
+/**
+ * 注文番号フォーカス移動時: 検索値の「誤編集」と思われるときだけ画面初期化の確認を表示。
+ * - 注文番号を消した場合（空）→ 出さない（検索で未入力チェックされる）
+ * - 別の注文番号を入力した場合（検索値と無関係）→ 出さない
+ * - 検索値の先頭から一部削った／末尾に足しただけ（いずれかがもう一方の接頭辞）→ 出す
+ */
+function onOrderNoBlur() {
+  if (orderNoReadOnly.value) return
+  if (!hasSearched.value) return
+  const current = (inputOrderNo.value || "").trim()
+  const confirmed = lastConfirmedOrderNo.value || ""
+  if (current === confirmed) return
+  if (current === "") return
+  const looksLikeTypo =
+    confirmed !== "" &&
+    (confirmed.startsWith(current) || current.startsWith(confirmed))
+  if (!looksLikeTypo) return
+  openOrderNoResetConfirmModal()
+}
+
 onMounted(() => {
   if (initialOrderNo.value && cameFromList.value) {
     inputOrderNo.value = initialOrderNo.value
@@ -710,6 +791,10 @@ onMounted(() => {
 watch(activeBranch, (newVal, oldVal) => {
   if (oldVal) branchMemoByBranch.value[oldVal] = branchMemo.value
   if (newVal) branchMemo.value = branchMemoByBranch.value[newVal] ?? ""
+})
+
+watch(orderDetailModalOpen, (open) => {
+  if (!open) orderDetailForModal.value = null
 })
 </script>
 
@@ -723,31 +808,39 @@ watch(activeBranch, (newVal, oldVal) => {
       <div class="px-6 pt-2 pb-6 md:px-8 md:pt-3 md:pb-7 min-w-0">
         <!-- 詳細（展開で表示）※注文一覧と同じスタイル -->
         <div>
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all duration-200"
-            :aria-expanded="orderInfoExpanded"
-            @click="orderInfoExpanded = !orderInfoExpanded"
-          >
-            <span
-              class="inline-flex transition-transform duration-200"
-              :class="{ 'rotate-180': orderInfoExpanded }"
+          <div class="mb-4">
+            <button
+              type="button"
+              class="group inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 border shadow-sm"
+              :class="orderInfoExpanded
+                ? 'bg-slate-50 border-slate-200/80 text-slate-600 hover:bg-slate-100 hover:border-slate-300/80 hover:shadow'
+                : 'bg-white border-slate-200/60 text-slate-500 hover:bg-slate-50 hover:border-slate-200 hover:text-slate-700'"
+              :aria-expanded="orderInfoExpanded"
+              :aria-label="orderInfoExpanded ? '詳細を閉じる' : '詳細を開く'"
+              @click="toggleOrderInfo"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </span>
-            <span>詳細</span>
-          </button>
-          <div v-show="orderInfoExpanded" class="mt-4 space-y-4 min-w-0">
-            <div class="grid grid-cols-1 md:[grid-template-columns:380px_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm">
-          <div class="space-y-1.5">
-            <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <span
+                class="inline-flex text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ease-out"
+                :class="{ 'rotate-180': orderInfoExpanded }"
+                aria-hidden="true"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+              <span>{{ orderInfoExpanded ? "閉じる" : "開く" }}</span>
+            </button>
+          </div>
+          <div v-show="orderInfoExpanded" class="space-y-4 min-w-0">
+            <div class="grid grid-cols-1 md:[grid-template-columns:minmax(360px,380px)_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm">
+          <div class="space-y-1.5 min-w-0">
+            <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
               <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
               注文番号
             </label>
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="flex flex-nowrap items-center gap-2 min-w-0">
               <input
+                ref="orderNoInputRef"
                 v-model="inputOrderNo"
                 type="text"
                 placeholder="注文番号を入力してください"
@@ -758,6 +851,7 @@ watch(activeBranch, (newVal, oldVal) => {
                   'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
                   'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
                 }"
+                @blur="onOrderNoBlur"
               />
               <button
                 type="button"
@@ -772,7 +866,18 @@ watch(activeBranch, (newVal, oldVal) => {
               </button>
               <button
                 type="button"
-                class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                title="注文詳細を表示"
+                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                :disabled="!hasSearched || !lastConfirmedOrderNo"
+                @click="openOrderDetailModal"
+              >
+                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                 :disabled="selectSearchDisabled"
                 @click="confirmSearch"
               >
@@ -780,25 +885,25 @@ watch(activeBranch, (newVal, oldVal) => {
               </button>
             </div>
           </div>
-          <div class="space-y-1 md:pl-6">
-            <div class="text-xs text-slate-400 font-semibold">注文名 / 住所</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.orderName) }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.address) }}</div>
+          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
+            <div class="text-xs text-slate-400 font-normal">顧客名 / 担当者</div>
+            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.customerName) }}</div>
+            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.manager) }}</div>
           </div>
-          <div class="space-y-1 md:pl-6">
-            <div class="text-xs text-slate-400 font-semibold">顧客名 / 担当者</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.customerName) }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.manager) }}</div>
+          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
+            <div class="text-xs text-slate-400 font-normal">更新日 / 更新者</div>
+            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
+            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.updater) }}</div>
           </div>
-          <div class="space-y-1">
-            <div class="text-xs text-slate-400 font-semibold">デザイン種別 / テンプレート</div>
-            <div class="text-slate-700 text-sm">{{ orDash(orderDisplay.designType) }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.template) }}</div>
+          <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
+            <div class="text-xs text-slate-400 font-normal">デザイン種別 / テンプレート</div>
+            <div class="text-slate-700 text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.designType) }}</div>
+            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.template) }}</div>
           </div>
-          <div class="space-y-1 md:pl-6">
-            <div class="text-xs text-slate-400 font-semibold">更新日 / 更新者</div>
-            <div class="text-slate-700 font-semibold text-sm">{{ orDash(orderDisplay.updateDate) }}</div>
-            <div class="text-[11px] text-slate-500 mt-0.5">{{ orDash(orderDisplay.updater) }}</div>
+          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
+            <div class="text-xs text-slate-400 font-normal">注文名 / 住所</div>
+            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.orderName) }}</div>
+            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.address) }}</div>
           </div>
             </div>
           </div>
@@ -822,7 +927,7 @@ watch(activeBranch, (newVal, oldVal) => {
         <!-- 枝番タブ -->
         <div>
           <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-slate-500">枝番選択</span>
+            <span class="text-xs font-semibold text-slate-500">枝番を選択</span>
             <div class="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1109,12 +1214,12 @@ watch(activeBranch, (newVal, oldVal) => {
             </div>
             <div class="space-y-2">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-slate-500">アイテム選択</span>
+                <span class="text-xs font-bold text-slate-500">アイテムを選択</span>
                 <span class="text-slate-400 cursor-help" title="地図上のアイテムを選択・削除します">ⓘ</span>
               </div>
               <div class="flex gap-2">
                 <button type="button" class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
-                  アイテム選択モード
+                  アイテムを選択モード
                 </button>
                 <button type="button" class="flex-1 px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all duration-200">
                   選択アイテムの削除
@@ -1151,13 +1256,81 @@ watch(activeBranch, (newVal, oldVal) => {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
           <div class="px-8 pt-8 pb-6 text-center">
-            <p id="orderSearchValidationModalMessage" class="text-sm text-slate-600">注文番号を入力してください。</p>
+            <p id="orderSearchValidationModalMessage" class="text-sm text-slate-600">注文番号を入力してください</p>
           </div>
           <div class="px-8 py-5 flex flex-nowrap justify-center">
             <button
               type="button"
               class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
               @click="closeOrderSearchValidationModal"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 検索該当なし -->
+  <Teleport to="body">
+    <div
+      v-if="showOrderSearchNoResultModal"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="orderSearchNoResultModalMessage"
+    >
+      <div class="fixed inset-0 bg-black/40" @click="closeOrderSearchNoResultModal"></div>
+      <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
+          <div class="px-8 pt-8 pb-6 text-center">
+            <p id="orderSearchNoResultModalMessage" class="text-sm text-slate-600">該当データがありません</p>
+          </div>
+          <div class="px-8 py-5 flex flex-nowrap justify-center">
+            <button
+              type="button"
+              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+              @click="closeOrderSearchNoResultModal"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 注文番号変更時・画面初期化の確認 -->
+  <Teleport to="body">
+    <div
+      v-if="showOrderNoResetConfirmModal"
+      class="fixed inset-0 z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="orderNoResetConfirmModalTitle"
+    >
+      <div class="fixed inset-0 bg-black/40" @click="closeOrderNoResetConfirmModal"></div>
+      <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
+          <div class="px-6 py-3 bg-main">
+            <h3 id="orderNoResetConfirmModalTitle" class="text-base font-bold text-white tracking-tight">画面初期化の確認</h3>
+          </div>
+          <div class="px-8 py-6">
+            <p class="text-sm text-slate-600">注文番号が変更されています。検索時の値（{{ lastConfirmedOrderNo || '—' }}）に戻して画面を初期化しますか</p>
+          </div>
+          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+            <button
+              type="button"
+              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              @click="closeOrderNoResetConfirmModal"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+              @click="confirmOrderNoReset"
             >
               OK
             </button>
@@ -1186,7 +1359,7 @@ watch(activeBranch, (newVal, oldVal) => {
           </div>
           <div class="px-8 py-6">
             <p class="text-sm text-slate-600">
-              {{ pageMode === "edit" ? "この内容で更新してよろしいですか？" : "この内容で登録してよろしいですか？" }}
+              {{ pageMode === "edit" ? "この内容で更新してよろしいですか" : "この内容で登録してよろしいですか" }}
             </p>
           </div>
           <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
@@ -1250,6 +1423,12 @@ watch(activeBranch, (newVal, oldVal) => {
     @select="selectOrderFromList"
   />
 
+  <!-- 注文詳細モーダル（共通コンポーネント。一覧APIの返却値を表示） -->
+  <OrderDetailModal
+    v-model="orderDetailModalOpen"
+    :order="orderDetailForModal"
+  />
+
   <!-- 枝番追加 -->
   <Teleport to="body">
     <div
@@ -1261,35 +1440,35 @@ watch(activeBranch, (newVal, oldVal) => {
     >
       <div class="fixed inset-0 bg-black/40" @click="closeBranchAddModal"></div>
       <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="branchAddModalTitle" class="text-base font-bold text-white tracking-tight">枝番を追加</h3>
+        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-[280px] overflow-hidden">
+          <div class="px-5 py-3 bg-main">
+            <h3 id="branchAddModalTitle" class="text-sm font-bold text-white tracking-tight">枝番を追加</h3>
           </div>
-          <div class="px-8 py-6 space-y-4">
+          <div class="px-5 py-5 space-y-4">
             <div class="space-y-1.5">
               <label for="branchNoInput" class="block text-xs font-bold text-slate-500">枝番</label>
               <input
                 id="branchNoInput"
                 v-model="branchAddInput"
                 type="text"
-                class="w-full px-4 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                class="w-20 px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
                 placeholder="例: 06"
                 @keydown.enter.prevent="confirmBranchAdd"
                 @keydown.escape="closeBranchAddModal"
               />
             </div>
           </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+          <div class="px-5 py-4 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              class="px-5 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
               @click="closeBranchAddModal"
             >
               キャンセル
             </button>
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
+              class="px-5 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-bold shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
               @click="confirmBranchAdd"
             >
               OK
@@ -1395,7 +1574,7 @@ watch(activeBranch, (newVal, oldVal) => {
             <h3 id="branchDeleteModalTitle" class="text-base font-bold text-white tracking-tight">枝番の削除</h3>
           </div>
           <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">枝番<span class="font-semibold">{{ branchDeleteTargetNo }}</span>を削除しますか？</p>
+            <p class="text-sm text-slate-600">枝番<span class="font-semibold">{{ branchDeleteTargetNo }}</span>を削除しますか</p>
           </div>
           <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
             <button

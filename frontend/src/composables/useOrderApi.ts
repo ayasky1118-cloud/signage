@@ -142,7 +142,7 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
   clearTimeout(timeoutId)
   if (res.status === 404) {
     const body = await res.json().catch(() => ({})) as { detail?: string }
-    throw new Error(body?.detail ?? "該当する注文が見つかりませんでした。")
+    throw new Error(body?.detail ?? "該当データがありません")
   }
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`

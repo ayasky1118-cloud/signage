@@ -65,7 +65,7 @@ function onSelect(opt: TemplateOption) {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
           <div class="px-6 py-3 bg-main flex-shrink-0">
-            <h3 id="templateSelectModalTitle" class="text-base font-bold text-white tracking-tight">テンプレート選択</h3>
+            <h3 id="templateSelectModalTitle" class="text-base font-bold text-white tracking-tight">テンプレートを選択</h3>
           </div>
           <div class="px-8 py-6 flex-1 min-h-0 overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>

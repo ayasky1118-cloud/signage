@@ -206,14 +206,14 @@ const templateSelectModalOpen = ref(false)
 
 /* 各種確認モーダル */
 const unsavedConfirmOpen = ref(false)
-const unsavedConfirmMessage = ref("入力内容に変更があります。変更は破棄されます。よろしいですか？")
+const unsavedConfirmMessage = ref("入力内容に変更があります。変更は破棄されます。よろしいですか")
 const unsavedConfirmOkText = ref("破棄する")
 const pendingUnsavedAction = ref<(() => void) | null>(null)
 
 const changeNoticeModalOpen = ref(false)
 
 const requiredValidationOpen = ref(false)
-const requiredValidationMessage = ref("必須項目が未入力です。")
+const requiredValidationMessage = ref("必須項目が未入力です")
 /** 必須エラー時にフォーカスする要素の ref 名 */
 const requiredValidationFocusRef = ref<string | null>(null)
 
@@ -241,10 +241,10 @@ const deferInitialChangeStateAfterOrderLoad = ref(false)
 
 const registerConfirmOpen = ref(false)
 const registerConfirmTitle = ref("登録の確認")
-const registerConfirmMessage = ref("この内容で登録してよろしいですか？")
+const registerConfirmMessage = ref("この内容で登録してよろしいですか")
 
 const registerResultOpen = ref(false)
-const registerResultMessage = ref("登録が完了しました。")
+const registerResultMessage = ref("登録が完了しました")
 
 /** 住所検証API実行中（登録ボタン押下時） */
 const isValidatingAddress = ref(false)
@@ -364,7 +364,7 @@ async function doSearchByOrderNo() {
     applyOrderData(order)
     hasSearchedInChangeMode.value = true
   } catch (e) {
-    requiredValidationMessage.value = e instanceof Error ? e.message : "該当する注文が見つかりませんでした。"
+    requiredValidationMessage.value = e instanceof Error ? e.message : "該当データがありません"
     requiredValidationOpen.value = true
   }
 }
@@ -400,21 +400,21 @@ function validateRequired(): { valid: boolean; message: string; focusRef?: strin
   if (mode.value === "change" && !orderNo.value.trim()) {
     return { valid: false, message: "「注文番号」を選択してください。", focusRef: "orderNoSearch" }
   }
-  if (!companyCd.value.trim()) return { valid: false, message: "「社内CD」を入力してください。", focusRef: "companyCd" }
-  if (!officeCd.value.trim()) return { valid: false, message: "「事業所CD」を入力してください。", focusRef: "officeCd" }
-  if (!siteCd.value.trim()) return { valid: false, message: "「現場CD」を入力してください。", focusRef: "siteCd" }
-  if (!orderName.value.trim()) return { valid: false, message: "「注文名」を入力してください。", focusRef: "orderName" }
-  if (!address.value.trim()) return { valid: false, message: "「住所」を入力してください。", focusRef: "address" }
+  if (!companyCd.value.trim()) return { valid: false, message: "「社内CD」を入力してください", focusRef: "companyCd" }
+  if (!officeCd.value.trim()) return { valid: false, message: "「事業所CD」を入力してください", focusRef: "officeCd" }
+  if (!siteCd.value.trim()) return { valid: false, message: "「現場CD」を入力してください", focusRef: "siteCd" }
+  if (!orderName.value.trim()) return { valid: false, message: "「注文名」を入力してください", focusRef: "orderName" }
+  if (!address.value.trim()) return { valid: false, message: "「住所」を入力してください", focusRef: "address" }
   if (!customerName.value.trim()) return { valid: false, message: "「顧客」を選択してください。", focusRef: "customerSelect" }
   if (templateId.value == null) return { valid: false, message: "「テンプレート」を選択してください。", focusRef: "template" }
   if (designTypeId.value == null) return { valid: false, message: "「デザイン種別」を選択してください。", focusRef: "designType" }
-  if (!note.value.trim()) return { valid: false, message: "「備考」を入力してください。", focusRef: "note" }
+  if (!note.value.trim()) return { valid: false, message: "「備考」を入力してください", focusRef: "note" }
   for (let i = 0; i < templateItems.value.length; i++) {
     const item = templateItems.value[i]
     if (item.isRequired && !(templateItemValues.value[i] ?? "").trim()) {
       return {
         valid: false,
-        message: `「${item.itemName}」を入力してください。`,
+        message: `「${item.itemName}」を入力してください`,
         focusRef: `templateItem_${i}`,
       }
     }
@@ -490,7 +490,7 @@ async function openRegisterConfirm() {
   try {
     const addressResult = await validateAddress(address.value)
     if (addressResult.valid !== true) {
-      requiredValidationMessage.value = addressResult.message ?? "住所を正しく入力してください。"
+      requiredValidationMessage.value = addressResult.message ?? "住所を正しく入力してください"
       requiredValidationFocusRef.value = "address"
       requiredValidationOpen.value = true
       return
@@ -505,7 +505,7 @@ async function openRegisterConfirm() {
   }
   registerConfirmTitle.value = mode.value === "change" ? "更新の確認" : "登録の確認"
   registerConfirmMessage.value =
-    mode.value === "change" ? "この内容で更新してよろしいですか？" : "この内容で登録してよろしいですか？"
+    mode.value === "change" ? "この内容で更新してよろしいですか" : "この内容で登録してよろしいですか"
   registerConfirmOpen.value = true
 }
 
@@ -550,20 +550,20 @@ async function doRegisterConfirm() {
       })
       registerConfirmOpen.value = false
       orderNo.value = result.orderNo
-      registerResultMessage.value = "登録が完了しました。"
+      registerResultMessage.value = "登録が完了しました"
       registerResultOpen.value = true
       initialNewState.value = getFormState()
       initialChangeState.value = getFormState()
     } catch (e) {
       registerConfirmOpen.value = false
-      const msg = e instanceof Error ? e.message : "登録に失敗しました。"
+      const msg = e instanceof Error ? e.message : "登録に失敗しました"
       requiredValidationMessage.value = msg
       requiredValidationOpen.value = true
     }
     return
   }
   registerConfirmOpen.value = false
-  registerResultMessage.value = "更新が完了しました。"
+  registerResultMessage.value = "更新が完了しました"
   registerResultOpen.value = true
 }
 
@@ -581,7 +581,7 @@ const orderDetailTo = computed(() => {
 /* 戻る */
 function goBack() {
   if (hasUnsavedChanges.value) {
-    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。戻ってよろしいですか？"
+    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。戻ってよろしいですか"
     unsavedConfirmOkText.value = "破棄して戻る"
     pendingUnsavedAction.value = () => router.back()
     unsavedConfirmOpen.value = true
@@ -697,7 +697,7 @@ function handleOrderDetailClick(e: MouseEvent) {
   }
   if (hasUnsavedChanges.value) {
     e.preventDefault()
-    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。移動してよろしいですか？"
+    unsavedConfirmMessage.value = "入力内容に変更があります。変更は破棄されます。移動してよろしいですか"
     unsavedConfirmOkText.value = "破棄して移動する"
     pendingUnsavedAction.value = () => router.push(orderDetailTo.value)
     unsavedConfirmOpen.value = true

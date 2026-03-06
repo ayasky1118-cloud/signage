@@ -47,7 +47,7 @@ function onClear() {
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
           <div class="px-6 py-3 bg-main">
-            <h3 id="customerSelectModalTitle" class="text-base font-bold text-white tracking-tight">顧客選択</h3>
+            <h3 id="customerSelectModalTitle" class="text-base font-bold text-white tracking-tight">顧客を選択</h3>
           </div>
           <div class="px-8 py-6 max-h-[60vh] overflow-auto">
             <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
