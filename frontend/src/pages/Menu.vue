@@ -1,19 +1,15 @@
 <template>
-  <!--
-    画面：メニュー
-    元HTMLモックをVue化。class は維持し、<a> を <RouterLink> に置換。
-    将来ログイン導線が入っても /menu を入口にしやすい構造。
-  -->
+  <!-- === 画面：メニュー（3つの導線） === -->
   <main id="menu-page" class="max-w-3xl mx-auto py-10 px-6">
     <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
-      <!-- カードヘッダー -->
+      <!-- -- カードヘッダー -- -->
       <div class="bg-main border-b border-slate-200 px-8 py-5">
-        <h2 class="text-lg font-bold text-white">メニュー</h2>
+        <h2 class="text-lg font-normal text-white">メニュー</h2>
       </div>
 
-      <!-- カード本文：メニュー項目 -->
+      <!-- -- カード本文 -- -->
       <div class="p-8">
-        <!-- メニュー項目一覧（各項目は RouterLink で SPA 遷移） -->
+        <!-- メニュー項目一覧（RouterLink で SPA 遷移） -->
         <div class="flex flex-col gap-3">
           <!-- 注文一覧 → /order/list -->
           <RouterLink
@@ -27,7 +23,7 @@
               </svg>
             </div>
 
-            <span class="flex-1 text-center text-lg font-bold text-white">注文一覧</span>
+            <span class="flex-1 text-center text-lg font-normal text-white">注文一覧</span>
 
             <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -51,7 +47,7 @@
               </svg>
             </div>
 
-            <span class="flex-1 text-center text-lg font-bold text-white">注文（新規・変更）</span>
+            <span class="flex-1 text-center text-lg font-normal text-white">注文（新規・変更）</span>
 
             <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -76,7 +72,7 @@
               </svg>
             </div>
 
-            <span class="flex-1 text-center text-lg font-bold text-white">看板編集</span>
+            <span class="flex-1 text-center text-lg font-normal text-white">看板編集</span>
 
             <svg class="w-6 h-6 text-white/50 ml-auto group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

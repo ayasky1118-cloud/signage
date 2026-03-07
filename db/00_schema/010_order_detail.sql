@@ -12,6 +12,7 @@ CREATE TABLE order_detail
 ,	last_export_dt		DATETIME										COMMENT '最終出力日時'
 ,	last_export_by		BIGINT											COMMENT '最終出力者'
 ,	last_export_key		TEXT											COMMENT '保存先キー'
+,	note				TEXT											COMMENT '備考（枝番毎。order_main.note と同様）'
 ,	is_deleted			BOOLEAN 	NOT NULL DEFAULT FALSE				COMMENT '削除フラグ'
 ,	created_dt			DATETIME 	NOT NULL DEFAULT CURRENT_TIMESTAMP	COMMENT '作成日時'
 ,	created_by			BIGINT		NOT NULL							COMMENT '作成者'
