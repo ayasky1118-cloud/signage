@@ -15,9 +15,6 @@
 
 import { createRouter, createWebHistory } from "vue-router"
 
-// メニュー（ログイン後トップ画面）
-import Menu from "../pages/Menu.vue"
-
 /**
  * 仮の認証判定関数
  *
@@ -61,7 +58,7 @@ const router = createRouter({
     {
       path: "/menu",
       name: "menu",
-      component: Menu,
+      component: () => import("../pages/Menu.vue"),
       meta: { requiresAuth: true },
     },
 

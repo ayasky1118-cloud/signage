@@ -1,10 +1,13 @@
 <template>
+  <!-- === 共通ヘッダー === -->
   <header id="app-header" class="bg-main text-white px-8 py-4 flex justify-between items-center shadow-md">
-    <h1 class="header-menu-link text-xl font-bold tracking-wider">
+    <!-- -- 左：メニューリンク -- -->
+    <h1 class="header-menu-link text-xl font-normal tracking-wider">
       <RouterLink to="/menu" class="text-white hover:opacity-90 transition-opacity duration-200">
         メインメニュー
       </RouterLink>
     </h1>
+    <!-- -- 右：ログイン表示・ログアウト -- -->
     <div class="flex items-center gap-6">
       <span class="text-sm opacity-90">ログイン中: {{ loginName }}</span>
       <button
@@ -27,8 +30,10 @@
  */
 import { ref, onMounted } from "vue"
 
+/** ヘッダーに表示するログイン名。マウント時に localStorage から取得（将来は Cognito 等） */
 const loginName = ref("ゲスト")
 
+/** ログアウト処理。localStorage の認証情報を削除しメニューへリダイレクトする（将来 Cognito 対応） */
 function handleLogout() {
   // 将来: Cognito の signOut を呼ぶ
   localStorage.removeItem("isAuthed")
