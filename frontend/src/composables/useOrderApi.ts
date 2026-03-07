@@ -352,6 +352,60 @@ export async function updateOrderDetails(
   return res.json()
 }
 
+/** order_item 更新用（CreateOrderTemplateItem と同形式） */
+export interface UpdateOrderItemEntry {
+  templateItemId: number
+  orderItemVal: string
+}
+
+/**
+ * 注文の order_item（テンプレート項目の値）を登録・更新する（PATCH /orders/by-no/items）。
+ * 失敗時は Error を throw。
+ */
+export async function updateOrderItems(
+  orderNo: string,
+  templateItems: UpdateOrderItemEntry[]
+): Promise<{ orderNo: string; updated: boolean }> {
+  const no = orderNo?.trim()
+  if (!no) throw new Error("注文番号を指定してください。")
+  const base = getApiBase()
+  const url = `${base}${API_PREFIX}/orders/by-no/items?order_no=${encodeURIComponent(no)}`
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ templateItems }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("接続がタイムアウトしました。")
+    }
+    throw e
+  }
+  clearTimeout(timeoutId)
+  if (res.status === 404) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body?.detail ?? "該当する注文が見つかりませんでした")
+  }
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const data = (await res.json()) as { detail?: string; error?: string }
+      if (data?.detail && typeof data.detail === "string") detail = data.detail
+      else if (data?.error && typeof data.error === "string") detail = data.error
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
 /**
  * 注文を新規登録する（POST /orders）。
  *

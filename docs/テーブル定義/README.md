@@ -16,6 +16,8 @@
 | 8 | design_type | デザイン種別マスタ | [08_design_type.md](08_design_type.md) |
 | 9 | order_item | 注文項目情報 | [09_order_item.md](09_order_item.md) |
 | 10 | order_detail | 注文詳細情報 | [10_order_detail.md](10_order_detail.md) |
+| 11 | html_object | HTMLオブジェクト（全社共通マスタ） | [11_html_object.md](11_html_object.md) |
+| 12 | html_object_value | HTMLオブジェクト値（全社共通マスタ） | [12_html_object_value.md](12_html_object_value.md) |
 
 ## 出典
 - 作成日: 2026-03-04

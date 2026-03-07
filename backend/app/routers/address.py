@@ -13,6 +13,7 @@ from urllib.request import Request, urlopen
 
 import certifi
 from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 
@@ -57,3 +58,40 @@ def validate_address(
     except Exception as e:
         logger.exception("MapTiler Geocoding の呼び出しに失敗しました: %s", e)
         return {"valid": False, "message": "住所の検証中にエラーが発生しました。"}
+
+
+@router.get("/geocode")
+def geocode_address(
+    address: str = Query(..., description="ジオコーディングする住所文字列"),
+):
+    """
+    住所を MapTiler Geocoding API で検索し、最初の結果の座標を返す。
+    ヒット時: { "lat": number, "lng": number }
+    0件またはエラー時: 404
+    """
+    address = (address or "").strip()
+    if not address:
+        return JSONResponse(status_code=400, content={"detail": "住所が空です。"})
+
+    api_key = (settings.MAPTILER_API_KEY or "").strip()
+    if not api_key:
+        logger.info("ジオコーディング: MAPTILER_API_KEY 未設定のためスキップ")
+        return JSONResponse(status_code=503, content={"detail": "地図表示の設定がありません。"})
+
+    try:
+        encoded = quote(address, safe="")
+        url = MAPTILER_GEOCODING_URL.format(query=encoded) + f"?key={api_key}&country=jp"
+        req = Request(url, headers={"User-Agent": "MapSign-Backend/1.0"})
+        with urlopen(req, timeout=TIMEOUT_SEC, context=_SSL_CONTEXT) as resp:
+            data = json.loads(resp.read().decode())
+        features = data.get("features") or []
+        if not features:
+            return JSONResponse(status_code=404, content={"detail": "該当する住所が見つかりません。"})
+        geom = features[0].get("geometry") or {}
+        coords = geom.get("coordinates") or []
+        if len(coords) < 2:
+            return JSONResponse(status_code=404, content={"detail": "座標を取得できませんでした。"})
+        return {"lng": float(coords[0]), "lat": float(coords[1])}
+    except Exception as e:
+        logger.exception("MapTiler Geocoding の呼び出しに失敗しました: %s", e)
+        return JSONResponse(status_code=500, content={"detail": "住所の検索中にエラーが発生しました。"})

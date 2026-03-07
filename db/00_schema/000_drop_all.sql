@@ -1,6 +1,8 @@
 -- 開発DBリセット用：全テーブルを依存関係の逆順で削除
--- 実行後、001〜010のDDLを順に実行して再作成すること
+-- 実行後、001〜012のDDLを順に実行して再作成すること
 
+DROP TABLE IF EXISTS html_object_value;
+DROP TABLE IF EXISTS html_object;
 DROP TABLE IF EXISTS order_detail;
 DROP TABLE IF EXISTS order_item;
 DROP TABLE IF EXISTS order_main;

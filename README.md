@@ -99,12 +99,13 @@ API は `http://localhost:8000` で動作します。
 | `GET /health` | ヘルスチェック |
 | `GET /companies` | 会社一覧（DB疎通確認用） |
 | `GET /address/validate?address=...` | 住所検証（MapTiler Geocoding） |
+| `GET /address/geocode?address=...` | ジオコーディング（住所→座標。看板編集の地図表示用） |
 
-**住所検証（MapTiler）**  
-注文情報の「住所」は登録ボタン押下時に MapTiler Geocoding API で検証します。  
-- ローカル: `backend/.env.example` をコピーして `backend/.env` を作成し、`MAPTILER_API_KEY` を設定。**`.env` を変更したらバックエンドを再起動すること。**  
-- 本番: 環境変数 `MAPTILER_API_KEY` で設定（`.env` に秘密を置かない）。  
-未設定の場合は検証をスキップし、登録はそのまま進みます。詳細は [docs/203.本番環境の環境変数.md](docs/203.本番環境の環境変数.md) を参照。
+**MapTiler API キー（住所検証・地図表示）**  
+- **バックエンド**: `backend/.env` に `MAPTILER_API_KEY` を設定（住所検証・ジオコーディング用）。未設定時は住所検証をスキップ。  
+- **フロントエンド**: `frontend/.env` に `VITE_MAPTILER_API_KEY` を設定（地図タイル表示用）。未設定時は看板編集画面の地図に「VITE_MAPTILER_API_KEY を設定してください」と表示。  
+- 取得手順: [docs/101.環境構築ステップ.md](docs/101.環境構築ステップ.md) の「手順 1-5：MapTiler API キーの取得」を参照。  
+- 詳細: [docs/203.本番環境の環境変数.md](docs/203.本番環境の環境変数.md)
 
 ---
 

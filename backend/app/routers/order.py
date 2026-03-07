@@ -544,6 +544,97 @@ def update_order_details(
 
 
 # -----------------------------
+# order_item（テンプレート項目）の登録・更新
+# -----------------------------
+
+
+@router.patch("/by-no/items")
+def update_order_items(
+    db: Session = Depends(get_db),
+    order_no: str = Query(..., description="注文番号（完全一致）"),
+    template_items: list[dict] = Body(..., embed=True, alias="templateItems"),
+):
+    """
+    注文番号で指定した注文の order_item（テンプレート項目の値）を登録・更新する。
+
+    リクエスト Body: { "templateItems": [ { "templateItemId": number, "orderItemVal": string }, ... ] }
+    - templateItemId: テンプレート項目ID（必須）
+    - orderItemVal: 入力値（任意。最大200文字）
+
+    既存の order_item 行があれば UPDATE、なければ INSERT。
+    """
+    try:
+        no = (order_no or "").strip()
+        if not no:
+            return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
+        row = db.execute(
+            text("SELECT order_id FROM order_main WHERE order_no = :order_no AND is_deleted = 0"),
+            {"order_no": no},
+        ).fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"detail": "該当する注文が見つかりませんでした。"})
+        order_id = row[0]
+        user_id = DEFAULT_USER_ID
+
+        for item in template_items:
+            tid = item.get("templateItemId")
+            if tid is None:
+                continue
+            try:
+                tid_int = int(tid)
+            except (TypeError, ValueError):
+                continue
+            val = item.get("orderItemVal")
+            val_str = (val or "").strip()[:200] if val is not None else ""
+
+            existing = db.execute(
+                text("""
+                    SELECT order_item_id FROM order_item
+                    WHERE order_id = :order_id AND template_item_id = :template_item_id AND is_deleted = 0
+                """),
+                {"order_id": order_id, "template_item_id": tid_int},
+            ).fetchone()
+
+            if existing:
+                db.execute(
+                    text("""
+                        UPDATE order_item
+                        SET order_item_val = :order_item_val, updated_by = :updated_by
+                        WHERE order_id = :order_id AND template_item_id = :template_item_id AND is_deleted = 0
+                    """),
+                    {
+                        "order_id": order_id,
+                        "template_item_id": tid_int,
+                        "order_item_val": val_str,
+                        "updated_by": user_id,
+                    },
+                )
+            else:
+                db.execute(
+                    text("""
+                        INSERT INTO order_item (order_id, template_item_id, order_item_val, is_deleted, created_by, updated_by)
+                        VALUES (:order_id, :template_item_id, :order_item_val, 0, :created_by, :updated_by)
+                    """),
+                    {
+                        "order_id": order_id,
+                        "template_item_id": tid_int,
+                        "order_item_val": val_str,
+                        "created_by": user_id,
+                        "updated_by": user_id,
+                    },
+                )
+        db.commit()
+        return {"orderNo": no, "updated": True}
+    except Exception as e:
+        db.rollback()
+        logger.exception("order_item の登録・更新でエラー")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "注文項目の登録に失敗しました。", "error": str(e)},
+        )
+
+
+# -----------------------------
 # 注文登録
 # -----------------------------
 

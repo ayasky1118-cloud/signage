@@ -9,8 +9,10 @@ import { ref, computed, watch, onMounted, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
+import { geocodeAddress } from "../composables/useAddressApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
+import MapPreview from "../components/MapPreview.vue"
 
 const router = useRouter()
 const route = useRoute()
@@ -189,7 +191,8 @@ async function loadOrderListForSelect() {
 }
 
 /** 注文番号で検索し、取得した注文の表示項目・枝番一覧を反映する。見つからない場合は該当なしモーダルを表示 */
-async function applyOrderBySearch(orderNo: string) {
+/** preferBranchNo: 取得後にこの枝番をカレント選択する（登録後の再取得時など） */
+async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
   const no = orderNo.trim()
   if (!no) return
   // 1) まず searchOrders で一覧APIから取得（枝番 branches が取れる）
@@ -201,6 +204,7 @@ async function applyOrderBySearch(orderNo: string) {
       perPage: 1,
     })
     if (result.items.length > 0) {
+      lastAddedBranchNo.value = null // 検索で再取得した時点で「枝番追加」状態を解除
       const o = result.items[0]
       orderDisplay.value = {
         orderName: o.orderName ?? "",
@@ -235,9 +239,15 @@ async function applyOrderBySearch(orderNo: string) {
       } else {
         branchMemoByBranch.value = {}
       }
-      // 枝番あり：初期表示する枝番を決定（URL の itemCode または先頭）
+      // 枝番あり：初期表示する枝番を決定（preferBranchNo > URL の itemCode > 先頭）
       if (branches.length > 0) {
-        let initial = initialItemCode.value ? normalizeBranchNo(initialItemCode.value) : branches[0]
+        const prefer = preferBranchNo ? normalizeBranchNo(preferBranchNo) : ""
+        let initial =
+          prefer && branches.indexOf(prefer) >= 0
+            ? prefer
+            : initialItemCode.value
+              ? normalizeBranchNo(initialItemCode.value)
+              : branches[0]
         if (branches.indexOf(initial) < 0) initial = branches[0]
         activeBranch.value = initial
         ensureVisible(initial)
@@ -249,6 +259,8 @@ async function applyOrderBySearch(orderNo: string) {
         setOriginalBranchValues("", "")
       }
       hasSearched.value = true
+      // 枝番がある場合：注文住所を中心に地図を取得
+      if (branches.length > 0) fetchMapCenter()
       return
     }
   } catch {
@@ -256,6 +268,7 @@ async function applyOrderBySearch(orderNo: string) {
   }
   // 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空）
   try {
+    lastAddedBranchNo.value = null
     const detail = await getOrderByNo(no)
     orderDisplay.value = {
       orderName: detail.orderName ?? "",
@@ -278,6 +291,7 @@ async function applyOrderBySearch(orderNo: string) {
     hasSearched.value = true
   } catch {
     // 3) どちらも失敗：該当なしモーダルを表示
+    lastAddedBranchNo.value = null
     orderDisplay.value = {
       orderName: "",
       address: "",
@@ -449,8 +463,8 @@ type PendingAction =
 /** 枝番切り替え確認・戻る確認等で「登録/更新してから」を選んだあと、結果モーダルで OK を押したときに実行するアクション */
 const pendingAction = ref<PendingAction | null>(null)
 
-/** 一覧から来た場合は edit、そうでなければ register（登録ボタンラベル等に使用） */
-const pageMode = computed(() => (cameFromList.value ? "edit" : "register"))
+/** 一覧から来た場合、または検索済みで枝番がある場合は edit（登録ボタンラベル等に使用） */
+const pageMode = computed(() => (cameFromList.value || (hasSearched.value && hasBranches.value) ? "edit" : "register"))
 const registerButtonLabel = computed(() => (pageMode.value === "edit" ? "更新" : "登録"))
 /** 一覧から来ていないかつ未検索、または検索済みだが枝番が0件のときは登録ボタンを無効にする */
 const registerButtonDisabled = computed(
@@ -637,11 +651,14 @@ async function confirmRegister() {
   const branches = allBranches.value.map((b) => ({
     branchNo: b,
     note: (branchMemoByBranch.value[b] ?? "").trim() || undefined,
-    designData: mapDataByBranch.value[b] ?? undefined,
+    designData: designDataForApi(mapDataByBranch.value[b]),
   }))
 
   try {
     await updateOrderDetails(orderNo, branches)
+    // 登録後：order_detail を再取得し、処理した枝番をカレント選択にする
+    const branchToSelect = normalizeBranchNo(activeBranch.value)
+    await applyOrderBySearch(orderNo, branchToSelect)
     openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
   } catch (e) {
     openRegisterResultModal(e instanceof Error ? e.message : "登録に失敗しました")
@@ -665,6 +682,21 @@ function confirmBranchAdd() {
   if (!exists) {
     // 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
+    // mapDataByBranch を初期化（design_data 送信時に undefined にならないよう）
+    if (!mapDataByBranch.value[branchNo]) {
+      mapDataByBranch.value = {
+        ...mapDataByBranch.value,
+        [branchNo]: {
+          version: 1,
+          branchNo,
+          orderNo: lastConfirmedOrderNo.value || undefined,
+          routes: [],
+          texts: [],
+          images: [],
+          callouts: [],
+        },
+      }
+    }
     if (allBranches.value.length === 1) {
       activeBranch.value = branchNo
       branchMemo.value = ""
@@ -675,6 +707,8 @@ function confirmBranchAdd() {
     branchMemo.value = branchMemoByBranch.value[branchNo] ?? ""
     setOriginalBranchValues(branchNo, branchMemo.value)
     lastAddedBranchNo.value = branchNo
+    // 枝番追加時：注文住所を中心に地図を取得
+    fetchMapCenter()
   } else {
     // 既存枝番：その枝番へ切り替え（未保存変更があれば confirmBranchSwitchDiscard 側で処理済みの想定ではないが、ここに来る場合は直接追加）
     ensureVisible(branchNo)
@@ -754,10 +788,29 @@ function confirmBranchSwitchDiscard() {
   closeBranchSwitchConfirmModal()
 }
 
-/** 枝番切り替え確認で「登録/更新して〜」を押したとき。確認モーダルを閉じ、登録結果モーダルを開く */
-function confirmBranchSwitchRegister() {
+/** 枝番切り替え確認で「登録/更新して〜」を押したとき。order_detail を保存してから結果モーダルを開く */
+async function confirmBranchSwitchRegister() {
   closeBranchSwitchConfirmModal(false)
-  openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
+  const orderNo = lastConfirmedOrderNo.value?.trim()
+  if (!orderNo) {
+    openRegisterResultModal("注文番号がありません")
+    return
+  }
+  const bn = normalizeBranchNo(activeBranch.value)
+  if (bn) branchMemoByBranch.value[bn] = branchMemo.value
+  const branches = allBranches.value.map((b) => ({
+    branchNo: b,
+    note: (branchMemoByBranch.value[b] ?? "").trim() || undefined,
+    designData: designDataForApi(mapDataByBranch.value[b]),
+  }))
+  try {
+    await updateOrderDetails(orderNo, branches)
+    const branchToSelect = normalizeBranchNo(activeBranch.value)
+    await applyOrderBySearch(orderNo, branchToSelect)
+    openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
+  } catch (e) {
+    openRegisterResultModal(e instanceof Error ? e.message : "登録に失敗しました")
+  }
 }
 
 /** 登録結果モーダルで OK を押したとき。保留アクション（枝番切り替え・遷移など）を実行してからモーダルを閉じる */
@@ -808,8 +861,10 @@ function executeBranchDelete() {
 }
 
 /** 枝番追加ボタン押下。未保存変更があれば確認モーダルを出し、なければ枝番追加モーダルを開く */
+/** 直前で新規追加した枝番（lastAddedBranchNo）も変更対象とみなす */
 function clickAddBranch() {
-  if (allBranches.value.length > 0 && isDirty.value) {
+  const hasChanges = isDirty.value || lastAddedBranchNo.value != null
+  if (allBranches.value.length > 0 && hasChanges) {
     pendingAction.value = { type: "addBranch" }
     openBranchSwitchConfirmModal()
     return
@@ -843,6 +898,37 @@ function handleBackClick(e: Event) {
   openBranchSwitchConfirmModal()
 }
 
+/* 地図表示（注文住所を中心に MapTiler で表示） */
+const mapCenter = ref<[number, number] | null>(null)
+const mapCenterLoading = ref(false)
+const mapCenterError = ref<string | null>(null)
+const mapPreviewRef = ref<InstanceType<typeof MapPreview> | null>(null)
+const fullscreenMapRef = ref<InstanceType<typeof MapPreview> | null>(null)
+
+/** MapTiler API キー（VITE_MAPTILER_API_KEY） */
+const mapTilerApiKey = (import.meta.env.VITE_MAPTILER_API_KEY as string) ?? ""
+
+/** 注文住所をジオコーディングし、地図の中心座標を取得 */
+async function fetchMapCenter() {
+  const address = orderDisplay.value.address?.trim()
+  if (!address || !hasBranches.value) {
+    mapCenter.value = null
+    mapCenterError.value = null
+    return
+  }
+  mapCenterLoading.value = true
+  mapCenterError.value = null
+  try {
+    const { lat, lng } = await geocodeAddress(address)
+    mapCenter.value = [lng, lat]
+  } catch (e) {
+    mapCenter.value = null
+    mapCenterError.value = e instanceof Error ? e.message : "住所の検索に失敗しました"
+  } finally {
+    mapCenterLoading.value = false
+  }
+}
+
 /* 全画面編集 */
 const fullscreenEditVisible = ref(false)
 
@@ -850,6 +936,9 @@ const fullscreenEditVisible = ref(false)
 function openFullscreenEdit() {
   fullscreenEditVisible.value = true
   document.body.style.overflow = "hidden"
+  nextTick(() => {
+    setTimeout(() => fullscreenMapRef.value?.fitMapToContainer(), 100)
+  })
 }
 
 /** 全画面編集オーバーレイを閉じ、背景のスクロールを復元する */
@@ -887,6 +976,28 @@ interface MapDataJson {
   callouts?: unknown[]
 }
 
+/** routes/texts/images/callouts のいずれかに要素があるか（地図情報が設定されているか） */
+function hasMapContent(data: MapDataJson | undefined): boolean {
+  if (!data) return false
+  return (
+    (Array.isArray(data.routes) && data.routes.length > 0) ||
+    (Array.isArray(data.texts) && data.texts.length > 0) ||
+    (Array.isArray(data.images) && data.images.length > 0) ||
+    (Array.isArray(data.callouts) && data.callouts.length > 0)
+  )
+}
+
+/** API 登録用に design_data を整形。version/branchNo/orderNo は不要。地図情報が未設定の場合は undefined */
+function designDataForApi(data: MapDataJson | undefined): unknown {
+  if (!data || !hasMapContent(data)) return undefined
+  return {
+    routes: Array.isArray(data.routes) ? data.routes : [],
+    texts: Array.isArray(data.texts) ? data.texts : [],
+    images: Array.isArray(data.images) ? data.images : [],
+    callouts: Array.isArray(data.callouts) ? data.callouts : [],
+  }
+}
+
 /** 枝番ごとの地図データを保持（design_data のフロントエンド表現。編集・出力・読込で使用） */
 const mapDataByBranch = ref<Record<string, MapDataJson>>({})
 
@@ -897,19 +1008,9 @@ const activeBranchDesignData = computed(() => {
   return mapDataByBranch.value[bn] ?? null
 })
 
-/** 現在の枝番に design_data があるか（地図出力ボタンの有効/無効に使用。null/空の場合は押下不可） */
-const canExportMap = computed(() => {
-  const bn = normalizeBranchNo(activeBranch.value)
-  if (!bn) return false
-  const data = mapDataByBranch.value[bn]
-  if (!data) return false
-  const hasContent =
-    (Array.isArray(data.routes) && data.routes.length > 0) ||
-    (Array.isArray(data.texts) && data.texts.length > 0) ||
-    (Array.isArray(data.images) && data.images.length > 0) ||
-    (Array.isArray(data.callouts) && data.callouts.length > 0)
-  return hasContent
-})
+/** 現在の枝番に地図情報が設定されているか（地図出力ボタンの有効/無効に使用） */
+const canExportMap = computed(() => hasMapContent(mapDataByBranch.value[normalizeBranchNo(activeBranch.value)]))
+
 
 /** API の design_data を MapDataJson 形式に正規化する */
 function normalizeDesignDataToMapData(
@@ -1032,6 +1133,17 @@ watch(activeBranch, (newVal, oldVal) => {
 watch(orderDetailModalOpen, (open) => {
   if (!open) orderDetailForModal.value = null
 })
+
+watch(fullscreenEditVisible, (visible) => {
+  if (visible) {
+    nextTick(() => {
+      setTimeout(() => {
+        fullscreenMapRef.value?.fitMapToContainer()
+        mapPreviewRef.value?.fitMapToContainer()
+      }, 150)
+    })
+  }
+})
 </script>
 
 <template>
@@ -1111,7 +1223,6 @@ watch(orderDetailModalOpen, (open) => {
               <button
                 type="button"
                 class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
-                :disabled="selectSearchDisabled"
                 @click="confirmSearch"
               >
                 検索
@@ -1344,38 +1455,36 @@ watch(orderDetailModalOpen, (open) => {
                 </div>
               </div>
             </div>
-            <div class="relative bg-slate-100 border border-dashed border-slate-300 rounded-xl aspect-square w-full flex items-center justify-center overflow-hidden">
-              <div class="absolute inset-0 bg-gradient-to-br from-main/5 via-subBlue/5 to-slate-200/20 pointer-events-none"></div>
-              <div class="relative z-10 w-full h-full flex flex-col p-4 overflow-hidden">
-                <template v-if="!hasBranches">
-                  <div class="flex-1 flex flex-col items-center justify-center text-center">
-                    <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
-                      <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
-                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
-                    </svg>
+            <div class="relative bg-slate-100 border border-dashed border-slate-300 rounded-xl aspect-square w-full flex items-center justify-center overflow-hidden min-h-[280px]">
+              <template v-if="!hasBranches">
+                <div class="flex flex-col items-center justify-center text-center">
+                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
+                    <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
+                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
+                  </svg>
+                </div>
+              </template>
+              <template v-else>
+                <!-- design_data が NULL の場合も注文住所を中心に MapTiler で地図表示（枝番追加時と同じ処理） -->
+                <div class="absolute inset-0 flex flex-col">
+                  <div v-if="mapCenterLoading" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-100/90 rounded-xl">
+                    <p class="text-sm text-slate-500">地図を読み込み中...</p>
                   </div>
-                </template>
-                <template v-else-if="!activeBranchDesignData">
-                  <div class="flex-1 flex flex-col items-center justify-center text-center">
-                    <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
-                      <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
-                      <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
-                    </svg>
+                  <div v-else-if="mapCenterError" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-100/90 rounded-xl p-4">
+                    <p class="text-sm text-slate-600 text-center">{{ mapCenterError }}</p>
                   </div>
-                </template>
-                <template v-else>
-                  <div class="flex-shrink-0 text-xs text-slate-500 mb-2">
-                    枝番 {{ activeBranchDesignData.branchNo }} の design_data
-                  </div>
-                  <div class="flex-1 min-h-0 overflow-auto rounded-lg bg-white/80 border border-slate-200/60 p-3">
-                    <pre class="text-xs text-slate-700 font-mono whitespace-pre-wrap break-words">{{ JSON.stringify(activeBranchDesignData, null, 2) }}</pre>
-                  </div>
-                </template>
-              </div>
+                  <MapPreview
+                    v-else
+                    ref="mapPreviewRef"
+                    :center="mapCenter"
+                    :zoom="15"
+                    :api-key="mapTilerApiKey"
+                    class="flex-1 min-h-0 w-full"
+                  />
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -1415,10 +1524,6 @@ watch(orderDetailModalOpen, (open) => {
         <aside class="w-[280px] min-w-[280px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
           <div class="p-4 space-y-6">
             <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">編集モード開始/終了</span>
-                <span class="text-slate-400 cursor-help" title="編集を終了して通常画面に戻ります">ⓘ</span>
-              </div>
               <button
                 type="button"
                 class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-normal text-white bg-main hover:bg-subBlue border border-transparent transition-all duration-200"
@@ -1504,16 +1609,14 @@ watch(orderDetailModalOpen, (open) => {
             </div>
           </div>
         </aside>
-        <div class="flex-1 min-w-0 relative bg-slate-200 flex items-center justify-center">
-          <div class="text-center space-y-2">
-            <div class="inline-flex justify-center w-12 h-12 rounded-full bg-main/20 text-main">
-              <svg class="w-6 h-6 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-            </div>
-            <p class="text-sm font-normal text-slate-600">マップ表示エリア</p>
-            <p class="text-xs text-slate-500">実装時は MapLibre 等で地図を表示</p>
-          </div>
+        <div class="flex-1 min-w-0 relative bg-slate-200">
+          <MapPreview
+            ref="fullscreenMapRef"
+            :center="mapCenter"
+            :zoom="15"
+            :api-key="mapTilerApiKey"
+            class="w-full h-full min-h-[400px]"
+          />
         </div>
       </div>
     </div>
