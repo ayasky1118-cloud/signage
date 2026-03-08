@@ -24,6 +24,13 @@ import { useMapFeatures } from "../composables/useMapFeatures"
 import { useMapInteraction } from "../composables/useMapInteraction"
 import { useMapHistory } from "../composables/useMapHistory"
 import { useMapData } from "../composables/useMapData"
+import type { FeatureCollection, LineString } from "geojson"
+import {
+  ensureRoutesAsRouteItems,
+  ensureRoutesAsFeatureCollection,
+  type RouteItem,
+  type RouteFeatureProperties,
+} from "../types/map-data"
 import type maplibregl from "maplibre-gl"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
@@ -1113,11 +1120,12 @@ function onOutputAllBranches() {
 }
 
 //-- 地図データのJSON形式（枝番ごとのルート・テキスト・画像・吹き出し等）
+//-- routes は RouteItem[] または FeatureCollection（normalizeDesignDataToMapData で FeatureCollection に統一）
 interface MapDataJson {
   version: number
   branchNo: string
   orderNo?: string
-  routes?: unknown[]
+  routes?: RouteItem[] | FeatureCollection<LineString, RouteFeatureProperties>
   texts?: unknown[]
   images?: unknown[]
   callouts?: unknown[]
@@ -1126,19 +1134,26 @@ interface MapDataJson {
 //-- routes/texts/images/callouts のいずれかに要素があるか（地図情報が設定されているか）
 function hasMapContent(data: MapDataJson | undefined): boolean {
   if (!data) return false
-  return (
+  const hasRoutes =
     (Array.isArray(data.routes) && data.routes.length > 0) ||
+    (data.routes &&
+      typeof data.routes === "object" &&
+      "features" in data.routes &&
+      Array.isArray((data.routes as FeatureCollection).features) &&
+      (data.routes as FeatureCollection).features.length > 0)
+  return (
+    hasRoutes ||
     (Array.isArray(data.texts) && data.texts.length > 0) ||
     (Array.isArray(data.images) && data.images.length > 0) ||
     (Array.isArray(data.callouts) && data.callouts.length > 0)
   )
 }
 
-//-- API 登録用に design_data を整形。version/branchNo/orderNo は不要。地図情報が未設定の場合は undefined
+//-- API 登録用に design_data を整形。version/branchNo/orderNo は不要。routes は RouteItem[] 形式に正規化（手順 9-1）
 function designDataForApi(data: MapDataJson | undefined): unknown {
   if (!data || !hasMapContent(data)) return undefined
   return {
-    routes: Array.isArray(data.routes) ? data.routes : [],
+    routes: ensureRoutesAsRouteItems(data.routes),
     texts: Array.isArray(data.texts) ? data.texts : [],
     images: Array.isArray(data.images) ? data.images : [],
     callouts: Array.isArray(data.callouts) ? data.callouts : [],
@@ -1162,6 +1177,7 @@ const canUndo = computed(() => mapHistory.undoStack.value.length > 0)
 
 
 //-- API の design_data を MapDataJson 形式に正規化する（枝番・注文番号を補完、配列を安全に取得）
+//-- routes が RouteItem[] 形式の場合は FeatureCollection に変換（手順 9-2）
 function normalizeDesignDataToMapData(
   raw: unknown,
   branchNo: string,
@@ -1173,7 +1189,7 @@ function normalizeDesignDataToMapData(
       version: typeof r.version === "number" ? r.version : 1,
       branchNo,
       orderNo: (r.orderNo as string) ?? orderNo,
-      routes: Array.isArray(r.routes) ? r.routes : [],
+      routes: ensureRoutesAsFeatureCollection(r.routes),
       texts: Array.isArray(r.texts) ? r.texts : [],
       images: Array.isArray(r.images) ? r.images : [],
       callouts: Array.isArray(r.callouts) ? r.callouts : [],
@@ -1184,19 +1200,19 @@ function normalizeDesignDataToMapData(
     version: 1,
     branchNo,
     orderNo: orderNo || undefined,
-    routes: [],
+    routes: ensureRoutesAsFeatureCollection(undefined),
     texts: [],
     images: [],
     callouts: [],
   }
 }
 
-//-- 地図出力ボタン押下（現在の枝番の地図データをJSONファイルでダウンロード）
+//-- 地図出力ボタン押下（現在の枝番の地図データをJSONファイルでダウンロード）。routes は RouteItem[] 形式で出力（手順 9-1）
 function onMapOutput() {
   const branchNo = normalizeBranchNo(activeBranch.value)
   if (!branchNo) return
   //-- 枝番のデータを取得（未設定時は空の構造で初期化）
-  const data: MapDataJson = mapDataByBranch.value[branchNo] ?? {
+  const raw = mapDataByBranch.value[branchNo] ?? {
     version: 1,
     branchNo,
     orderNo: lastConfirmedOrderNo.value || undefined,
@@ -1205,6 +1221,7 @@ function onMapOutput() {
     images: [],
     callouts: [],
   }
+  const data: MapDataJson = { ...raw, routes: ensureRoutesAsRouteItems(raw.routes) }
   const json = JSON.stringify(data, null, 2)
   const blob = new Blob([json], { type: "application/json" })
   const url = URL.createObjectURL(blob)
@@ -1229,12 +1246,12 @@ function onMapLoad(e: Event) {
       if (typeof data !== "object" || data === null) return
       const branchNo = normalizeBranchNo(activeBranch.value)
       if (!branchNo) return
-      //-- 2) 現在の枝番用に正規化（version/branchNo/orderNo を補完、配列を安全に取得）
+      //-- 2) 現在の枝番用に正規化（version/branchNo/orderNo を補完。routes は RouteItem[] なら FeatureCollection に変換）
       const normalized: MapDataJson = {
         version: data.version ?? 1,
         branchNo,
         orderNo: data.orderNo ?? (lastConfirmedOrderNo.value || undefined),
-        routes: Array.isArray(data.routes) ? data.routes : [],
+        routes: ensureRoutesAsFeatureCollection(data.routes),
         texts: Array.isArray(data.texts) ? data.texts : [],
         images: Array.isArray(data.images) ? data.images : [],
         callouts: Array.isArray(data.callouts) ? data.callouts : [],
