@@ -94,14 +94,22 @@ export function useMapFeatures() {
     return "balloon"
   }
 
-  //-- ルート描画（Phase 6 で lineType / lineStyle を渡せるように拡張予定）
-  const drawRoute = (map: maplibregl.Map | null): EditMode | null => {
+  //-- ルート描画（手順 10-2: lineType / color / width をドロップダウン選択値から渡す）
+  type DrawRouteOptions = { type?: string; color?: string; width?: number }
+  const drawRoute = (map: maplibregl.Map | null, options?: DrawRouteOptions): EditMode | null => {
     if (!map || tempCoordinates.value.length === 0) return null
+    const opts = options ?? {}
+    const routeId = genId()
     const newRoute: Feature<LineString, Record<string, unknown>> = {
       type: "Feature",
-      id: genId(),
+      id: routeId,
       geometry: { type: "LineString", coordinates: [...tempCoordinates.value] },
-      properties: {},
+      properties: {
+        _id: routeId,
+        type: opts.type ?? "",
+        color: opts.color ?? "#FF0000",
+        width: opts.width ?? 4,
+      },
     }
     routeFeatures.value.features.push(newRoute)
     const routeSource = map.getSource("route") as maplibregl.GeoJSONSource

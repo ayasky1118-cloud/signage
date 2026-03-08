@@ -52,14 +52,17 @@ export function useMapLayers() {
     },
     imageItems?: { id: string; url: string }[]
   ) => {
-    //-- 線描画用のGeoJSONデータをソースとして追加。線描画レイヤーを追加（Phase 6 で線種対応予定）
+    //-- 線描画用のGeoJSONデータをソースとして追加。線描画レイヤーを追加（手順 10-2: properties の color/width で data-driven）
     map.addSource("route", { type: "geojson", data: features.routeFeatures })
     map.addLayer({
       id: "route-line",
       type: "line",
       source: "route",
       layout: { "line-join": "round", "line-cap": "round" },
-      paint: { "line-color": "#FF0000", "line-width": 4 },
+      paint: {
+        "line-color": ["coalesce", ["get", "color"], "#FF0000"],
+        "line-width": ["coalesce", ["get", "width"], 4],
+      },
     })
 
     //-- html_object_value の sampleImagePath から画像を登録する

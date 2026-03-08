@@ -1075,10 +1075,36 @@ function onActionButtonClick(obj: HtmlObjectItem) {
   else if (code === "BALLOON_PLACEMENT") mapInteraction.editMode.value = "balloon"
 }
 
-//-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映
+//-- html_object_value の valueData をパース（色・線種・太さ）。JSON 形式 {"color":"#FF0000","width":4} を想定
+function parseRouteValueData(valueData: string | null | undefined): { type?: string; color?: string; width?: number } {
+  if (!valueData?.trim()) return {}
+  try {
+    const parsed = JSON.parse(valueData) as Record<string, unknown>
+    if (parsed && typeof parsed === "object") {
+      return {
+        type: typeof parsed.type === "string" ? parsed.type : undefined,
+        color: typeof parsed.color === "string" ? parsed.color : undefined,
+        width: typeof parsed.width === "number" ? parsed.width : undefined,
+      }
+    }
+  } catch {
+    //-- JSON でない場合は無視（カンマ区切り等は将来対応）
+  }
+  return {}
+}
+
+//-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映。ドロップダウン選択値（valueCode, valueData）を drawRoute に渡す
 function onConfirmRouteDraw() {
   const map = fullscreenMapRef.value?.getMap() ?? null
-  mapFeatures.drawRoute(map)
+  const routeObj = htmlObjects.value.find((o) => o.categoryCode === "ROUTE_DRAWING")
+  const selected = routeObj ? getSelectedValue(routeObj) : undefined
+  const valueDataParsed = parseRouteValueData(selected?.valueData ?? null)
+  const drawOptions = {
+    type: selected?.valueCode ?? "",
+    color: valueDataParsed.color,
+    width: valueDataParsed.width,
+  }
+  mapFeatures.drawRoute(map, drawOptions)
   mapHistory.pushHistory("route")
   syncMapFeaturesToBranch(activeBranch.value)
 }
@@ -1785,7 +1811,11 @@ watch(activeBranch, (newBranch, oldBranch) => {
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="btn btn-icon btn-secondary btn-secondary--slate"
+                    :aria-pressed="obj.categoryCode === 'ROUTE_DRAWING' && mapInteraction.editMode.value === 'route'"
+                    :class="[
+                      'btn btn-icon btn-secondary btn-secondary--slate',
+                      { 'order-detail-draw-btn--active': obj.categoryCode === 'ROUTE_DRAWING' && mapInteraction.editMode.value === 'route' }
+                    ]"
                     @click="onActionButtonClick(obj)"
                   >
                     <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
