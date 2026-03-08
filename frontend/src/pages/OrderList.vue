@@ -94,6 +94,13 @@ function getSortOrder(column: "orderNo" | "createdDate"): "asc" | "desc" {
   return column === "orderNo" ? sortOrderByOrderNo.value : sortOrderByCreatedDate.value
 }
 
+//-- 指定カラムの表示用ソート順。実施される検索と一致させる（主ソート=選択順、第2ソート=常に昇順）
+function getDisplaySortOrder(column: "orderNo" | "createdDate"): "asc" | "desc" {
+  const primary = sortBy.value ?? "createdDate"
+  if (column === primary) return getSortOrder(column)
+  return "asc" //-- 第2ソートは常に昇順
+}
+
 //-- 指定カラムのソート順をトグルし、1ページ目から再検索する。
 //-- 初期状態（sortBy=null）は createdDate 昇順とみなし、登録日クリックでトグル
 function toggleSortOrder(column: "orderNo" | "createdDate") {
@@ -103,12 +110,14 @@ function toggleSortOrder(column: "orderNo" | "createdDate") {
     ref.value = ref.value === "asc" ? "desc" : "asc"
     if (sortBy.value === null) sortBy.value = "createdDate"
   } else {
-    const wasNull = sortBy.value === null
     sortBy.value = column
-    //-- 初回（sortBy が null）で注文番号をクリックした場合、↓押下＝降順へ切り替え
-    if (wasNull) {
-      const ref = column === "orderNo" ? sortOrderByOrderNo : sortOrderByCreatedDate
-      ref.value = "desc"
+    //-- 切り替え時は、表示されているボタンの逆（クリック＝トグル）で設定。注文番号・登録日とも表示が昇順なら降順へ
+    const displayedOrder = getDisplaySortOrder(column)
+    const toggledOrder = displayedOrder === "asc" ? "desc" : "asc"
+    if (column === "orderNo") {
+      sortOrderByOrderNo.value = toggledOrder
+    } else {
+      sortOrderByCreatedDate.value = toggledOrder
     }
   }
   currentPage.value = 1  //-- ソート変更時は1ページ目へ
@@ -245,7 +254,7 @@ function isDateRangeInvalid(): boolean {
 
 const searchBtnRef = ref<HTMLButtonElement | null>(null)
 
-//-- 検索ボタン押下時。日付範囲チェックののち検索を実行する
+//-- 検索ボタン押下時。日付範囲チェックののち検索を実行する。ソートは登録日にリセットし、ソート方向は現在の選択を維持
 function performSearch() {
   if (isLoading.value) return
   if (isDateRangeInvalid()) {
@@ -256,6 +265,10 @@ function performSearch() {
   }
   hasSearched.value = true
   currentPage.value = 1
+  const currentDir = sortBy.value === "orderNo" ? sortOrderByOrderNo.value : sortOrderByCreatedDate.value
+  sortBy.value = "createdDate"
+  sortOrderByOrderNo.value = currentDir
+  sortOrderByCreatedDate.value = currentDir
   fetchOrders()
 }
 
@@ -428,10 +441,10 @@ onUnmounted(() => {
     注文一覧画面。検索条件カード → 結果テーブル → ページネーション。
     行ダブルクリックで OrderDetailModal、枝番クリックで OrderDetail へ遷移。
   -->
-  <main id="order-list-page" class="order-list-page">
-    <div class="order-list-page-container">
+  <main id="order-list-page" class="order-list-page page-bg-slate">
+    <div class="page-container">
       <!-- === 検索条件カード === -->
-      <div class="order-list-search-card card-header-full">
+      <div class="order-list-search-card card-header-full card-shadow">
         <div class="page-card-header order-list-search-card-header">
           <h2>注文一覧</h2>
         </div>
@@ -753,7 +766,7 @@ onUnmounted(() => {
         </div>
 
         <!-- -- 結果テーブル（別の白カードで囲む） -- -->
-        <div class="order-list-result-card">
+        <div class="order-list-result-card card-shadow">
           <div class="order-list-result-card-inner">
             <table class="order-list-table">
               <colgroup>
@@ -772,9 +785,9 @@ onUnmounted(() => {
                       <button
                         type="button"
                         class="sort-btn"
-                        :title="getSortOrder('orderNo') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
+                        :title="getDisplaySortOrder('orderNo') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
                         @click="toggleSortOrder('orderNo')"
-                      >{{ getSortOrder('orderNo') === 'asc' ? '↓' : '↑' }}                      </button>
+                      >{{ getDisplaySortOrder('orderNo') === 'asc' ? '↓' : '↑' }}</button>
                     </span>
                   </th>
                   <th>
@@ -792,9 +805,9 @@ onUnmounted(() => {
                       <button
                         type="button"
                         class="sort-btn"
-                        :title="getSortOrder('createdDate') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
+                        :title="getDisplaySortOrder('createdDate') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
                         @click="toggleSortOrder('createdDate')"
-                      >{{ getSortOrder('createdDate') === 'asc' ? '↓' : '↑' }}                      </button>
+                      >{{ getDisplaySortOrder('createdDate') === 'asc' ? '↓' : '↑' }}</button>
                     </span>
                   </th>
                   <th class="col-action">枝番</th>
@@ -830,7 +843,7 @@ onUnmounted(() => {
                   </td>
                   <td class="col-date">
                     <div class="order-list-cell-date">{{ order.createdDate }}</div>
-                    <div class="order-list-cell-secondary">{{ order.creator }}</div>
+                    <div class="order-list-cell-secondary">{{ order.creator?.trim() || "—" }}</div>
                   </td>
                   <td class="col-action">
                     <span class="order-branch-links">

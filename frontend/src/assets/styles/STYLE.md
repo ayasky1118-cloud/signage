@@ -5,6 +5,7 @@
 - **セマンティックなクラス名**：`menu-card`、`modal-header` など、役割が分かる名前を使用
 - **Tailwind 非使用**：ユーティリティクラスではなく、従来の CSS で記述
 - **共通パターンの集約**：`shared.css` に再利用可能なクラスを定義
+- **共通化の優先**：同じスタイルが複数箇所にある場合は、`common.css` または `shared.css` に集約する
 
 ---
 
@@ -19,6 +20,8 @@
 | `--color-light-blue` | #8ed1fc | フォーカスリング |
 | `--color-cream` | #fff5cb | クリーム色 |
 | `--color-neutral` | #abb8c3 | ニュートラル（ボーダー等） |
+| `--focus-ring` | 0 0 0 2px var(--color-light-blue) | フォーム要素のフォーカスリング |
+| `--page-bg-color` | #e2e8f0 | ページ背景（注文一覧・看板編集等） |
 
 ---
 
@@ -88,9 +91,14 @@
 |--------|------|
 | `.page` | ページ全体（min-height: 100vh、flex column） |
 | `.page-content` | メインコンテンツ（flex: 1） |
-| `.page-container` | 中央寄せ・max-width 72rem |
+| `.page-container` | 中央寄せ・max-width 72rem（注文一覧・注文新規・看板編集で共用） |
 | `.page-container--narrow` | 幅狭（64rem） |
 | `.page-container--form` | フォーム用（80rem） |
+| `.page-bg-slate` | ページ背景（common.css。薄いグレー、注文一覧・看板編集で使用） |
+| `.card-shadow` | カード用シャドウ（common.css。白カードに class で付与） |
+| `.form-actions` | フォームアクション（戻る・登録ボタン配置。OrderMain・OrderDetail で共用） |
+| `.form-actions-left` / `-center` / `-right` | 3カラムレイアウト |
+| `.template-preview` | テンプレート・地図プレビュー枠（OrderMain・OrderDetail で共用） |
 
 ### セクション・フォーム
 

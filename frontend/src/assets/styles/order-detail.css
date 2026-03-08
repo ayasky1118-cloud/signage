@@ -8,28 +8,14 @@
 /* -----------------------------------------------------------------------------
    ページ・カード
    ----------------------------------------------------------------------------- */
-#order-detail-page {
-  min-height: 100vh;
-  background-color: #e2e8f0;
-  color: rgb(71 85 105);
-}
-/* コンテナ幅 72rem、OrderList / OrderMain と統一 */
-.order-detail-page-container {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 3rem 2rem;
-}
+/* ページ背景は common.css の .page-bg-slate、コンテナは shared.css の .page-container を使用 */
 
-/* カード共通 */
+/* カード共通。影は common.css の .card-shadow / .card-header-full.card-shadow を class で付与 */
 .order-detail-card {
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
   overflow: hidden;
   margin-bottom: 2rem;
-}
-.order-detail-card--header-full {
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
 }
 .order-detail-card--bordered {
   border: 1px solid rgb(226 232 240 / 0.8);
@@ -104,7 +90,7 @@
 .order-detail-order-no-input:focus {
   outline: none;
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 .order-detail-order-no-input:not(:read-only):focus {
   background: white;
@@ -338,26 +324,10 @@
 }
 .order-detail-input-branch:focus {
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 
-/* テンプレートプレビュー枠 */
-.order-detail-template-preview {
-  width: 100%;
-  height: 400px;
-  background-color: rgb(241 245 249);
-  border: 1px dashed rgb(203 213 225);
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.order-detail-template-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
+/* テンプレートプレビューは shared.css の .template-preview を使用 */
 
 /* 備考テキストエリア */
 .order-detail-textarea-note {
@@ -375,7 +345,7 @@
 }
 .order-detail-textarea-note:focus {
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 
 /* レイアウト／マッププレビュー行 */
@@ -440,7 +410,7 @@
 }
 .order-detail-select-format:focus {
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 
 /* マッププレビュー枠。aspect-ratio: 1 で正方形。枝番なし時はプレースホルダー */
@@ -504,24 +474,7 @@
   width: 100%;
 }
 
-/* フォームアクション（戻る／登録・更新。注文画面と同様の3カラムレイアウト） */
-.order-detail-form-actions {
-  margin-top: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.order-detail-form-actions-left {
-  flex: 1;
-}
-.order-detail-form-actions-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-.order-detail-form-actions-right {
-  flex: 1;
-}
+/* フォームアクションは shared.css の .form-actions, .form-actions-left/center/right を使用 */
 
 /* -----------------------------------------------------------------------------
    全画面編集オーバーレイ
@@ -635,7 +588,7 @@
 }
 .order-detail-route-dropdown-wrap .order-detail-object-input:focus {
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 
 /* オブジェクト入力行（select + ボタン） */
@@ -675,7 +628,7 @@
 }
 .order-detail-object-row .order-detail-object-input:focus {
   border-color: var(--color-light-blue);
-  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+  box-shadow: var(--focus-ring);
 }
 
 /* 選択中画像表示 */
@@ -730,11 +683,4 @@
   min-height: 400px;
 }
 
-/* 画面タイトル（bfcache復元時も色を維持） */
-#order-detail-page .card-header-full > div:first-child {
-  background-color: rgb(241 245 249) !important;
-  border-bottom-color: rgb(226 232 240) !important;
-}
-#order-detail-page .card-header-full > div:first-child h2 {
-  color: var(--color-main) !important;
-}
+/* 画面タイトルは common.css の .card-header-full > .page-card-header で共通化 */

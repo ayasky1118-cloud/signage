@@ -551,7 +551,7 @@ function openBranchSwitchConfirmModal(action?: PendingAction | null) {
     message = `変更が保存されていません。枝番を追加しますか。変更は破棄されます`
     discard = "破棄して追加"
     register = `${verb}追加`
-    hideBranchSwitchRegisterButton.value = true
+    hideBranchSwitchRegisterButton.value = false
   }
   branchSwitchConfirmMessage.value = message
   branchSwitchConfirmDiscardLabel.value = discard
@@ -855,6 +855,7 @@ function onRegisterResultModalOk() {
     else if (pa.type === "applyBranchInput" && pa.branchNo) doApplyActiveBranchDisplayValue(pa.branchNo, true)
     else if (pa.type === "navigate" && pa.url) router.push(pa.url)
     else if (pa.type === "back") router.back()
+    else if (pa.type === "addBranch") openBranchAddModal()
   }
   closeRegisterResultModal()
   switchToUpdateMode()
@@ -1488,10 +1489,10 @@ watch(activeBranch, (newBranch, oldBranch) => {
 
 <template>
   <!-- === 画面：看板編集 === -->
-  <main id="order-detail-page">
-    <div class="order-detail-page-container">
+  <main id="order-detail-page" class="page-bg-slate">
+    <div class="page-container">
     <!-- === 注文情報カード（タイトル＋検索・表示エリア） === -->
-    <div class="order-detail-card order-detail-card--header-full order-detail-card--bordered card-header-full">
+    <div class="order-detail-card order-detail-card--header-full order-detail-card--bordered card-header-full card-shadow">
       <!-- -- ヘッダー -- -->
       <div class="page-card-header order-detail-card-header">
         <h2>看板編集</h2>
@@ -1719,7 +1720,7 @@ watch(activeBranch, (newBranch, oldBranch) => {
             </div>
             <div class="order-detail-form-block">
               <label class="form-label">テンプレートプレビュー</label>
-              <div class="order-detail-template-preview">
+              <div class="template-preview">
                 <img
                   src="/samples/template/template-dummy.png?v=2"
                   alt="テンプレートプレビュー"
@@ -1825,13 +1826,13 @@ watch(activeBranch, (newBranch, oldBranch) => {
     </section>
 
     <!-- -- 画面下部：戻る／登録・更新（注文画面と同様のレイアウト） -- -->
-    <div class="order-detail-form-actions">
-      <div class="order-detail-form-actions-left">
+    <div class="form-actions">
+      <div class="form-actions-left">
         <button type="button" class="btn-back" @click="handleBackClick">
           戻る
         </button>
       </div>
-      <div class="order-detail-form-actions-center">
+      <div class="form-actions-center">
         <button
           type="button"
           class="btn-action"
@@ -1841,7 +1842,7 @@ watch(activeBranch, (newBranch, oldBranch) => {
           {{ registerButtonLabel }}
         </button>
       </div>
-      <div class="order-detail-form-actions-right"></div>
+      <div class="form-actions-right"></div>
     </div>
     </div>
   </main>

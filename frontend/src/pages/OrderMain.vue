@@ -245,6 +245,15 @@ const hasUnsavedChanges = computed(() => {
   return current !== initialChangeState.value
 })
 
+//-- 注文番号以外の項目が検索時から変更されているか。注文番号選択時の確認モーダル表示判定に使用
+const hasUnsavedChangesExcludingOrderNo = computed(() => {
+  if (mode.value !== "change" || !hasSearchedInChangeMode.value) return false
+  const partsCurrent = getFormState().split("|")
+  const partsInitial = initialChangeState.value.split("|")
+  if (partsCurrent.length < 2 || partsInitial.length < 2) return false
+  return partsCurrent.slice(1).join("|") !== partsInitial.slice(1).join("|")
+})
+
 //-------------------------------------------------------------------------------
 //-- モーダル（注文番号選択・顧客選択・テンプレート選択・各種確認）
 //-------------------------------------------------------------------------------
@@ -386,10 +395,32 @@ function clearOtherFieldsOnOrderNoChange() {
   hasSearchedInChangeMode.value = false
 }
 
-//-- 注文番号選択モーダルで選択した注文の番号をフォームにセットし、他項目をクリアする
+//-- 注文番号選択モーダルで選択した注文を自動検索する。検索済で注文番号以外に変更があれば確認モーダル表示
 function selectOrderNo(order: OrderItem) {
-  orderNo.value = order.orderNo ?? ""
+  const no = order.orderNo ?? ""
+  if (mode.value !== "change") return
+  if (hasSearchedInChangeMode.value && hasUnsavedChangesExcludingOrderNo.value) {
+    pendingUnsavedAction.value = () => doSelectOrderNoAndSearch(no)
+    unsavedConfirmMessage.value = "入力内容に変更があります。注文番号を変更しますか？変更は破棄されます。"
+    unsavedConfirmOkText.value = "破棄して検索"
+    unsavedConfirmOpen.value = true
+    return
+  }
+  doSelectOrderNoAndSearch(no)
+}
+
+//-- 注文番号をセットし、APIで取得してフォームに反映する（選択時の自動検索）
+async function doSelectOrderNoAndSearch(no: string) {
+  orderNo.value = no
   clearOtherFieldsOnOrderNoChange()
+  try {
+    const order = await getOrderByNo(no)
+    applyOrderData(order)
+    hasSearchedInChangeMode.value = true
+  } catch (e) {
+    requiredValidationMessage.value = e instanceof Error ? e.message : "該当データがありません"
+    requiredValidationOpen.value = true
+  }
 }
 
 //-- 検索ボタン押下時。注文番号でAPI検索し、取得した注文詳細をフォームに反映する
@@ -520,6 +551,19 @@ function focusValidationTarget(key: string | null | undefined) {
   if (!el) return
   el.scrollIntoView({ behavior: "auto", block: "nearest" })
   el.focus()
+}
+
+//-- モード・注文番号編集可否に応じて初期フォーカスを設定（画面起動時・モード切替時）
+function focusOrderMainInitial() {
+  nextTick(() => {
+    if (mode.value === "new") {
+      companyCdInputRef.value?.focus()
+    } else if (!orderNoReadOnly.value) {
+      orderNoInputRef.value?.focus()
+    } else {
+      companyCdInputRef.value?.focus()
+    }
+  })
 }
 
 //-- 必須項目エラーモーダルを閉じ、該当項目へフォーカスを移す
@@ -673,6 +717,45 @@ async function doRegisterConfirm() {
   }
 }
 
+//-- 登録結果モーダルを閉じる。新規登録完了の場合は更新モードに切り替える
+function closeRegisterResultModal() {
+  if (registerResultMessage.value === "登録が完了しました" && mode.value === "new") {
+    mode.value = "change"
+    hasSearchedInChangeMode.value = true
+    focusOrderMainInitial()
+  }
+  registerResultOpen.value = false
+}
+
+//-- 続けて登録/更新ボタン押下。フォームをクリアし、新規または検索初期状態で画面に留まる。新規・変更の選択が可能になる
+function continueRegisterOrUpdate() {
+  registerResultOpen.value = false
+  const isNewRegistration = registerResultMessage.value === "登録が完了しました"
+  cameFromList.value = false //-- 新規・変更のラジオを選択可能にする
+  orderNo.value = ""
+  companyCd.value = ""
+  officeCd.value = ""
+  siteCd.value = ""
+  deadlineDate.value = ""
+  proofreadingDate.value = ""
+  productionType.value = ""
+  status.value = ""
+  note.value = NOTE_DEFAULT
+  orderName.value = ""
+  address.value = ""
+  customerName.value = ""
+  customerId.value = null
+  manager.value = ""
+  designTypeId.value = null
+  templateId.value = null
+  templateItemValues.value = []
+  mode.value = isNewRegistration ? "new" : "change"
+  hasSearchedInChangeMode.value = false
+  initialNewState.value = getFormState()
+  initialChangeState.value = getFormState()
+  focusOrderMainInitial()
+}
+
 //-- 看板編集画面へのルート（変更モードかつ検索済みかつ注文番号ありのときのみ有効なパスを返す）
 const orderDetailTo = computed(() => {
   if (!orderDetailLinkDisabled.value && orderNo.value) {
@@ -709,6 +792,8 @@ function onModeChangeToChange() {
   if (getFormState() !== initialNewState.value) {
     changeNoticeModalOpen.value = true
     mode.value = "new" //-- モーダル表示中は新規のまま
+  } else {
+    focusOrderMainInitial()
   }
 }
 
@@ -736,6 +821,7 @@ function changeNoticeDiscard() {
   mode.value = "change"
   hasSearchedInChangeMode.value = false
   changeNoticeModalOpen.value = false
+  focusOrderMainInitial()
 }
 
 //-- 新規→変更の確認で「登録して切り替え」を選んだとき、登録確認モーダルを開く
@@ -772,6 +858,7 @@ function onModeChangeToNew() {
       initialChangeState.value = getFormState()
       mode.value = "new"
       hasSearchedInChangeMode.value = false
+      focusOrderMainInitial()
     }
     unsavedConfirmOpen.value = true
     mode.value = "change" //-- モーダル表示中は変更のまま
@@ -797,6 +884,7 @@ function onModeChangeToNew() {
     initialNewState.value = getFormState()
     initialChangeState.value = getFormState()
     mode.value = "new"
+    focusOrderMainInitial()
   }
 }
 
@@ -861,6 +949,7 @@ onMounted(async () => {
         },
       })
     }
+    focusOrderMainInitial()
   })
 })
 
@@ -881,8 +970,8 @@ watch(orderNo, () => {
     一覧から遷移時は orderNo をクエリで受け取り、変更モードで表示。
   -->
   <main id="order-main-page">
-    <div class="order-main-page-container">
-      <div class="order-main-card card-header-full">
+    <div class="page-container">
+      <div class="order-main-card card-header-full card-shadow">
         <div class="page-card-header order-main-card-header">
           <h2>注文（新規・変更）</h2>
         </div>
@@ -1216,14 +1305,14 @@ watch(orderNo, () => {
 
         <!-- -- 入力ブロック6：テンプレート項目（選択テンプレートに紐づく） -- -->
         <section v-show="showTemplateItemsSection" class="order-main-template-section">
-          <div class="order-main-section-title">
-            <div class="order-main-section-title-accent"></div>
-            <h3 class="order-main-section-title-text">テンプレート項目</h3>
+          <div class="section-title">
+            <div class="section-title-accent"></div>
+            <h3 class="section-title-text">テンプレート項目</h3>
           </div>
           <div class="order-main-form-grid order-main-form-grid--template">
             <div class="order-main-form-field">
               <label class="form-label form-label--with-badge">テンプレートプレビュー</label>
-              <div class="order-main-template-preview">
+              <div class="template-preview">
                 <img
                   src="/samples/template/template-dummy.png?v=2"
                   alt="テンプレートプレビュー"
@@ -1259,11 +1348,11 @@ watch(orderNo, () => {
     </div>
 
     <!-- -- 画面下部：戻る／登録・更新／看板編集 -- -->
-    <div class="order-main-form-actions">
-      <div class="order-main-form-actions-left">
+    <div class="form-actions">
+      <div class="form-actions-left">
         <button type="button" class="btn-back" @click="goBack">戻る</button>
       </div>
-      <div class="order-main-form-actions-center">
+      <div class="form-actions-center">
         <button
           type="button"
           class="btn-action"
@@ -1273,7 +1362,7 @@ watch(orderNo, () => {
           {{ isValidatingAddress ? "住所を確認中..." : registerButtonLabel }}
         </button>
       </div>
-      <div class="order-main-form-actions-right">
+      <div class="form-actions-right">
         <RouterLink
           :to="orderDetailTo"
           class="btn-back"
@@ -1428,7 +1517,7 @@ watch(orderNo, () => {
         aria-labelledby="registerResultModalTitle"
         aria-hidden="false"
       >
-        <div class="form-dialog-overlay" @click="registerResultOpen = false"></div>
+        <div class="form-dialog-overlay" @click="closeRegisterResultModal"></div>
         <div class="form-dialog-content form-dialog-content--wide">
           <div class="form-dialog-header">
             <h3 id="registerResultModalTitle">処理結果</h3>
@@ -1440,18 +1529,25 @@ watch(orderNo, () => {
             <RouterLink
               :to="{ path: '/order/detail', query: { orderNo: orderNo, itemCode: '01', mode: 'edit' } }"
               class="btn btn-primary"
-              @click="registerResultOpen = false"
+              @click="closeRegisterResultModal"
             >
               看板編集
             </RouterLink>
             <RouterLink
               :to="{ path: '/order/list', query: orderNo ? { orderNo } : {} }"
               class="btn btn-secondary"
-              @click="registerResultOpen = false"
+              @click="closeRegisterResultModal"
             >
               注文一覧
             </RouterLink>
-            <button type="button" class="btn btn-secondary" @click="registerResultOpen = false">キャンセル</button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="continueRegisterOrUpdate"
+            >
+              {{ registerResultMessage === '登録が完了しました' ? '続けて登録' : '続けて更新' }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="closeRegisterResultModal">キャンセル</button>
           </div>
         </div>
       </div>

@@ -120,7 +120,7 @@ function onSelect(order: OrderItem) {
                   </td>
                   <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ order.createdDate }}</div>
-                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.creator }}</div>
+                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.creator?.trim() || "—" }}</div>
                   </td>
                 </tr>
               </tbody>

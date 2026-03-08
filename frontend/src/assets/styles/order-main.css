@@ -9,12 +9,7 @@
    ページ・コンテナ
    ----------------------------------------------------------------------------- */
 
-/* 注文番号〜ステータスを1行表示するため OrderList と同幅（72rem） */
-.order-main-page-container {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 3rem 2rem;
-}
+/* コンテナは shared.css の .page-container を使用 */
 
 /* -----------------------------------------------------------------------------
    フォームカード・レイアウト
@@ -22,9 +17,9 @@
 .order-main-card {
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
   border: 1px solid rgb(226 232 240 / 0.8);
   overflow: hidden;
+  /* 影は common.css の .card-shadow を class で付与 */
 }
 /* フォーム本体 */
 .order-main-form {
@@ -101,7 +96,7 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: visible;
-  padding-bottom: 0.75rem; /* 選択ボタンの下陰が切れないよう余白を確保 */
+  padding: 0 2px 0.75rem 2px; /* 左右: フォーカス枠の見切れ防止、下: 選択ボタンの下陰が切れないよう余白を確保 */
 }
 .order-main-form-row--block1 .order-main-form-field {
   flex-shrink: 0;
@@ -230,59 +225,10 @@
   padding-top: 1.25rem;
   border-top: 1px solid rgb(241 245 249);
 }
-.order-main-section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  color: var(--color-main);
-}
-.order-main-section-title-accent {
-  width: 0.375rem;
-  height: 1.5rem;
-  background-color: var(--color-sub-blue);
-  border-radius: 9999px;
-}
-.order-main-section-title-text {
-  font-weight: 400;
-  font-size: 1rem;
-  letter-spacing: -0.025em;
-}
-.order-main-template-preview {
-  width: 100%;
-  height: 400px;
-  background-color: rgb(241 245 249);
-  border: 1px dashed rgb(203 213 225);
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.order-main-template-preview img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
+/* セクションタイトルは shared.css の .section-title, .section-title-accent, .section-title-text を使用 */
+/* テンプレートプレビューは shared.css の .template-preview を使用 */
 
-/* フォームアクション。戻る・登録ボタンを3カラムで配置 */
-.order-main-form-actions {
-  margin-top: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.order-main-form-actions-left {
-  flex: 1;
-}
-.order-main-form-actions-center {
-  flex: 1;
-  text-align: center;
-}
-.order-main-form-actions-right {
-  flex: 1;
-  text-align: right;
-}
+/* フォームアクションは shared.css の .form-actions, .form-actions-left/center/right を使用 */
 
 /* 読み取り専用で無効風（注文番号など） */
 .order-main-form-field .form-input--readonly:disabled,
@@ -290,11 +236,4 @@
   cursor: not-allowed;
 }
 
-/* 画面タイトル（bfcache復元時も色を維持） */
-#order-main-page .card-header-full > div:first-child {
-  background-color: rgb(241 245 249) !important;
-  border-bottom-color: rgb(226 232 240) !important;
-}
-#order-main-page .card-header-full > div:first-child h2 {
-  color: var(--color-main) !important;
-}
+/* 画面タイトルは common.css の .card-header-full > .page-card-header で共通化 */

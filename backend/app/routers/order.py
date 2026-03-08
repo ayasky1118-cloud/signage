@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 # 認証未実装のため登録・更新者IDは固定（将来は認証から取得）
-DEFAULT_USER_ID = 1
+DEFAULT_USER_ID = 0
 
 # order_main の attribute_01〜05 の用途（拡張用の汎用カラム）:
 #   attribute_01: 社内CD（必須）
@@ -206,9 +206,11 @@ def _search_orders_impl(
     where_clause = " AND ".join(conditions)
 
     # ソート条件の組み立て（sort_by: order_no=注文番号 / created_date=登録日、sort_order: asc / desc）
+    # 第2キーはもう一方のカラムで常に昇順（同値時の並びを固定）
     order_col = "om.order_no" if (sort_by or "").strip().lower() == "order_no" else "om.created_dt"
     order_dir = "DESC" if (sort_order or "").strip().lower() == "desc" else "ASC"
-    order_clause = f"ORDER BY {order_col} {order_dir}"
+    sub_order_col = "om.created_dt" if order_col == "om.order_no" else "om.order_no"
+    order_clause = f"ORDER BY {order_col} {order_dir}, {sub_order_col} ASC"
 
     # 一覧取得用SQL（order_main を中心に customer, template, design_type, user を LEFT JOIN。
     # 枝番一覧はサブクエリで GROUP_CONCAT。order_detail が無い場合は NULL → 空配列になる）

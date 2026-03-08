@@ -1,0 +1,7 @@
+# スタイル共通化
+
+- 同じスタイルが複数箇所にある場合は、`common.css` または `shared.css` に集約する
+- カードの影は `common.css` の `.card-shadow` を class で付与する
+- ページコンテナは `shared.css` の `.page-container` を使用する
+- フォームアクション（戻る・登録ボタン配置）は `shared.css` の `.form-actions` 系を使用する
+- 詳細は `frontend/src/assets/styles/STYLE.md` を参照

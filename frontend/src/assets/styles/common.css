@@ -46,6 +46,10 @@ body {
     --production-type-width: 8rem;
     /* ステータスドロップダウン幅 */
     --status-width: 12rem;
+    /* フォーカスリング（フォーム要素の :focus で統一） */
+    --focus-ring: 0 0 0 2px var(--color-light-blue);
+    /* ページ背景（注文一覧・看板編集等） */
+    --page-bg-color: #e2e8f0;
 }
 
 /* ユーティリティクラス（Tailwind 等で上書きされる場合に !important で確実に適用） */
@@ -146,4 +150,23 @@ p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
 }
 
+/* -----------------------------------------------------------------------------
+   ページ背景・画面タイトル（共通）
+   ----------------------------------------------------------------------------- */
 
+/* 注文一覧・看板編集等のページ背景。薄いグレーでカードと区別 */
+.page-bg-slate {
+  min-height: 100vh;
+  background-color: var(--page-bg-color);
+  color: rgb(71 85 105);
+}
+
+/* 画面タイトル（bfcache 復元時も色を維持）。page-card-header を含む card-header-full に適用 */
+.card-header-full > .page-card-header {
+  background-color: rgb(241 245 249) !important;
+  border-bottom-color: rgb(226 232 240) !important;
+}
+.card-header-full > .page-card-header h2 {
+  color: var(--color-main) !important;
+  text-align: left;
+}

@@ -8,19 +8,7 @@
    ページ・コンテナ
    ----------------------------------------------------------------------------- */
 
-/* 05f007f準拠: ページ背景。薄いグレーでカードと区別 */
-#order-list-page.order-list-page {
-  min-height: 100vh;
-  background-color: #e2e8f0;
-  color: rgb(71 85 105);
-}
-
-/* コンテナ幅 72rem、中央寄せ、パディング 3rem 2rem */
-.order-list-page-container {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 3rem 2rem;
-}
+/* 05f007f準拠: ページ背景は common.css の .page-bg-slate、コンテナは shared.css の .page-container を使用 */
 
 /* -----------------------------------------------------------------------------
    検索条件カード
@@ -28,10 +16,10 @@
 .order-list-search-card {
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
   border: 1px solid rgb(226 232 240 / 0.8);
   overflow: hidden;
   margin-bottom: 1rem;
+  /* 影は common.css の .card-shadow を class で付与 */
 }
 .order-list-search-card-body {
   padding: 1rem 1.5rem 1.5rem;
@@ -176,7 +164,7 @@
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: visible;
-  padding-bottom: 0.5rem; /* 選択ボタンの下陰が切れないよう余白を確保 */
+  padding: 0 2px 0.5rem 2px; /* 左右: フォーカス枠の見切れ防止、下: 選択ボタンの下陰が切れないよう余白を確保 */
 }
 .order-list-search-detail-row--single .order-list-search-field--date-range + .order-list-search-field--status {
   margin-left: 1.5rem;
@@ -194,9 +182,9 @@
   margin-top: 0.5rem;
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(226 232 240 / 0.8);
   border: 1px solid rgb(226 232 240 / 0.8);
   overflow: hidden;
+  /* 影は common.css の .card-shadow を class で付与 */
 }
 .order-list-result-card-inner {
   overflow-x: auto;
@@ -274,16 +262,7 @@
   margin-top: 0.5rem;
 }
 
-/* 画面タイトル（bfcache復元時も色を維持） */
-#order-list-page .card-header-full > div:first-child {
-  background-color: rgb(241 245 249) !important;
-  border-bottom-color: rgb(226 232 240) !important;
-}
-#order-list-page .card-header-full > div:first-child h2 {
-  color: var(--color-main) !important;
-  text-align: left;
-}
-
+/* 画面タイトルは common.css の .card-header-full > .page-card-header で共通化 */
 
 /* Flatpickr テーマは flatpickr-theme.css で共通読み込み */
 
@@ -318,6 +297,7 @@
   font-size: 0.75rem;
   flex-shrink: 0;
   margin-left: auto;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
 }
 .order-list-count-label {
   color: rgb(100 116 139);
