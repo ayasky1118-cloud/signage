@@ -18,8 +18,8 @@
 <template>
   <main id="menu-page" class="menu-page">
     <div class="menu-card">
-      <div class="menu-card-header">
-        <h2 class="menu-card-title">メニュー</h2>
+      <div class="page-card-header menu-card-header">
+        <h2>メニュー</h2>
       </div>
       <div class="menu-card-body">
         <div class="menu-list">
@@ -88,19 +88,6 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
   border: 1px solid rgb(226 232 240 / 0.8);
   overflow: hidden;
-}
-
-/* 05f007f 準拠: px-8, text-lg */
-.menu-card-header {
-  background-color: var(--color-main);
-  border-bottom: 1px solid rgb(226 232 240);
-  padding: 0.5rem 2rem;
-}
-
-.menu-card-title {
-  font-size: 1.125rem;
-  font-weight: 400;
-  color: white;
 }
 
 .menu-card-body {

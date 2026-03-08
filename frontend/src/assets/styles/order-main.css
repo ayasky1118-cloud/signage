@@ -1,213 +1,258 @@
 /* ========================================
    order_main（注文新規・変更）専用スタイル
-   Tailwind 削除に伴い、フォーム・レイアウトを従来の CSS で定義
+   セマンティッククラス（OrderList と共用できるものは shared.css）
    ======================================== */
 
-#order-main-page {
+/* ページコンテナ（OrderList の order-list-page-container と同様） */
+.order-main-page-container {
   max-width: 64rem;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto;
   padding: 3rem 2rem;
 }
 
-#order-main-page .order-main-card {
+/* フォームカード */
+.order-main-card {
   background: white;
   border-radius: 1rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
   border: 1px solid rgb(226 232 240 / 0.8);
   overflow: hidden;
 }
-
-#order-main-page .order-main-header {
-  padding: 1rem 2rem;
-  background-color: var(--color-main);
-}
-
-#order-main-page .order-main-header h2 {
-  font-size: 1rem;
-  font-weight: 400;
-  color: white;
-  letter-spacing: -0.025em;
-}
-
-#order-main-page .order-main-form {
+/* フォーム本体 */
+.order-main-form {
   padding: 1.25rem 2.5rem 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
-#order-main-page .order-main-form .form-section {
+/* モード切替（新規／変更） */
+.order-main-mode-section {
   padding-bottom: 1rem;
   border-bottom: 1px solid rgb(241 245 249);
 }
+.order-main-mode-radio {
+  display: inline-flex;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  overflow: hidden;
+  background-color: rgb(241 245 249);
+  min-width: 11rem;
+}
+.order-main-mode-radio label {
+  cursor: pointer;
+  flex: 1;
+  min-width: 5rem;
+}
+.order-main-mode-radio label.mode-radio--disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.order-main-mode-radio span {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1.25rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 400;
+  transition: all 0.2s;
+  background-color: rgb(241 245 249);
+  color: rgb(71 85 105);
+  white-space: nowrap;
+}
+.order-main-mode-radio span:hover {
+  background-color: rgb(248 250 252);
+}
+.order-main-mode-radio input:checked + span {
+  background-color: var(--color-main);
+  color: white;
+  border-color: rgb(226 232 240 / 0.4);
+}
+.order-main-mode-radio label:first-child span {
+  border-right: 1px solid rgb(226 232 240);
+}
 
-#order-main-page .order-main-form .form-row {
+/* フォームセクション */
+.order-main-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 1rem;
+}
+.order-main-form-row {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 1rem 1.5rem;
 }
+.order-main-form-row--sm {
+  gap: 1rem 1.5rem;
+}
 
-#order-main-page .order-main-form .form-field {
+/* フォームフィールド */
+.order-main-form-field {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
   flex-shrink: 0;
 }
+.order-main-form-field--flex1 {
+  flex: 1;
+  min-width: 0;
+}
+.order-main-form-field--flex2 {
+  flex: 2;
+  min-width: 0;
+}
+.order-main-form-field--w7 {
+  width: 7rem;
+  min-width: 7rem;
+  max-width: 100%;
+}
+.order-main-form-field--w8 {
+  width: 8rem;
+  min-width: 8rem;
+  max-width: 100%;
+}
+.order-main-form-field--w24 {
+  width: 6rem;
+  min-width: 0;
+}
+.order-main-form-field--order-no {
+  width: 12rem;
+  min-width: 12rem;
+}
 
-#order-main-page .order-main-form .form-field--flex1 {
+/* 入力行（入力+ボタン） */
+.order-main-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-main-field-row .form-input,
+.order-main-field-row .form-select {
   flex: 1;
   min-width: 0;
 }
 
-#order-main-page .order-main-form .form-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: rgb(100 116 139);
+/* 日付入力（Flatpickr） */
+.order-main-date-input {
+  background: white;
+  cursor: pointer;
 }
 
-#order-main-page .order-main-form .form-input,
-#order-main-page .order-main-form .form-select,
-#order-main-page .order-main-form textarea {
-  height: 2.25rem;
-  box-sizing: border-box;
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgb(203 213 225);
-  outline: none;
-  transition: all 0.2s;
-}
-
-#order-main-page .order-main-form .form-input:focus,
-#order-main-page .order-main-form .form-select:focus,
-#order-main-page .order-main-form textarea:focus {
-  box-shadow: 0 0 0 2px var(--color-light-blue);
-}
-
-#order-main-page .order-main-form .form-input:disabled,
-#order-main-page .order-main-form .form-select:disabled,
-#order-main-page .order-main-form textarea:disabled {
-  opacity: 0.5;
-  background-color: rgb(248 250 252);
-  border-color: rgb(226 232 240);
-  cursor: not-allowed;
-}
-
-#order-main-page .order-main-form .form-input--readonly {
-  background-color: rgb(248 250 252);
-  color: rgb(100 116 139);
-}
-
-#order-main-page .order-main-form textarea {
+/* テキストエリア */
+.order-main-form textarea.form-input {
   min-height: 4.5rem;
   resize: vertical;
   height: auto;
 }
 
-#order-main-page .order-main-form .form-input--w7 { min-width: 7rem; width: 7rem; max-width: 100%; }
-#order-main-page .order-main-form .form-input--w8 { min-width: 8rem; width: 8rem; max-width: 100%; }
-#order-main-page .order-main-form .form-input--w24 { width: 6rem; min-width: 0; }
-
-#order-main-page .order-main-form .form-input--date {
-  background: white;
-  cursor: pointer;
-}
-
-#order-main-page .order-main-form .form-field-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-#order-main-page .order-main-form .form-field-row .form-input {
-  flex: 1;
-  min-width: 0;
-}
-
-#order-main-page .order-main-form .form-block {
+/* ブロックレイアウト */
+.order-main-form-block {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
 }
-
-#order-main-page .order-main-form .form-block-row {
+.order-main-form-block-row {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-
 @media (min-width: 640px) {
-  #order-main-page .order-main-form .form-block-row {
+  .order-main-form-block-row {
     flex-direction: row;
     align-items: flex-end;
     gap: 1.5rem;
   }
 }
-
-#order-main-page .order-main-form .form-block-row .form-field--flex2 {
+.order-main-form-block-row .order-main-form-field--flex2 {
   flex: 2;
 }
-
-#order-main-page .order-main-form .form-block-row .form-field--flex1 {
+.order-main-form-block-row .order-main-form-field--flex1 {
   flex: 1;
 }
 
-#order-main-page .order-main-form .form-grid {
+/* グリッド */
+.order-main-form-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.25rem;
 }
+.order-main-form-grid--template {
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .order-main-form-grid--template {
+    grid-template-columns: minmax(0, 240px) 1fr;
+  }
+}
 
-#order-main-page .order-main-form .form-actions {
+/* テンプレート項目セクション */
+.order-main-template-section {
+  margin-top: 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(241 245 249);
+}
+.order-main-section-title {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-main);
+}
+.order-main-section-title-accent {
+  width: 0.375rem;
+  height: 1.5rem;
+  background-color: var(--color-sub-blue);
+  border-radius: 9999px;
+}
+.order-main-section-title-text {
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: -0.025em;
+}
+.order-main-template-preview {
+  width: 100%;
+  height: 400px;
+  background-color: rgb(241 245 249);
+  border: 1px dashed rgb(203 213 225);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.order-main-template-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* フォームアクション（画面下部ボタン） */
+.order-main-form-actions {
+  margin-top: 2rem;
+  display: flex;
   align-items: center;
   gap: 1rem;
 }
-
-#order-main-page .order-main-form .form-actions .btn-register {
-  padding: 0.625rem 2rem;
-  border-radius: 0.75rem;
-  background-color: var(--color-main);
-  color: white;
-  font-size: 0.75rem;
-  font-weight: 400;
-  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
-  transition: all 0.2s;
+.order-main-form-actions-left {
+  flex: 1;
+}
+.order-main-form-actions-center {
+  flex: 1;
+  text-align: center;
+}
+.order-main-form-actions-right {
+  flex: 1;
+  text-align: right;
 }
 
-#order-main-page .order-main-form .form-actions .btn-register:hover:not(:disabled) {
-  background-color: var(--color-sub-blue);
-}
-
-#order-main-page .order-main-form .form-actions .btn-register:disabled {
-  opacity: 0.6;
+/* 読み取り専用で無効風（注文番号など） */
+.order-main-form-field .form-input--readonly:disabled,
+.order-main-form-field .form-input--readonly[readonly] {
   cursor: not-allowed;
-}
-
-#order-main-page .order-main-form .form-actions .btn-back {
-  padding: 0.625rem 2rem;
-}
-
-#order-main-page .order-main-form .form-actions .order-detail-link {
-  color: var(--color-main);
-  font-size: 0.75rem;
-}
-
-#order-main-page .order-main-form .form-actions .order-detail-link:hover:not([aria-disabled="true"]) {
-  text-decoration: underline;
-}
-
-#order-main-page .order-main-form .form-actions .order-detail-link[aria-disabled="true"] {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* 画面タイトル（bfcache復元時も色を維持） */

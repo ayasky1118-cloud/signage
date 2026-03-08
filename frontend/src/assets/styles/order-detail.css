@@ -1,6 +1,672 @@
 /* ========================================
    order_detail（看板編集）専用スタイル
+   Tailwind 風ユーティリティは使用せずセマンティッククラスで定義
    ======================================== */
+
+/* ページコンテナ */
+#order-detail-page {
+  min-height: 100vh;
+  background-color: #e2e8f0;
+  color: rgb(71 85 105);
+}
+.order-detail-page-container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* カード共通 */
+.order-detail-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+.order-detail-card--header-full {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
+}
+.order-detail-card--bordered {
+  border: 1px solid rgb(226 232 240 / 0.8);
+}
+
+/* カード本文 */
+.order-detail-card-body {
+  padding: 0.25rem 1.5rem 1.5rem;
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .order-detail-card-body {
+    padding: 0.5rem 2rem 1.75rem;
+  }
+}
+
+/* 注文情報展開エリア */
+.order-detail-order-info-expanded {
+  margin-top: 1rem;
+  min-width: 0;
+}
+.order-detail-order-info-expanded .order-detail-order-info-grid {
+  margin-top: 1.5rem;
+}
+
+/* フォームフィールド（注文番号行） */
+.order-detail-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.order-detail-form-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+/* 注文番号入力 */
+.order-detail-order-no-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 20rem;
+  height: 2.25rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
+  box-sizing: border-box;
+}
+.order-detail-order-no-input:focus {
+  outline: none;
+  border-color: var(--color-light-blue);
+  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+}
+.order-detail-order-no-input:not(:read-only):focus {
+  background: white;
+  border-color: rgb(148 163 184);
+}
+.order-detail-order-no-input:read-only {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 検索結果グリッド（顧客名・更新日・デザイン種別・注文名） */
+.order-detail-order-info-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  font-size: 0.75rem;
+  border-top: 1px solid rgb(241 245 249);
+  padding-top: 1rem;
+}
+@media (min-width: 640px) {
+  .order-detail-order-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .order-detail-order-info-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.order-detail-order-info-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 3.25rem;
+}
+.order-detail-order-info-cell-value {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgb(51 65 85);
+  min-height: 1.25rem;
+}
+.order-detail-order-info-cell-sub {
+  font-size: 0.625rem;
+  color: rgb(100 116 139);
+  min-height: 1rem;
+}
+.order-detail-order-info-cell--span-2 {
+  grid-column: span 2;
+}
+@media (min-width: 1024px) {
+  .order-detail-order-info-cell--span-2 {
+    grid-column: span 1;
+  }
+}
+
+/* 看板情報セクション */
+.order-detail-signboard-section {
+  padding: 1rem 1.5rem 1.5rem;
+}
+.order-detail-signboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+.order-detail-signboard-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.order-detail-signboard-header-accent {
+  width: 0.375rem;
+  height: 1.5rem;
+  background-color: var(--color-sub-blue);
+  border-radius: 9999px;
+}
+.order-detail-signboard-header h3 {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-main);
+  letter-spacing: -0.025em;
+}
+
+/* 枝番タブエリア */
+.order-detail-branch-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+.order-detail-branch-tabs-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-branch-tabs-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-branch-empty-msg {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+  padding: 0.5rem 0;
+}
+.order-detail-branch-tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.order-detail-branch-tab-item {
+  display: inline-flex;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.order-detail-branch-tab-item--active {
+  background-color: var(--color-main);
+}
+.order-detail-branch-tab-item--inactive {
+  background-color: rgb(241 245 249);
+  border: 1px solid rgb(226 232 240);
+}
+.order-detail-branch-tab {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 400;
+  color: white;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  background: transparent;
+  border: none;
+  transition: all 0.2s;
+}
+.order-detail-branch-tab-item--inactive .order-detail-branch-tab {
+  color: rgb(71 85 105);
+  background-color: rgb(241 245 249);
+}
+.order-detail-branch-tab-item--inactive .order-detail-branch-tab:hover {
+  background-color: rgb(226 232 240);
+}
+
+/* 枝番詳細2カラム */
+.order-detail-branch-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .order-detail-branch-content {
+    grid-template-columns: minmax(0, 240px) 1fr;
+  }
+}
+.order-detail-branch-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.order-detail-branch-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* 枝番・地図・備考フォーム */
+.order-detail-form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.order-detail-form-block-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-input-branch {
+  width: 4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 400;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  background: white;
+  color: rgb(51 65 85);
+  outline: none;
+  transition: all 0.2s;
+}
+.order-detail-input-branch:focus {
+  border-color: var(--color-light-blue);
+  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+}
+
+/* テンプレートプレビュー枠 */
+.order-detail-template-preview {
+  width: 100%;
+  height: 400px;
+  background-color: rgb(241 245 249);
+  border: 1px dashed rgb(203 213 225);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.order-detail-template-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 備考テキストエリア */
+.order-detail-textarea-note {
+  width: 100%;
+  min-height: 3.5rem;
+  max-height: 6rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  resize: vertical;
+  outline: none;
+  transition: all 0.2s;
+}
+.order-detail-textarea-note:focus {
+  border-color: var(--color-light-blue);
+  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+}
+
+/* レイアウト／マッププレビュー行 */
+.order-detail-layout-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.order-detail-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-layout-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* 全画面編集・全体プレビュー・出力ボタン（btn-small の primary/secondary バリエーション） */
+.order-detail-btn-primary-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-family: inherit;
+  color: white;
+  background-color: var(--color-main);
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  transition: all 0.2s;
+}
+.order-detail-btn-primary-small:hover {
+  background-color: var(--color-sub-blue);
+}
+.order-detail-btn-primary-small svg,
+.order-detail-btn-secondary-small svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+.order-detail-btn-secondary-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-family: inherit;
+  color: rgb(71 85 105);
+  background: white;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+.order-detail-btn-secondary-small:hover {
+  color: rgb(30 41 59);
+  background-color: rgb(248 250 252);
+  border-color: rgb(203 213 225);
+}
+.order-detail-btn-secondary-small:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 出力フォーマットセレクト */
+.order-detail-select-format {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 400;
+  color: rgb(71 85 105);
+  background: white;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s;
+}
+.order-detail-select-format:focus {
+  border-color: var(--color-light-blue);
+  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+}
+
+/* マッププレビュー枠（枝番なし時はプレースホルダー表示） */
+.order-detail-map-preview-wrap {
+  position: relative;
+  background-color: rgb(241 245 249);
+  border: 1px dashed rgb(203 213 225);
+  border-radius: 0.75rem;
+  aspect-ratio: 1;
+  width: 100%;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.order-detail-map-preview-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.order-detail-map-preview-placeholder svg {
+  width: 4rem;
+  height: 4rem;
+  color: rgb(203 213 225);
+}
+.order-detail-map-preview-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.order-detail-map-preview-loading,
+.order-detail-map-preview-error {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(241 245 249 / 0.9);
+  border-radius: 0.75rem;
+}
+.order-detail-map-preview-error {
+  padding: 1rem;
+}
+.order-detail-map-preview-loading p,
+.order-detail-map-preview-error p {
+  font-size: 0.75rem;
+  color: rgb(100 116 139);
+}
+.order-detail-map-preview-error p {
+  color: rgb(71 85 105);
+  text-align: center;
+}
+.order-detail-map-preview-map {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* フォームアクション（戻る／登録・更新。注文画面と同様の3カラムレイアウト） */
+.order-detail-form-actions {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.order-detail-form-actions-left {
+  flex: 1;
+}
+.order-detail-form-actions-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.order-detail-form-actions-right {
+  flex: 1;
+}
+
+/* 全画面編集オーバーレイ */
+.order-detail-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(241 245 249);
+}
+.order-detail-fullscreen-inner {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+.order-detail-fullscreen-sidebar {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+  background: white;
+  border-right: 1px solid rgb(226 232 240);
+  overflow-y: auto;
+}
+.order-detail-fullscreen-sidebar-body {
+  padding: 1rem;
+}
+.order-detail-fullscreen-sidebar-body > * + * {
+  margin-top: 1.5rem;
+}
+.order-detail-fullscreen-close-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-family: inherit;
+  color: white;
+  background-color: var(--color-main);
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+.order-detail-fullscreen-close-btn:hover {
+  background-color: var(--color-sub-blue);
+}
+.order-detail-fullscreen-close-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+.order-detail-fullscreen-map {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background-color: rgb(226 232 240);
+}
+
+/* HTMLオブジェクトブロック（ルート描画・テキスト等） */
+.order-detail-html-object-block > * + * {
+  margin-top: 0.5rem;
+}
+.order-detail-html-object-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.order-detail-tooltip-wrap .order-detail-tooltip {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  z-index: 10;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  display: none;
+  padding: 0.375rem 0.5rem;
+  font-size: 10px;
+  color: rgb(30 41 59);
+  background-color: rgb(241 245 249);
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+.order-detail-tooltip-wrap:hover .order-detail-tooltip {
+  display: block;
+}
+.order-detail-tooltip-icon {
+  color: rgb(148 163 184);
+  cursor: help;
+}
+
+/* オブジェクト入力行（select + ボタン） */
+.order-detail-object-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.order-detail-object-row .order-detail-object-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-family: inherit;
+  color: rgb(71 85 105);
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  background: white;
+  outline: none;
+  box-sizing: border-box;
+}
+/* オブジェクトselectの初期値（未選択時）: ラベルと同じ色 */
+.order-detail-object-row select.order-detail-object-input.order-detail-object-input--placeholder {
+  color: rgb(100 116 139);
+}
+.order-detail-object-row select.order-detail-object-input {
+  cursor: pointer;
+}
+.order-detail-object-row .order-detail-object-input:focus {
+  border-color: var(--color-light-blue);
+  box-shadow: 0 0 0 2px rgb(142 209 252 / 0.5);
+}
+
+/* 選択中画像表示 */
+.order-detail-selected-image {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(226 232 240);
+  background-color: rgb(248 250 252 / 0.5);
+}
+.order-detail-selected-image img {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.order-detail-selected-image span {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: rgb(71 85 105);
+}
+
+/* アイテム選択セクション */
+.order-detail-item-select-section > * + * {
+  margin-top: 0.5rem;
+}
+.order-detail-item-select-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-detail-item-select-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+.order-detail-item-select-buttons .btn-small {
+  flex: 1;
+}
+.order-detail-label-file {
+  cursor: pointer;
+}
+.order-detail-map-fullscreen {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+}
 
 /* 画面タイトル（bfcache復元時も色を維持） */
 #order-detail-page .card-header-full > div:first-child {

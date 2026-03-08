@@ -100,7 +100,7 @@ function onSelect(opt: TemplateOption) {
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
       <div class="modal-dialog">
-        <div class="modal-content modal-content--wide template-select-modal-content">
+        <div class="modal-content modal-content--wide select-modal template-select-modal-content">
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header template-select-modal-header">
             <h3 id="templateSelectModalTitle" class="modal-header-title">テンプレートを選択</h3>

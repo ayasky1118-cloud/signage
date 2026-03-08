@@ -56,10 +56,10 @@ function close() {
     <div v-show="modelValue" class="modal" aria-hidden="false">
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
-      <div class="modal-dialog overflow-y-auto">
+      <div class="modal-dialog order-detail-modal-dialog">
         <div
           v-if="order"
-          class="modal-content card-header-full my-8"
+          class="modal-content card-header-full order-detail-modal-content"
           @click.stop
         >
           <!-- ヘッダー（メインカラー背景） -->
@@ -256,7 +256,7 @@ function close() {
 }
 
 .modal-dd {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: rgb(51 65 85);
 }
 
@@ -269,7 +269,7 @@ function close() {
 }
 
 .modal-note-box {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: rgb(51 65 85);
   white-space: pre-wrap;
   background-color: rgb(248 250 252);
@@ -278,12 +278,12 @@ function close() {
   border: 1px solid rgb(226 232 240);
 }
 
-.my-8 {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+.order-detail-modal-dialog {
+  overflow-y: auto;
 }
 
-.overflow-y-auto {
-  overflow-y: auto;
+.order-detail-modal-content {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
 }
 </style>

@@ -72,7 +72,7 @@ function onSelect(order: OrderItem) {
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
       <div class="modal-dialog">
-        <div class="modal-content modal-content--wide order-no-select-modal">
+        <div class="modal-content modal-content--wide select-modal order-no-select-modal">
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header">
             <h3 id="orderNoSelectModalTitle" class="modal-header-title">注文番号を選択</h3>
@@ -80,7 +80,7 @@ function onSelect(order: OrderItem) {
           <!-- 本文: 注文一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
           <div class="modal-body modal-body--scroll">
             <p v-if="loading" class="text-muted">読み込み中...</p>
-            <table v-else class="data-table order-no-select-modal-table">
+            <table v-else class="data-table select-modal-table order-no-select-modal-table">
               <thead>
                 <tr class="data-table-header">
                   <th class="select-modal-table-th order-no-select-modal-th-order-no">注文番号</th>
@@ -146,53 +146,7 @@ function onSelect(order: OrderItem) {
 </template>
 
 <style scoped>
-/* 顧客モーダルと同様：ヘッダー高さ・テーブルスタイル */
-.order-no-select-modal {
-  background: linear-gradient(to bottom, var(--color-main) 0, var(--color-main) 2.75rem, white 2.75rem) !important;
-}
-
-.order-no-select-modal .modal-header {
-  padding: 0.5rem 1.5rem;
-}
-
-.order-no-select-modal .modal-body--scroll {
-  padding: 1rem 2rem 1rem;
-  max-height: 60vh;
-  overflow: auto;
-}
-
-.order-no-select-modal .modal-footer {
-  border-top: 1px solid rgb(226 232 240);
-}
-
-/* 選択モーダルテーブル（data-table を拡張） */
-.order-no-select-modal .order-no-select-modal-table {
-  border-collapse: collapse;
-  width: 100%;
-  text-align: left;
-}
-
-.order-no-select-modal .select-modal-table-th {
-  padding: 0.5rem 1.25rem;
-  font-weight: 400;
-  vertical-align: middle;
-  border-bottom: 1px solid rgb(226 232 240);
-  white-space: nowrap;
-}
-
-.order-no-select-modal .select-modal-table-td {
-  min-width: 0;
-  overflow: hidden;
-  vertical-align: middle;
-  padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid rgb(226 232 240);
-}
-
-.order-no-select-modal .order-no-select-modal-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
 .order-no-select-modal .order-no-select-modal-td-order-no .data-table-cell-primary {
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 </style>

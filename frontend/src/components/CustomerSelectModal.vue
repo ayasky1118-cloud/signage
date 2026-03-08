@@ -78,7 +78,7 @@ function onClear() {
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
       <div class="modal-dialog">
-        <div class="modal-content customer-select-modal">
+        <div class="modal-content select-modal customer-select-modal">
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header">
             <h3 id="customerSelectModalTitle" class="modal-header-title">顧客を選択</h3>
@@ -86,7 +86,7 @@ function onClear() {
           <!-- 本文: 顧客一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
           <div class="modal-body modal-body--scroll">
             <p v-if="loading" class="text-muted">読み込み中...</p>
-            <table v-else class="data-table customer-select-modal-table">
+            <table v-else class="data-table select-modal-table customer-select-modal-table">
               <thead>
                 <tr class="data-table-header">
                   <th class="select-modal-table-th">
@@ -136,52 +136,3 @@ function onClear() {
     </div>
   </Teleport>
 </template>
-
-<style scoped>
-/* 青グラデーションをヘッダー高さに合わせる（4remだと下に余白ができる） */
-.customer-select-modal {
-  background: linear-gradient(to bottom, var(--color-main) 0, var(--color-main) 2.75rem, white 2.75rem) !important;
-}
-
-.customer-select-modal .modal-header {
-  padding: 0.5rem 1.5rem;
-}
-
-.customer-select-modal .modal-body--scroll {
-  padding: 1rem 2rem 1rem;
-  max-height: 60vh;
-  overflow: auto;
-}
-
-.customer-select-modal .modal-footer {
-  border-top: 1px solid rgb(226 232 240);
-}
-
-/* 選択モーダルテーブル（data-table を拡張） */
-.customer-select-modal .customer-select-modal-table {
-  border-collapse: collapse;
-  width: 100%;
-  text-align: left;
-}
-
-.customer-select-modal .select-modal-table-th {
-  padding: 0.5rem 1.25rem;
-  font-weight: 400;
-  vertical-align: middle;
-  border-bottom: 1px solid rgb(226 232 240);
-  white-space: nowrap;
-}
-
-.customer-select-modal .select-modal-table-td {
-  min-width: 0;
-  overflow: hidden;
-  vertical-align: middle;
-  padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid rgb(226 232 240);
-}
-
-.customer-select-modal .customer-select-modal-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-</style>

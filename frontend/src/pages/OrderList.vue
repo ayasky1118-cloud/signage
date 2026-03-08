@@ -22,6 +22,7 @@ import "../assets/styles/order-list.css"
 import { searchOrders, type OrderItem } from "../composables/useOrderApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
+import { STATUS_OPTIONS, PRODUCTION_TYPE_OPTIONS } from "../constants/order"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import CustomerSelectModal from "../components/CustomerSelectModal.vue"
@@ -62,19 +63,6 @@ const searchNote = ref("")
 
 /* デザイン種別マスタ（検索条件のセレクト用） */
 const designTypeOptions = ref<DesignTypeItem[]>([])
-
-/** 検索条件「ステータス」の選択肢。注文登録画面と同一の固定値 */
-const STATUS_OPTIONS = [
-  "依頼中",
-  "製作中",
-  "確認中",
-  "確認完了",
-  "製作完了",
-  "納品完了",
-  "キャンセル",
-] as const
-/** 検索条件「制作区分」の選択肢。注文登録画面と同一の固定値 */
-const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
 
 // 詳細検索の開閉（初期は非表示）
 const detailSearchExpanded = ref(false)
@@ -450,7 +438,7 @@ onUnmounted(() => {
     <div class="order-list-page-container">
       <!-- === 検索条件カード === -->
       <div class="order-list-search-card card-header-full">
-        <div class="order-list-search-card-header">
+        <div class="page-card-header order-list-search-card-header">
           <h2>注文一覧</h2>
         </div>
         <div class="order-list-search-card-body">
@@ -458,7 +446,7 @@ onUnmounted(() => {
           <div class="order-list-search-form">
             <div class="order-list-search-row">
               <div class="order-list-search-field">
-                <label class="order-list-search-field-label">顧客</label>
+                <label class="form-label">顧客</label>
                 <div class="order-list-field-row">
                   <input
                     v-model="searchCustomerName"
@@ -480,27 +468,27 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="order-list-search-field order-list-search-field--narrow">
-                <label class="order-list-search-field-label">担当者名</label>
+                <label class="form-label">担当者名</label>
                 <input
                   v-model="searchManager"
                   type="text"
                   class="form-input"
-                  placeholder="担当者名を入力"
+                  placeholder="担当者名を入力してください"
                 />
               </div>
               <div class="order-list-search-field">
-                <label class="order-list-search-field-label">注文名</label>
+                <label class="form-label">注文名</label>
                 <input
                   v-model="searchOrderName"
                   type="text"
                   class="form-input"
-                  placeholder="注文名を入力"
+                  placeholder="注文名を入力してください"
                 />
               </div>
               <div class="order-list-search-field order-list-search-field--design">
-                <label class="order-list-search-field-label">デザイン種別</label>
-                <select v-model="searchDesignTypeId" class="form-select">
-                  <option value="">デザイン種別を選択</option>
+                <label class="form-label">デザイン種別</label>
+                <select v-model="searchDesignTypeId" class="form-select" :class="{ 'form-select--placeholder': !searchDesignTypeId }">
+                  <option value="">デザイン種別を選択してください</option>
                   <option
                     v-for="opt in designTypeOptions"
                     :key="opt.designTypeId"
@@ -511,7 +499,7 @@ onUnmounted(() => {
                 </select>
               </div>
               <div class="order-list-search-field order-list-search-field--hidden-label">
-                <label class="order-list-search-field-label">検索</label>
+                <label class="form-label">検索</label>
                 <button
                   ref="searchBtnRef"
                   type="button"
@@ -531,11 +519,11 @@ onUnmounted(() => {
             <div class="order-list-detail-toggle">
               <button
                 type="button"
-                class="order-list-detail-btn"
+                class="detail-toggle-btn"
                 :aria-expanded="detailSearchExpanded"
                 @click="detailSearchExpanded = !detailSearchExpanded"
               >
-                <span class="order-list-detail-btn-icon" :class="{ 'order-list-detail-btn-icon--expanded': detailSearchExpanded }">
+                <span class="detail-toggle-btn-icon" :class="{ 'detail-toggle-btn-icon--expanded': detailSearchExpanded }">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -546,7 +534,7 @@ onUnmounted(() => {
                 <!-- 注文番号・住所・登録日・ステータス（同一行） -->
                 <div class="order-list-search-detail-row order-list-search-detail-row--single">
                   <div class="order-list-search-field order-list-search-field--order-no">
-                    <label class="order-list-search-field-label">注文番号</label>
+                    <label class="form-label">注文番号</label>
                     <div class="order-list-field-row">
                       <input
                         v-model="searchOrderNo"
@@ -568,7 +556,7 @@ onUnmounted(() => {
                     </div>
                   </div>
                   <div class="order-list-search-field order-list-search-field--address">
-                    <label class="order-list-search-field-label">住所</label>
+                    <label class="form-label">住所</label>
                     <input
                       v-model="searchAddress"
                       type="text"
@@ -577,13 +565,13 @@ onUnmounted(() => {
                     />
                   </div>
                   <div class="order-list-search-field order-list-search-field--date order-list-search-field--date-range">
-                    <label class="order-list-search-field-label">登録日</label>
+                    <label class="form-label">登録日</label>
                     <div class="order-list-date-range">
                       <input
                         type="text"
                         id="inputCreatedDateFrom"
                         readonly
-                        placeholder="開始日"
+                        placeholder="開始日を選択してください"
                         class="form-input order-list-date-input"
                       />
                       <span class="order-list-date-separator">～</span>
@@ -591,14 +579,14 @@ onUnmounted(() => {
                         type="text"
                         id="inputCreatedDateTo"
                         readonly
-                        placeholder="終了日"
+                        placeholder="終了日を選択してください"
                         class="form-input order-list-date-input"
                       />
                     </div>
                   </div>
                   <div class="order-list-search-field order-list-search-field--status">
-                    <label class="order-list-search-field-label">ステータス</label>
-                    <select v-model="searchStatus" class="form-select">
+                    <label class="form-label">ステータス</label>
+                    <select v-model="searchStatus" class="form-select" :class="{ 'form-select--placeholder': !searchStatus }">
                       <option value="">ステータスを選択してください</option>
                       <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
@@ -607,34 +595,34 @@ onUnmounted(() => {
                 <!-- 制作区分・納期・校正予定日・備考（同一行） -->
                 <div class="order-list-search-detail-row">
                   <div class="order-list-search-field order-list-search-field--production">
-                    <label class="order-list-search-field-label">制作区分</label>
-                    <select v-model="searchProductionType" class="form-select">
+                    <label class="form-label">制作区分</label>
+                    <select v-model="searchProductionType" class="form-select" :class="{ 'form-select--placeholder': !searchProductionType }">
                       <option value="">制作区分を選択してください</option>
                       <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
                   </div>
                   <div class="order-list-search-field order-list-search-field--date">
-                    <label class="order-list-search-field-label">納期</label>
+                    <label class="form-label">納期</label>
                     <input
                       type="text"
                       id="inputDeadline"
                       readonly
-                      placeholder="納期を選択"
+                      placeholder="納期を選択してください"
                       class="form-input order-list-date-input"
                     />
                   </div>
                   <div class="order-list-search-field order-list-search-field--date">
-                    <label class="order-list-search-field-label">校正予定日</label>
+                    <label class="form-label">校正予定日</label>
                     <input
                       type="text"
                       id="inputProofreading"
                       readonly
-                      placeholder="校正予定日を選択"
+                      placeholder="校正予定日を選択してください"
                       class="form-input order-list-date-input"
                     />
                   </div>
                   <div class="order-list-search-field">
-                    <label class="order-list-search-field-label">備考</label>
+                    <label class="form-label">備考</label>
                     <input
                       v-model="searchNote"
                       type="text"
@@ -672,21 +660,21 @@ onUnmounted(() => {
         @clear="clearCustomer"
       />
 
-      <!-- 該当データなしダイアログ（05f007f準拠: fixed inset-0 等のモーダル） -->
+      <!-- 該当データなしダイアログ -->
       <div
         v-show="showNoDataDialog"
-        class="order-list-dialog"
+        class="form-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="noDataDialogMessage"
       >
-        <div class="order-list-dialog-overlay" @click="showNoDataDialog = false"></div>
-        <div class="order-list-dialog-content">
-          <div class="order-list-dialog-body">
+        <div class="form-dialog-overlay" @click="showNoDataDialog = false"></div>
+        <div class="form-dialog-content form-dialog-content--narrow">
+          <div class="form-dialog-body" style="text-align: center">
             <p id="noDataDialogMessage">該当データがありません</p>
           </div>
-          <div class="order-list-dialog-footer">
-            <button type="button" class="btn-primary" @click="showNoDataDialog = false">OK</button>
+          <div class="form-dialog-footer form-dialog-footer--center">
+            <button type="button" class="btn btn-primary" @click="showNoDataDialog = false">OK</button>
           </div>
         </div>
       </div>
@@ -694,18 +682,18 @@ onUnmounted(() => {
       <!-- APIエラーダイアログ -->
       <div
         v-show="showApiErrorDialog"
-        class="order-list-dialog"
+        class="form-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="apiErrorDialogMessage"
       >
-        <div class="order-list-dialog-overlay" @click="closeApiErrorDialog"></div>
-        <div class="order-list-dialog-content">
-          <div class="order-list-dialog-body">
+        <div class="form-dialog-overlay" @click="closeApiErrorDialog"></div>
+        <div class="form-dialog-content form-dialog-content--narrow">
+          <div class="form-dialog-body" style="text-align: center">
             <p id="apiErrorDialogMessage">{{ apiError }}</p>
           </div>
-          <div class="order-list-dialog-footer">
-            <button type="button" class="btn-primary" @click="closeApiErrorDialog">OK</button>
+          <div class="form-dialog-footer form-dialog-footer--center">
+            <button type="button" class="btn btn-primary" @click="closeApiErrorDialog">OK</button>
           </div>
         </div>
       </div>
@@ -713,20 +701,20 @@ onUnmounted(() => {
       <!-- 日付範囲エラーダイアログ（開始＞終了） -->
       <div
         v-show="showDateRangeErrorDialog"
-        class="order-list-dialog"
+        class="form-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dateRangeErrorDialogMessage"
       >
-        <div class="order-list-dialog-overlay" @click="closeDateRangeErrorDialog"></div>
-        <div class="order-list-dialog-content">
-          <div class="order-list-dialog-body">
+        <div class="form-dialog-overlay" @click="closeDateRangeErrorDialog"></div>
+        <div class="form-dialog-content form-dialog-content--narrow">
+          <div class="form-dialog-body" style="text-align: center">
             <p id="dateRangeErrorDialogMessage">
               登録日の開始日が終了日より後になっています。<br />終了日を確認してください。
             </p>
           </div>
-          <div class="order-list-dialog-footer">
-            <button type="button" class="btn-primary" @click="closeDateRangeErrorDialog">OK</button>
+          <div class="form-dialog-footer form-dialog-footer--center">
+            <button type="button" class="btn btn-primary" @click="closeDateRangeErrorDialog">OK</button>
           </div>
         </div>
       </div>
@@ -852,6 +840,7 @@ onUnmounted(() => {
           <!-- ページネーション（05f007f準拠） -->
           <div class="order-list-pagination">
             <nav class="order-list-pagination-nav">
+              <div class="order-list-pagination-spacer"></div>
               <div class="order-list-pagination-buttons">
                 <button
                   type="button"
@@ -883,7 +872,7 @@ onUnmounted(() => {
                   ＞
                 </button>
               </div>
-              <div class="order-list-pagination-info">
+              <div class="order-list-pagination-spacer order-list-pagination-spacer--right">
                 <span class="order-list-pagination-info-badge">
                   <span>{{ currentPage }}</span>
                   <span class="order-list-pagination-separator">/</span>

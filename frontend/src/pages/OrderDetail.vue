@@ -1237,110 +1237,107 @@ watch(fullscreenEditVisible, async (visible) => {
 
 <template>
   <!-- === 画面：看板編集 === -->
-  <main id="order-detail-page" class="max-w-6xl mx-auto py-12 px-8 bg-[#e2e8f0] text-slate-600 min-h-screen">
+  <main id="order-detail-page">
+    <div class="order-detail-page-container">
     <!-- === 注文情報カード（タイトル＋検索・表示エリア） === -->
-    <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
+    <div class="order-detail-card order-detail-card--header-full order-detail-card--bordered card-header-full">
       <!-- -- ヘッダー -- -->
-      <div class="bg-main px-8 py-2">
-        <h2 class="text-base font-normal text-white tracking-tight">看板編集</h2>
+      <div class="page-card-header order-detail-card-header">
+        <h2>看板編集</h2>
       </div>
-      <div class="px-6 pt-1 pb-6 md:px-8 md:pt-2 md:pb-7 min-w-0">
+      <div class="order-detail-card-body">
         <!-- -- 詳細エリア（開閉トグル） -- -->
-        <div class="pt-2">
+        <div>
           <button
             type="button"
-            class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all duration-200"
+            class="detail-toggle-btn"
             :aria-expanded="orderInfoExpanded"
             :aria-label="orderInfoExpanded ? '詳細を閉じる' : '詳細を開く'"
             @click="toggleOrderInfo"
           >
             <span
-              class="inline-flex transition-transform duration-200"
-              :class="{ 'rotate-180': orderInfoExpanded }"
+              class="detail-toggle-btn-icon"
+              :class="{ 'detail-toggle-btn-icon--expanded': orderInfoExpanded }"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </span>
             <span>{{ orderInfoExpanded ? "閉じる" : "開く" }}</span>
           </button>
-          <div v-show="orderInfoExpanded" class="mt-4 space-y-6 min-w-0">
+          <div v-show="orderInfoExpanded" class="order-detail-order-info-expanded">
             <!-- 注文番号・検索／選択ボタン・検索実行 -->
-            <div class="space-y-1.5 min-w-0">
-              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            <div class="order-detail-form-field">
+              <label class="form-label form-label--with-badge">
+                <span class="form-required-badge">必須</span>
                 注文番号
               </label>
-              <div class="flex flex-wrap items-center gap-2 min-w-0">
+              <div class="order-detail-form-field-row">
                 <input
-                ref="orderNoInputRef"
-                v-model="inputOrderNo"
-                type="text"
-                placeholder="注文番号を入力してください"
-                maxlength="20"
-                :readonly="orderNoReadOnly"
-                class="w-full min-w-0 max-w-xs h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
-                :class="{
-                  'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
-                  'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
-                }"
-                @blur="onOrderNoBlur"
+                  ref="orderNoInputRef"
+                  v-model="inputOrderNo"
+                  type="text"
+                  placeholder="注文番号を入力してください"
+                  maxlength="20"
+                  :readonly="orderNoReadOnly"
+                  class="order-detail-order-no-input"
+                  @blur="onOrderNoBlur"
                 />
                 <button
                   type="button"
                   title="選択"
-                class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                :disabled="selectSearchDisabled"
+                  class="btn-icon btn-icon--select"
+                  :disabled="selectSearchDisabled"
                   @click="openOrderNoSelectModal"
                 >
-                  <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                title="注文詳細を表示"
-                class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  title="注文詳細を表示"
+                  class="btn-icon btn-icon--select"
                 :disabled="!hasSearched || !lastConfirmedOrderNo"
                 @click="openOrderDetailModal"
               >
-                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </button>
               <button
                 type="button"
                 title="検索"
-                class="btn-icon btn-icon--search flex items-center justify-center rounded-xl text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                class="btn-icon btn-icon--search"
                 @click="confirmSearch"
               >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
                 </button>
               </div>
             </div>
             <!-- 顧客名・更新日・デザイン種別・注文名など（検索後に表示） -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm border-t border-slate-100 pt-4">
-              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
-                <div class="text-xs text-slate-400 font-normal">顧客名 / 担当者</div>
-                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.customerName) }}</div>
-                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.manager) }}</div>
+            <div class="order-detail-order-info-grid">
+              <div class="order-detail-order-info-cell">
+                <div class="form-label">顧客名 / 担当者</div>
+                <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.customerName) }}</div>
+                <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.manager) }}</div>
               </div>
-              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
-                <div class="text-xs text-slate-400 font-normal">更新日 / 更新者</div>
-                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
-                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.updater) }}</div>
+              <div class="order-detail-order-info-cell">
+                <div class="form-label">更新日 / 更新者</div>
+                <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
+                <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.updater) }}</div>
               </div>
-              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
-                <div class="text-xs text-slate-400 font-normal">デザイン種別 / テンプレート</div>
-                <div class="text-slate-700 text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.designType) }}</div>
-                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.template) }}</div>
+              <div class="order-detail-order-info-cell">
+                <div class="form-label">デザイン種別 / テンプレート</div>
+                <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.designType) }}</div>
+                <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.template) }}</div>
               </div>
-              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center sm:col-span-2 lg:col-span-1">
-                <div class="text-xs text-slate-400 font-normal">注文名 / 住所</div>
-                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.orderName) }}</div>
-                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.address) }}</div>
+              <div class="order-detail-order-info-cell order-detail-order-info-cell--span-2">
+                <div class="form-label">注文名 / 住所</div>
+                <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.orderName) }}</div>
+                <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.address) }}</div>
               </div>
             </div>
           </div>
@@ -1349,52 +1346,44 @@ watch(fullscreenEditVisible, async (visible) => {
     </div>
 
     <!-- === 看板情報カード（検索済み時のみ表示） === -->
-    <section
-      v-show="hasSearched"
-      class="bg-white rounded-2xl card-shadow border border-slate-200/80 mb-8"
-    >
+    <section v-show="hasSearched" class="order-detail-card order-detail-card--bordered card-shadow">
       <!-- -- カードヘッダー -- -->
-      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-          <h3 class="text-base font-normal text-main tracking-tight">看板情報</h3>
+      <div class="order-detail-signboard-header">
+        <div class="order-detail-signboard-header-inner">
+          <div class="order-detail-signboard-header-accent"></div>
+          <h3>看板情報</h3>
         </div>
       </div>
 
-      <div class="px-6 pt-5 pb-6 space-y-6">
+      <div class="order-detail-signboard-section">
         <!-- -- 枝番タブ（スライド・タブ一覧・削除／追加ボタン） -- -->
-        <div class="flex flex-wrap items-center gap-2 justify-between">
-          <div class="flex flex-wrap items-center gap-2">
+        <div class="order-detail-branch-tabs">
+          <div class="order-detail-branch-tabs-left">
             <button
               v-show="hasBranches"
               type="button"
-              class="inline-flex items-center justify-center p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              class="btn-icon-nav"
               title="前の枝番へ"
               :disabled="!canSlidePrev"
               @click="slidePrevBranch"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <div v-if="!hasBranches" class="text-sm text-slate-500 py-2">
+            <div v-if="!hasBranches" class="order-detail-branch-empty-msg">
               枝番情報がありません。枝番を追加してください
             </div>
-            <div v-else class="flex flex-wrap gap-2">
+            <div v-else class="order-detail-branch-tab-list">
               <div
                 v-for="b in visibleBranches"
                 :key="b"
-                class="branch-tab-item inline-flex rounded-xl overflow-hidden"
-                :class="normalizeBranchNo(activeBranch) === b ? 'bg-main' : 'bg-slate-100 border border-slate-200/60'"
+                class="order-detail-branch-tab-item"
+                :class="normalizeBranchNo(activeBranch) === b ? 'order-detail-branch-tab-item--active' : 'order-detail-branch-tab-item--inactive'"
               >
                 <button
                   type="button"
-                  class="branch-tab px-3 py-1.5 rounded-xl text-xs transition-colors duration-200"
-                  :class="
-                    normalizeBranchNo(activeBranch) === b
-                      ? 'text-white shadow-sm font-normal'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-normal'
-                  "
+                  class="order-detail-branch-tab"
                   :data-branch="b"
                   @click="switchToBranch(b)"
                 >
@@ -1405,34 +1394,34 @@ watch(fullscreenEditVisible, async (visible) => {
             <button
               v-show="hasBranches"
               type="button"
-              class="inline-flex items-center justify-center p-1.5 rounded-xl text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+              class="btn-icon-nav"
               title="次の枝番へ"
               :disabled="!canSlideNext"
               @click="slideNextBranch"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="order-detail-branch-tabs-right">
             <button
               type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="btn btn-small btn-secondary btn-secondary--slate"
               :disabled="!hasBranches"
               @click="clickDeleteBranch"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
               </svg>
               削除
             </button>
             <button
               type="button"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+              class="btn btn-small btn-secondary btn-secondary--slate"
               @click="clickAddBranch"
             >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
               追加
@@ -1441,56 +1430,52 @@ watch(fullscreenEditVisible, async (visible) => {
         </div>
 
         <!-- -- 枝番詳細（2カラム：左＝枝番・地図・備考／右＝レイアウトプレビュー） -- -->
-        <div
-          v-show="hasBranches"
-          class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6"
-        >
+        <div v-show="hasBranches" class="order-detail-branch-content">
           <!-- 左カラム -->
-          <div class="space-y-4">
-            <div class="space-y-1.5">
-              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+          <div class="order-detail-branch-left">
+            <div class="order-detail-form-block">
+              <label class="form-label form-label--with-badge">
+                <span class="form-required-badge">必須</span>
                 枝番
               </label>
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="order-detail-form-block-row">
                 <input
                   v-model="activeBranch"
                   type="text"
                   maxlength="2"
-                  class="w-16 px-4 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 font-normal"
-                  placeholder="枝番"
+                  class="order-detail-input-branch"
+                  placeholder="枝番を入力してください"
                   @change="applyActiveBranchDisplayValue"
                   @keydown.enter.prevent="applyActiveBranchDisplayValue"
                 />
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                  class="btn btn-small btn-secondary"
                   :disabled="!canExportMap"
                   @click="onMapOutput"
                 >
                   地図出力
                 </button>
-                <label class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 cursor-pointer">
+                <label class="btn btn-small btn-secondary order-detail-label-file">
                   地図読込
                   <input type="file" accept=".json,application/json" class="sr-only" @change="onMapLoad" />
                 </label>
               </div>
             </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
-              <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
+            <div class="order-detail-form-block">
+              <label class="form-label">テンプレートプレビュー</label>
+              <div class="order-detail-template-preview">
                 <img
                   src="/samples/template/template-dummy.png?v=2"
                   alt="テンプレートプレビュー"
-                  class="max-w-full max-h-full object-contain"
                 />
               </div>
             </div>
-            <div class="space-y-1.5">
-              <label class="text-xs font-normal text-slate-500">備考</label>
+            <div class="order-detail-form-block">
+              <label class="form-label">備考</label>
               <textarea
                 v-model="branchMemo"
-                class="w-full min-h-[56px] max-h-24 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none resize-y"
+                class="order-detail-textarea-note"
                 placeholder="その他、看板に関する補足事項を入力してください"
                 rows="3"
               ></textarea>
@@ -1498,45 +1483,45 @@ watch(fullscreenEditVisible, async (visible) => {
           </div>
 
           <!-- 右カラム：レイアウト／マッププレビュー・全画面編集・出力 -->
-          <div class="space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <span class="text-xs font-normal text-slate-500">レイアウト / マッププレビュー</span>
-              <div class="flex flex-wrap items-center gap-2">
+          <div class="order-detail-branch-right">
+            <div class="order-detail-layout-row">
+              <span class="form-label">レイアウト / マッププレビュー</span>
+              <div class="order-detail-layout-actions">
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-white bg-main hover:bg-subBlue border border-transparent shadow-sm transition-all duration-200"
+                  class="order-detail-btn-primary-small"
                   @click="openFullscreenEdit"
                 >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                   </svg>
                   全画面で編集・操作する
                 </button>
                 <button
                   type="button"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+                  class="order-detail-btn-secondary-small"
                   @click="onPreview"
                 >
                   全体プレビュー
                 </button>
-                <div class="flex items-center gap-1.5">
+                <div class="order-detail-layout-actions-inline">
                   <select
                     v-model="outputFormat"
-                    class="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none font-medium text-slate-700"
+                    class="order-detail-select-format"
                   >
                     <option value="jpeg">JPEG</option>
                     <option value="svg">SVG</option>
                   </select>
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-white bg-main hover:bg-subBlue border border-transparent shadow-sm transition-all duration-200"
+                    class="order-detail-btn-primary-small"
                     @click="onOutput"
                   >
                     出力
                   </button>
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    class="order-detail-btn-secondary-small"
                     :disabled="!hasBranches"
                     @click="onOutputAllBranches"
                   >
@@ -1545,10 +1530,10 @@ watch(fullscreenEditVisible, async (visible) => {
                 </div>
               </div>
             </div>
-            <div class="relative bg-slate-100 border border-dashed border-slate-300 rounded-xl aspect-square w-full flex items-center justify-center overflow-hidden min-h-[280px]">
+            <div class="order-detail-map-preview-wrap">
               <template v-if="!hasBranches">
-                <div class="flex flex-col items-center justify-center text-center">
-                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <div class="order-detail-map-preview-placeholder">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
                     <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
                     <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
@@ -1557,15 +1542,13 @@ watch(fullscreenEditVisible, async (visible) => {
                 </div>
               </template>
               <template v-else>
-                <!-- design_data が NULL の場合も注文住所を中心に MapTiler で地図表示（枝番追加時と同じ処理） -->
-                <div class="absolute inset-0 flex flex-col">
-                  <div v-if="mapCenterLoading" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-100/90 rounded-xl">
-                    <p class="text-sm text-slate-500">地図を読み込み中...</p>
+                <div class="order-detail-map-preview-inner">
+                  <div v-if="mapCenterLoading" class="order-detail-map-preview-loading">
+                    <p>地図を読み込み中...</p>
                   </div>
-                  <div v-else-if="mapCenterError" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-100/90 rounded-xl p-4">
-                    <p class="text-sm text-slate-600 text-center">{{ mapCenterError }}</p>
+                  <div v-else-if="mapCenterError" class="order-detail-map-preview-error">
+                    <p>{{ mapCenterError }}</p>
                   </div>
-                  <!-- レイアウト/マッププレビュー：表示のみ。編集操作は全画面で編集・操作で実施 -->
                   <MapPreview
                     v-else
                     ref="mapPreviewRef"
@@ -1573,7 +1556,7 @@ watch(fullscreenEditVisible, async (visible) => {
                     :zoom="15"
                     :api-key="mapTilerApiKey"
                     :interactive="false"
-                    class="flex-1 min-h-0 w-full"
+                    class="order-detail-map-preview-map"
                   />
                 </div>
               </template>
@@ -1583,25 +1566,25 @@ watch(fullscreenEditVisible, async (visible) => {
       </div>
     </section>
 
-    <!-- -- 画面下部：戻る／登録・更新 -- -->
-    <div class="relative flex flex-col sm:flex-row items-center gap-4 pt-2 pb-4">
-      <button
-        type="button"
-        class="btn-back sm:absolute sm:left-0 inline-block text-xs font-medium transition-all duration-200"
-        @click="handleBackClick"
-      >
-        戻る
-      </button>
-      <div class="flex-1 flex justify-center">
+    <!-- -- 画面下部：戻る／登録・更新（注文画面と同様のレイアウト） -- -->
+    <div class="order-detail-form-actions">
+      <div class="order-detail-form-actions-left">
+        <button type="button" class="btn-back" @click="handleBackClick">
+          戻る
+        </button>
+      </div>
+      <div class="order-detail-form-actions-center">
         <button
           type="button"
-          class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-lg shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+          class="btn-action"
           :disabled="registerButtonDisabled"
           @click="openRegisterConfirmModal"
         >
           {{ registerButtonLabel }}
         </button>
       </div>
+      <div class="order-detail-form-actions-right"></div>
+    </div>
     </div>
   </main>
 
@@ -1609,19 +1592,19 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-show="fullscreenEditVisible"
-      class="fixed inset-0 z-50 flex flex-col bg-slate-100"
+      class="order-detail-fullscreen-overlay"
       aria-hidden="false"
     >
-      <div class="flex flex-1 min-h-0 overflow-hidden">
-        <aside class="w-[280px] min-w-[280px] flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
-          <div class="p-4 space-y-6">
-            <div class="space-y-2">
+      <div class="order-detail-fullscreen-inner">
+        <aside class="order-detail-fullscreen-sidebar">
+          <div class="order-detail-fullscreen-sidebar-body">
+            <div>
               <button
                 type="button"
-                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-normal text-white bg-main hover:bg-subBlue border border-transparent transition-all duration-200"
+                class="order-detail-fullscreen-close-btn"
                 @click="closeFullscreenEdit"
               >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 閉じる
@@ -1631,17 +1614,17 @@ watch(fullscreenEditVisible, async (visible) => {
             <div
               v-for="obj in htmlObjects"
               :key="obj.htmlObjectId"
-              class="space-y-2"
+              class="order-detail-html-object-block"
             >
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">{{ obj.categoryName }}</span>
+              <div class="order-detail-html-object-header">
+                <span class="form-label">{{ obj.categoryName }}</span>
                 <span
                   v-if="TOOLTIP_BY_CATEGORY[obj.categoryCode]"
-                  class="group relative inline-flex"
+                  class="order-detail-tooltip-wrap"
                 >
-                  <span class="text-slate-400 cursor-help">ⓘ</span>
+                  <span class="order-detail-tooltip-icon">ⓘ</span>
                   <span
-                    class="pointer-events-none absolute left-0 bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
+                    class="order-detail-tooltip"
                     role="tooltip"
                   >
                     {{ TOOLTIP_BY_CATEGORY[obj.categoryCode] }}
@@ -1650,10 +1633,11 @@ watch(fullscreenEditVisible, async (visible) => {
               </div>
               <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素 -->
               <template v-if="obj.hasChildTable && obj.values.length > 0">
-                <div class="flex gap-2 items-center">
+                <div class="order-detail-object-row">
                   <select
                     :value="selectedValueIdByObjectId[obj.htmlObjectId] ?? ((obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT') ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)"
-                    class="flex-1 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none bg-white"
+                    class="order-detail-object-input"
+                    :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[obj.htmlObjectId] ?? ((obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT') ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)) === SELECT_PLACEHOLDER_VALUE }"
                     @change="(e) => { selectedValueIdByObjectId[obj.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
                   >
                     <option
@@ -1673,22 +1657,21 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     title="選択"
-                    class="btn-icon btn-icon--select flex-shrink-0 flex items-center justify-center rounded-xl transition-all duration-200"
+                    class="btn-icon btn-icon--select"
                     @click="openSelectModalObjectId = obj.htmlObjectId"
                   >
-                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+                    class="btn btn-small btn-secondary btn-secondary--slate"
                   >
                     <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
                     <svg
                       v-if="obj.categoryCode === 'ROUTE_DRAWING'"
-                      class="w-3.5 h-3.5 text-slate-600"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1698,7 +1681,6 @@ watch(fullscreenEditVisible, async (visible) => {
                     </svg>
                     <svg
                       v-else
-                      class="w-3.5 h-3.5 text-slate-600"
                       fill="currentColor"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
@@ -1711,14 +1693,13 @@ watch(fullscreenEditVisible, async (visible) => {
                 <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
                 <div
                   v-if="getSelectedValue(obj)?.sampleImagePath"
-                  class="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2 py-1.5"
+                  class="order-detail-selected-image"
                 >
                   <img
                     :src="getSelectedValue(obj)!.sampleImagePath!"
                     :alt="getSelectedValue(obj)!.valueName"
-                    class="h-8 w-8 flex-shrink-0 object-contain"
                   />
-                  <span class="min-w-0 flex-1 truncate text-[10px] text-slate-600">{{ getSelectedValue(obj)?.valueName }}</span>
+                  <span>{{ getSelectedValue(obj)?.valueName }}</span>
                 </div>
                 <HtmlObjectValueSelectModal
                   :key="`modal-${obj.htmlObjectId}`"
@@ -1731,20 +1712,20 @@ watch(fullscreenEditVisible, async (visible) => {
               </template>
               <!-- 子テーブルなし：テキスト入力＋配置ボタン -->
               <template v-else>
-                <div class="flex gap-2 items-center">
+                <div class="order-detail-object-row">
                   <input
                     :value="inputTextByObjectId[obj.htmlObjectId] ?? ''"
                     type="text"
-                    class="flex-1 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                    class="order-detail-object-input"
                     :placeholder="obj.categoryCode === 'BALLOON_PLACEMENT' ? '吹き出しテキストを入力してください' : 'テキストを入力してください'"
                     @input="(e) => { inputTextByObjectId[obj.htmlObjectId] = (e.target as HTMLInputElement).value }"
                   />
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+                    class="btn btn-small btn-secondary btn-secondary--slate"
                   >
-                    <svg class="w-3.5 h-3.5 text-slate-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
                     <span>{{ ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName }}</span>
@@ -1752,16 +1733,16 @@ watch(fullscreenEditVisible, async (visible) => {
                 </div>
               </template>
             </div>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">アイテムを選択</span>
-                <span class="text-slate-400 cursor-help" title="地図上のアイテムを選択・削除します">ⓘ</span>
+            <div class="order-detail-item-select-section">
+              <div class="order-detail-item-select-header">
+                <span class="form-label">アイテムを選択</span>
+                <span class="order-detail-tooltip-icon" title="地図上のアイテムを選択・削除します">ⓘ</span>
               </div>
-              <div class="flex gap-2">
-                <button type="button" class="flex-1 px-4 py-2 rounded-xl text-xs font-normal text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
+              <div class="order-detail-item-select-buttons">
+                <button type="button" class="btn btn-small btn-secondary btn-secondary--slate">
                   アイテムを選択モード
                 </button>
-                <button type="button" class="flex-1 px-4 py-2 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all duration-200">
+                <button type="button" class="btn btn-small btn-secondary">
                   選択アイテムの削除
                 </button>
               </div>
@@ -1769,13 +1750,13 @@ watch(fullscreenEditVisible, async (visible) => {
           </div>
         </aside>
         <!-- 全画面編集用マップ：パン・ズーム・編集操作可能（interactive はデフォルト true） -->
-        <div class="flex-1 min-w-0 relative bg-slate-200">
+        <div class="order-detail-fullscreen-map">
           <MapPreview
             ref="fullscreenMapRef"
             :center="mapCenter"
             :zoom="15"
             :api-key="mapTilerApiKey"
-            class="w-full h-full min-h-[400px]"
+            class="order-detail-map-fullscreen"
           />
         </div>
       </div>
@@ -1786,26 +1767,20 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showOrderSearchValidationModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="orderSearchValidationModalMessage"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeOrderSearchValidationModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-8 pt-8 pb-6 text-center">
-            <p id="orderSearchValidationModalMessage" class="text-sm text-slate-600">注文番号を入力してください</p>
-          </div>
-          <div class="px-8 py-5 flex flex-nowrap justify-center">
-            <button
-              type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="closeOrderSearchValidationModal"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeOrderSearchValidationModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-body" style="text-align: center">
+          <p id="orderSearchValidationModalMessage">注文番号を入力してください</p>
+        </div>
+        <div class="form-dialog-footer form-dialog-footer--center">
+          <button type="button" class="btn btn-primary" @click="closeOrderSearchValidationModal">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -1815,26 +1790,20 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showOrderSearchNoResultModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="orderSearchNoResultModalMessage"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeOrderSearchNoResultModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-8 pt-8 pb-6 text-center">
-            <p id="orderSearchNoResultModalMessage" class="text-sm text-slate-600">該当データがありません</p>
-          </div>
-          <div class="px-8 py-5 flex flex-nowrap justify-center">
-            <button
-              type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="closeOrderSearchNoResultModal"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeOrderSearchNoResultModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-body" style="text-align: center">
+          <p id="orderSearchNoResultModalMessage">該当データがありません</p>
+        </div>
+        <div class="form-dialog-footer form-dialog-footer--center">
+          <button type="button" class="btn btn-primary" @click="closeOrderSearchNoResultModal">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -1844,36 +1813,26 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showOrderNoResetConfirmModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="orderNoResetConfirmModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeOrderNoResetConfirmModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="orderNoResetConfirmModalTitle" class="text-base font-normal text-white tracking-tight">画面初期化の確認</h3>
-          </div>
-          <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">注文番号が変更されています。検索時の値（{{ lastConfirmedOrderNo || '—' }}）に戻して画面を初期化しますか</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="closeOrderNoResetConfirmModal"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="confirmOrderNoReset"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeOrderNoResetConfirmModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-header">
+          <h3 id="orderNoResetConfirmModalTitle">画面初期化の確認</h3>
+        </div>
+        <div class="form-dialog-body">
+          <p>注文番号が変更されています。検索時の値（{{ lastConfirmedOrderNo || '—' }}）に戻して画面を初期化しますか</p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-secondary" @click="closeOrderNoResetConfirmModal">
+            キャンセル
+          </button>
+          <button type="button" class="btn btn-primary" @click="confirmOrderNoReset">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -1883,40 +1842,30 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showRegisterConfirmModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="registerConfirmModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeRegisterConfirmModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="registerConfirmModalTitle" class="text-base font-normal text-white tracking-tight">
-              {{ pageMode === "edit" ? "更新の確認" : "登録の確認" }}
-            </h3>
-          </div>
-          <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">
-              {{ pageMode === "edit" ? "この内容で更新してよろしいですか" : "この内容で登録してよろしいですか" }}
-            </p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="closeRegisterConfirmModal"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="confirmRegister"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeRegisterConfirmModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-header">
+          <h3 id="registerConfirmModalTitle">
+            {{ pageMode === "edit" ? "更新の確認" : "登録の確認" }}
+          </h3>
+        </div>
+        <div class="form-dialog-body">
+          <p>
+            {{ pageMode === "edit" ? "この内容で更新してよろしいですか" : "この内容で登録してよろしいですか" }}
+          </p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-secondary" @click="closeRegisterConfirmModal">
+            キャンセル
+          </button>
+          <button type="button" class="btn btn-primary" @click="confirmRegister">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -1926,29 +1875,24 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showRegisterResultModal"
-      class="fixed inset-0 z-[60]"
+      class="form-dialog"
+      style="z-index: 60"
       role="dialog"
       aria-modal="true"
       aria-labelledby="registerResultModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="onRegisterResultModalOk"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="registerResultModalTitle" class="text-base font-normal text-white tracking-tight">処理結果</h3>
-          </div>
-          <div class="px-8 py-6">
-            <p id="registerResultMessage" class="text-sm text-slate-600">{{ registerResultMessage }}</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
-            <button
-              type="button"
-              class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="onRegisterResultModalOk"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="onRegisterResultModalOk"></div>
+      <div class="form-dialog-content form-dialog-content--wide">
+        <div class="form-dialog-header">
+          <h3 id="registerResultModalTitle">処理結果</h3>
+        </div>
+        <div class="form-dialog-body">
+          <p id="registerResultMessage">{{ registerResultMessage }}</p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-primary" @click="onRegisterResultModalOk">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -1972,52 +1916,40 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showBranchAddModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="branchAddModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeBranchAddModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-[280px] overflow-hidden">
-          <div class="px-5 py-3 bg-main">
-            <h3 id="branchAddModalTitle" class="text-sm font-normal text-white tracking-tight">枝番を追加</h3>
-          </div>
-          <form @submit.prevent="confirmBranchAdd" class="contents">
-            <div class="px-5 py-5 space-y-4">
-              <div class="space-y-1.5">
-                <label for="branchNoInput" class="block text-xs font-normal text-slate-500">枝番</label>
-                <input
-                  ref="branchNoInputRef"
-                  id="branchNoInput"
-                  v-model="branchAddInput"
-                  type="text"
-                  tabindex="1"
-                  class="w-20 px-3 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
-                  placeholder="例: 06"
-                  @keydown.escape="closeBranchAddModal"
-                />
-              </div>
-            </div>
-            <div class="px-5 py-4 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <button
-                type="button"
-                tabindex="3"
-                class="px-5 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="closeBranchAddModal"
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                tabindex="2"
-                class="px-5 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              >
-                OK
-              </button>
-            </div>
-          </form>
+      <div class="form-dialog-overlay" @click="closeBranchAddModal"></div>
+      <div class="form-dialog-content form-dialog-content--xs">
+        <div class="form-dialog-header">
+          <h3 id="branchAddModalTitle">枝番を追加</h3>
         </div>
+        <form @submit.prevent="confirmBranchAdd" class="form-dialog-form">
+          <div class="form-dialog-body form-dialog-body--form">
+            <label for="branchNoInput" class="form-label">枝番</label>
+            <input
+              ref="branchNoInputRef"
+              id="branchNoInput"
+              v-model="branchAddInput"
+              type="text"
+              tabindex="1"
+              class="form-input"
+              style="width: 5rem"
+              placeholder="例: 06"
+              @keydown.escape="closeBranchAddModal"
+            />
+          </div>
+          <div class="form-dialog-footer">
+            <button type="button" tabindex="3" class="btn btn-secondary" @click="closeBranchAddModal">
+              キャンセル
+            </button>
+            <button type="submit" tabindex="2" class="btn btn-primary">
+              OK
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </Teleport>
@@ -2026,44 +1958,34 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showBranchSwitchConfirmModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="branchSwitchConfirmModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeBranchSwitchConfirmModal(true)"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="branchSwitchConfirmModalTitle" class="text-base font-normal text-white tracking-tight">変更の確認</h3>
-          </div>
-          <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">{{ branchSwitchConfirmMessage }}</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-            <button
-              type="button"
-              class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="closeBranchSwitchConfirmModal(true)"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="confirmBranchSwitchDiscard"
-            >
-              {{ branchSwitchConfirmDiscardLabel }}
-            </button>
-            <button
-              v-if="!hideBranchSwitchRegisterButton"
-              type="button"
-              class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="confirmBranchSwitchRegister"
-            >
-              {{ branchSwitchConfirmRegisterLabel }}
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeBranchSwitchConfirmModal(true)"></div>
+      <div class="form-dialog-content form-dialog-content--wide">
+        <div class="form-dialog-header">
+          <h3 id="branchSwitchConfirmModalTitle">変更の確認</h3>
+        </div>
+        <div class="form-dialog-body">
+          <p>{{ branchSwitchConfirmMessage }}</p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-secondary" @click="closeBranchSwitchConfirmModal(true)">
+            キャンセル
+          </button>
+          <button type="button" class="btn btn-secondary btn-secondary--slate" @click="confirmBranchSwitchDiscard">
+            {{ branchSwitchConfirmDiscardLabel }}
+          </button>
+          <button
+            v-if="!hideBranchSwitchRegisterButton"
+            type="button"
+            class="btn btn-primary"
+            @click="confirmBranchSwitchRegister"
+          >
+            {{ branchSwitchConfirmRegisterLabel }}
+          </button>
         </div>
       </div>
     </div>
@@ -2073,29 +1995,23 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showBranchExistsModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="branchExistsModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeBranchExistsModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="branchExistsModalTitle" class="text-base font-normal text-white tracking-tight">枝番</h3>
-          </div>
-          <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">既に存在する枝番です</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="closeBranchExistsModal"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeBranchExistsModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-header">
+          <h3 id="branchExistsModalTitle">枝番</h3>
+        </div>
+        <div class="form-dialog-body">
+          <p>既に存在する枝番です</p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-primary" @click="closeBranchExistsModal">
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -2105,36 +2021,26 @@ watch(fullscreenEditVisible, async (visible) => {
   <Teleport to="body">
     <div
       v-if="showBranchDeleteModal"
-      class="fixed inset-0 z-50"
+      class="form-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="branchDeleteModalTitle"
     >
-      <div class="fixed inset-0 bg-black/40" @click="closeBranchDeleteModal"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-6 py-3 bg-main">
-            <h3 id="branchDeleteModalTitle" class="text-base font-normal text-white tracking-tight">枝番の削除</h3>
-          </div>
-          <div class="px-8 py-6">
-            <p class="text-sm text-slate-600">枝番<span class="font-normal">{{ branchDeleteTargetNo }}</span>を削除しますか</p>
-          </div>
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-              @click="closeBranchDeleteModal"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-              @click="executeBranchDelete"
-            >
-              OK
-            </button>
-          </div>
+      <div class="form-dialog-overlay" @click="closeBranchDeleteModal"></div>
+      <div class="form-dialog-content form-dialog-content--narrow">
+        <div class="form-dialog-header">
+          <h3 id="branchDeleteModalTitle">枝番の削除</h3>
+        </div>
+        <div class="form-dialog-body">
+          <p>枝番<span class="font-normal">{{ branchDeleteTargetNo }}</span>を削除しますか</p>
+        </div>
+        <div class="form-dialog-footer">
+          <button type="button" class="btn btn-secondary" @click="closeBranchDeleteModal">
+            キャンセル
+          </button>
+          <button type="button" class="btn btn-primary" @click="executeBranchDelete">
+            OK
+          </button>
         </div>
       </div>
     </div>

@@ -24,10 +24,11 @@ import "flatpickr/dist/flatpickr.min.css"
 import "../assets/styles/flatpickr-theme.css"
 import "../assets/styles/order-main.css"
 import { validateAddress } from "../composables/useAddressApi"
-import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
+import { searchOrders, createOrder, getOrderByNo, updateOrderMain, updateOrderItems, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
+import { STATUS_OPTIONS, PRODUCTION_TYPE_OPTIONS } from "../constants/order"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 import TemplateSelectModal from "../components/TemplateSelectModal.vue"
@@ -67,20 +68,8 @@ const deadlineDate = ref("")
 const proofreadingDate = ref("")
 /** ステータス（attribute_05）。固定値ドロップダウン */
 const status = ref("")
-/** ステータス（attribute_05）の選択肢。API と整合させる固定値 */
-const STATUS_OPTIONS = [
-  "依頼中",
-  "製作中",
-  "確認中",
-  "確認完了",
-  "製作完了",
-  "納品完了",
-  "キャンセル",
-] as const
 /** 制作区分（attribute_04）。固定値ドロップダウン */
 const productionType = ref("")
-/** 制作区分（attribute_04）の選択肢。API と整合させる固定値 */
-const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
 /** 備考（デフォルトテンプレート。画面上は入力必須） */
 const NOTE_DEFAULT = "営業担当者：\n制作担当者："
 const note = ref(NOTE_DEFAULT)
@@ -182,7 +171,10 @@ const orderNoPlaceholder = computed(() =>
   mode.value === "change" ? "注文番号を入力してください" : "新規時は自動で採番されます"
 )
 
-/** 変更モードかつ一覧以外から来たときのみ「選択」「検索」ボタンを有効にする */
+/** 新規時は注文番号選択不可（自動採番）。変更モードかつ一覧以外から来たときのみ有効 */
+const orderNoSelectDisabled = computed(() => mode.value === "new" || (mode.value === "change" && cameFromList.value))
+
+/** 変更モードかつ一覧以外から来たときのみ「検索」ボタンを有効にする */
 const searchAndListDisabled = computed(() => !(mode.value === "change" && !cameFromList.value))
 
 /** 変更モードでは顧客の再選択を禁止する */
@@ -647,10 +639,57 @@ async function doRegisterConfirm() {
     }
     return
   }
-  // 変更モード：更新 API 未実装のため結果メッセージのみ表示
-  registerConfirmOpen.value = false
-  registerResultMessage.value = "更新が完了しました"
-  registerResultOpen.value = true
+  // 変更モード：order_main と order_item を更新
+  const no = orderNo.value?.trim()
+  if (!no) {
+    registerConfirmOpen.value = false
+    requiredValidationMessage.value = "注文番号がありません"
+    requiredValidationOpen.value = true
+    return
+  }
+  if (
+    customerId.value == null ||
+    templateId.value == null ||
+    designTypeId.value == null
+  ) {
+    return
+  }
+  try {
+    // 1) order_main 更新
+    await updateOrderMain(no, {
+      orderName: orderName.value.trim(),
+      orderAdd: address.value.trim(),
+      customerId: customerId.value,
+      templateId: templateId.value,
+      designTypeId: designTypeId.value,
+      attribute01: companyCd.value.trim(),
+      attribute02: officeCd.value.trim(),
+      attribute03: siteCd.value.trim(),
+      attribute04: productionType.value.trim() || undefined,
+      attribute05: status.value.trim() || undefined,
+      managerName: manager.value.trim() || undefined,
+      deadlineDt: deadlineDate.value.trim() ? deadlineDate.value.trim().replace(/\//g, "-") : undefined,
+      proofreadingDt: proofreadingDate.value.trim() ? proofreadingDate.value.trim().replace(/\//g, "-") : undefined,
+      note: note.value.trim() || undefined,
+    })
+    // 2) order_item（テンプレート項目）更新
+    if (templateItems.value.length > 0) {
+      const templateItemsPayload = templateItems.value.map((item, idx) => ({
+        templateItemId: item.templateItemId,
+        orderItemVal: templateItemValues.value[idx] ?? "",
+      }))
+      await updateOrderItems(no, templateItemsPayload)
+    }
+    registerConfirmOpen.value = false
+    registerResultMessage.value = "更新が完了しました"
+    registerResultOpen.value = true
+    initialChangeState.value = getFormState()
+  } catch (e) {
+    registerConfirmOpen.value = false
+    const msg = e instanceof Error ? e.message : "更新に失敗しました"
+    requiredValidationMessage.value = msg
+    requiredValidationOpen.value = true
+  }
 }
 
 /** 看板編集画面へのルート（変更モードかつ検索済みかつ注文番号ありのときのみ有効なパスを返す） */
@@ -857,70 +896,63 @@ watch(orderNo, () => {
 
 <template>
   <!-- === 画面：注文（新規・変更） === -->
-  <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
-    <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
-      <!-- -- カードヘッダー -- -->
-      <div class="bg-main px-8 py-2">
-        <h2 class="text-base font-normal text-white tracking-tight">注文（新規・変更）</h2>
-      </div>
+  <main id="order-main-page">
+    <div class="order-main-page-container">
+      <div class="order-main-card card-header-full">
+        <div class="page-card-header order-main-card-header">
+          <h2>注文（新規・変更）</h2>
+        </div>
 
-      <form class="order-main-form pt-5 px-10 pb-10 space-y-4" @submit.prevent>
-        <div>
-          <!-- -- モード切替（新規／変更） -- -->
-          <div class="pb-4 border-b border-slate-100">
-            <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden bg-slate-100 min-w-[11rem] mode-radio-group">
-              <label
-                class="cursor-pointer flex-1 min-w-[5rem] mode-radio-label"
-                :class="{ 'pointer-events-none opacity-60': newModeRadioDisabled }"
-              >
-                <input
-                  v-model="mode"
-                  type="radio"
-                  name="mode"
-                  value="new"
-                  class="sr-only peer"
-                  :disabled="newModeRadioDisabled"
-                  @change="onModeChangeToNew"
-                />
-                <span class="block w-full px-5 py-2 text-center text-xs font-normal transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 border-r border-slate-200 whitespace-nowrap peer-checked:bg-main peer-checked:text-white peer-checked:border-slate-200/40">新規</span>
-              </label>
-              <label class="cursor-pointer flex-1 min-w-[5rem] mode-radio-label">
-                <input v-model="mode" type="radio" name="mode" value="change" class="sr-only peer" @change="onModeChangeToChange" />
-                <span class="block w-full px-5 py-2 text-center text-xs font-normal transition-colors bg-slate-100 text-slate-600 hover:bg-slate-50 peer-checked:bg-main peer-checked:text-white whitespace-nowrap">変更</span>
-              </label>
+        <form class="order-main-form" @submit.prevent>
+          <div>
+            <!-- -- モード切替（新規／変更） -- -->
+            <div class="order-main-mode-section">
+              <div class="order-main-mode-radio">
+                <label :class="{ 'mode-radio--disabled': newModeRadioDisabled }">
+                  <input
+                    v-model="mode"
+                    type="radio"
+                    name="mode"
+                    value="new"
+                    class="sr-only"
+                    :disabled="newModeRadioDisabled"
+                    @change="onModeChangeToNew"
+                  />
+                  <span>新規</span>
+                </label>
+                <label>
+                  <input v-model="mode" type="radio" name="mode" value="change" class="sr-only" @change="onModeChangeToChange" />
+                  <span>変更</span>
+                </label>
+              </div>
             </div>
-          </div>
 
           <!-- -- 入力ブロック1：注文番号・社内CD・事業所CD・現場CD・ステータス -- -->
-          <section class="space-y-5 pt-4">
-            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
-              <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+          <section class="order-main-form-section">
+            <div class="order-main-form-row">
+              <div class="order-main-form-field order-main-form-field--order-no">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   注文番号
                 </label>
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="order-main-field-row">
                   <input
                     ref="orderNoInputRef"
                     v-model="orderNo"
                     type="text"
                     :readonly="orderNoReadOnly"
                     :placeholder="orderNoPlaceholder"
-                    class="w-48 min-w-[12rem] h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
-                    :class="{
-                      'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
-                      'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
-                    }"
+                    class="form-input"
+                    :class="{ 'form-input--readonly': orderNoReadOnly }"
                   />
                   <button
                     type="button"
                     title="選択"
-                    class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                    :disabled="searchAndListDisabled"
+                    class="btn-icon btn-icon--select"
+                    :disabled="orderNoSelectDisabled"
                     @click="openOrderNoSelectModal"
                   >
-                    <!-- リストから選択（注文一覧を開く） -->
-                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
@@ -928,67 +960,61 @@ watch(orderNo, () => {
                     ref="orderNoSearchBtnRef"
                     type="button"
                     title="検索"
-                    class="btn-icon btn-icon--search flex items-center justify-center rounded-xl text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    class="btn-icon btn-icon--search"
                     :disabled="searchAndListDisabled"
                     @click="doSearchByOrderNo"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                     </svg>
                   </button>
                 </div>
               </div>
-              <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+              <div class="order-main-form-field order-main-form-field--w7">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   社内CD
                 </label>
                 <input
                   ref="companyCdInputRef"
                   v-model="companyCd"
                   type="text"
+                  class="form-input"
                   placeholder="社内CDを入力してください"
-                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
-              <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+              <div class="order-main-form-field order-main-form-field--w7">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   事業所CD
                 </label>
                 <input
                   ref="officeCdInputRef"
                   v-model="officeCd"
                   type="text"
+                  class="form-input"
                   placeholder="事業所CDを入力してください"
-                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
-              <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+              <div class="order-main-form-field order-main-form-field--w7">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   現場CD
                 </label>
                 <input
                   ref="siteCdInputRef"
                   v-model="siteCd"
                   type="text"
+                  class="form-input"
                   placeholder="現場CDを入力してください"
-                  class="min-w-[7rem] w-[7rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
-              <div class="space-y-2.5 shrink-0">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  ステータス
-                </label>
-                <select
-                  v-model="status"
-                  class="min-w-[8rem] w-[8rem] max-w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-[12px] focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
-                  :disabled="otherFieldsDisabled"
-                >
+              <div class="order-main-form-field order-main-form-field--w8">
+                <label class="form-label form-label--with-badge">ステータス</label>
+                <select v-model="status" class="form-select" :class="{ 'form-select--placeholder': !status }" :disabled="otherFieldsDisabled">
                   <option value="">ステータスを選択してください</option>
                   <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
@@ -996,87 +1022,83 @@ watch(orderNo, () => {
             </div>
 
             <!-- -- 入力ブロック2：制作区分・納期・校正予定日 -- -->
-            <div class="flex flex-wrap items-end gap-x-6 gap-y-4">
-              <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-normal text-slate-500 block">制作区分</label>
-                <select
-                  v-model="productionType"
-                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
-                  :disabled="otherFieldsDisabled"
-                >
+            <div class="order-main-form-row">
+              <div class="order-main-form-field order-main-form-field--w24">
+                <label class="form-label form-label--with-badge">制作区分</label>
+                <select v-model="productionType" class="form-select" :class="{ 'form-select--placeholder': !productionType }" :disabled="otherFieldsDisabled">
                   <option value="">制作区分を選択してください</option>
                   <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                 </select>
               </div>
-              <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-normal text-slate-500 block">納期</label>
+              <div class="order-main-form-field order-main-form-field--w24">
+                <label class="form-label form-label--with-badge">納期</label>
                 <input
                   ref="inputDeadlineRef"
                   type="text"
                   readonly
-                  placeholder="納期を選択"
+                  placeholder="納期を選択してください"
                   :value="deadlineDate"
-                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  class="form-input order-main-date-input"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
-              <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-normal text-slate-500 block">校正予定日</label>
+              <div class="order-main-form-field order-main-form-field--w24">
+                <label class="form-label form-label--with-badge">校正予定日</label>
                 <input
                   ref="inputProofreadingRef"
                   type="text"
                   readonly
-                  placeholder="校正予定日を選択"
+                  placeholder="校正予定日を選択してください"
                   :value="proofreadingDate"
-                  class="w-24 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer disabled:opacity-50 disabled:bg-slate-50 disabled:cursor-not-allowed"
+                  class="form-input order-main-date-input"
                   :disabled="otherFieldsDisabled"
                 />
               </div>
             </div>
 
             <!-- -- 入力ブロック3：備考 -- -->
-            <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            <div class="order-main-form-field order-main-form-field--flex1">
+              <label class="form-label form-label--with-badge">
+                <span class="form-required-badge">必須</span>
                 備考
               </label>
               <textarea
                 ref="noteInputRef"
                 v-model="note"
                 rows="3"
+                class="form-input"
                 placeholder="営業担当者・制作担当者を入力してください"
-                class="w-full min-h-[4.5rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none resize-y disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                 :disabled="otherFieldsDisabled"
               />
             </div>
 
             <!-- -- 入力ブロック4：注文名・住所 -- -->
-            <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            <div class="order-main-form-field order-main-form-field--flex1">
+              <label class="form-label form-label--with-badge">
+                <span class="form-required-badge">必須</span>
                 注文名
               </label>
               <input
                 ref="orderNameInputRef"
                 v-model="orderName"
                 type="text"
+                class="form-input"
                 placeholder="注文名を入力してください"
-                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                 :disabled="otherFieldsDisabled"
               />
             </div>
 
-            <div class="space-y-2.5">
-              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            <div class="order-main-form-field order-main-form-field--flex1">
+              <label class="form-label form-label--with-badge">
+                <span class="form-required-badge">必須</span>
                 住所
               </label>
               <input
                 ref="addressInputRef"
                 v-model="address"
                 type="text"
+                class="form-input"
                 placeholder="例: サンプル県サンプル市サンプル区サンプル町1-1-1"
-                class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
                 :disabled="otherFieldsDisabled"
               />
             </div>
@@ -1085,59 +1107,58 @@ watch(orderNo, () => {
 
         <!-- -- 入力ブロック5：顧客・担当者・デザイン種別・テンプレート -- -->
         <section>
-          <div class="grid grid-cols-1 gap-5">
-            <div class="space-y-2.5">
-              <div class="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
-                <div class="space-y-2.5 sm:flex-[2]">
-                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                    <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-                    顧客
-                  </label>
-                  <div class="flex items-center gap-2">
-                    <input
-                      v-model="customerName"
-                      type="text"
-                      readonly
-                      placeholder="顧客を選択してください"
-                      class="flex-1 min-w-0 h-[2.25rem] box-border bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                      :disabled="otherFieldsDisabled"
-                    />
-                    <button
-                      ref="customerSelectBtnRef"
-                      type="button"
-                      title="選択"
-                      class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
-                      :disabled="customerSelectDisabled"
-                      @click="openCustomerSelectModal"
-                    >
-                      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="space-y-2.5 sm:flex-1">
-                  <label class="text-xs font-normal text-slate-500">担当者名</label>
+          <div class="order-main-form-block">
+            <div class="order-main-form-block-row">
+              <div class="order-main-form-field order-main-form-field--flex2">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
+                  顧客
+                </label>
+                <div class="order-main-field-row">
                   <input
-                    v-model="manager"
+                    v-model="customerName"
                     type="text"
-                    placeholder="担当者を入力してください"
-                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue focus:border-subBlue outline-none transition-all duration-200 disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    readonly
+                    placeholder="顧客を選択してください"
+                    class="form-input form-input--readonly"
                     :disabled="otherFieldsDisabled"
                   />
+                  <button
+                    ref="customerSelectBtnRef"
+                    type="button"
+                    title="選択"
+                    class="btn-icon btn-icon--select"
+                    :disabled="customerSelectDisabled"
+                    @click="openCustomerSelectModal"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
+              <div class="order-main-form-field order-main-form-field--flex1">
+                <label class="form-label form-label--with-badge">担当者名</label>
+                <input
+                  v-model="manager"
+                  type="text"
+                  class="form-input"
+                  placeholder="担当者を入力してください"
+                  :disabled="otherFieldsDisabled"
+                />
+              </div>
             </div>
-            <div class="flex flex-col sm:flex-row gap-4 sm:gap-6">
-              <div class="space-y-2.5 sm:flex-1">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            <div class="order-main-form-block-row">
+              <div class="order-main-form-field order-main-form-field--flex1">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   デザイン種別
                 </label>
                 <select
                   ref="designTypeSelectRef"
                   v-model="designTypeId"
-                  class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                  class="form-select"
+                  :class="{ 'form-select--placeholder': designTypeId == null }"
                   :disabled="otherFieldsDisabled || isLoadingDesignTypes"
                 >
                   <option :value="null">
@@ -1152,16 +1173,17 @@ watch(orderNo, () => {
                   </option>
                 </select>
               </div>
-              <div class="space-y-2.5 sm:flex-[2]">
-                <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                  <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+              <div class="order-main-form-field order-main-form-field--flex2">
+                <label class="form-label form-label--with-badge">
+                  <span class="form-required-badge">必須</span>
                   テンプレート
                 </label>
-                <div class="flex items-center gap-2">
+                <div class="order-main-field-row">
                   <select
                     ref="templateSelectRef"
                     v-model.number="templateId"
-                    class="flex-1 min-w-0 h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    class="form-select"
+                    :class="{ 'form-select--placeholder': templateId == null }"
                     :disabled="templateDisabled"
                   >
                     <option :value="null">{{ templateSelectPlaceholder }}</option>
@@ -1172,11 +1194,11 @@ watch(orderNo, () => {
                   <button
                     type="button"
                     title="選択"
-                    class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    class="btn-icon btn-icon--select"
                     :disabled="templateDisabled"
                     @click="templateSelectModalOpen = true"
                   >
-                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
@@ -1187,45 +1209,42 @@ watch(orderNo, () => {
         </section>
 
         <!-- -- 入力ブロック6：テンプレート項目（選択テンプレートに紐づく） -- -->
-        <section v-show="showTemplateItemsSection" class="mt-4">
-          <div class="border-t border-slate-100 pt-5">
-            <div class="flex items-center gap-2 mb-3 text-main">
-              <div class="w-1.5 h-6 bg-subBlue rounded-full"></div>
-              <h3 class="font-normal text-base tracking-tight">テンプレート項目</h3>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,240px)_1fr] gap-6">
-              <div class="space-y-1.5">
-                <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
-                <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
-                  <img
-                    src="/samples/template/template-dummy.png?v=2"
-                    alt="テンプレートプレビュー"
-                    class="max-w-full max-h-full object-contain"
-                  />
-                </div>
+        <section v-show="showTemplateItemsSection" class="order-main-template-section">
+          <div class="order-main-section-title">
+            <div class="order-main-section-title-accent"></div>
+            <h3 class="order-main-section-title-text">テンプレート項目</h3>
+          </div>
+          <div class="order-main-form-grid order-main-form-grid--template">
+            <div class="order-main-form-field">
+              <label class="form-label form-label--with-badge">テンプレートプレビュー</label>
+              <div class="order-main-template-preview">
+                <img
+                  src="/samples/template/template-dummy.png?v=2"
+                  alt="テンプレートプレビュー"
+                />
               </div>
-              <div class="space-y-4">
-                <p v-if="isLoadingTemplateItems" class="text-sm text-slate-500">読み込み中...</p>
-                <template v-else>
-                  <div
-                    v-for="(item, idx) in templateItems"
-                    :key="item.templateItemId"
-                    class="space-y-2.5"
-                  >
-                  <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-                    <span v-if="item.isRequired" class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+            </div>
+            <div class="order-main-form-block">
+              <p v-if="isLoadingTemplateItems" class="text-muted">読み込み中...</p>
+              <template v-else>
+                <div
+                  v-for="(item, idx) in templateItems"
+                  :key="item.templateItemId"
+                  class="order-main-form-field"
+                >
+                  <label class="form-label form-label--with-badge">
+                    <span v-if="item.isRequired" class="form-required-badge">必須</span>
                     {{ item.itemName }}
                   </label>
                   <input
                     :ref="(el) => setTemplateItemInputRef(el, idx)"
                     v-model="templateItemValues[idx]"
                     type="text"
-                    class="w-full h-[2.25rem] box-border px-4 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none disabled:opacity-50 disabled:bg-slate-50 disabled:border-slate-200 disabled:cursor-not-allowed"
+                    class="form-input"
                     :disabled="isLoadingTemplateItems"
                   />
-                  </div>
-                </template>
-              </div>
+                </div>
+              </template>
             </div>
           </div>
         </section>
@@ -1233,66 +1252,51 @@ watch(orderNo, () => {
     </div>
 
     <!-- -- 画面下部：戻る／登録・更新／看板編集 -- -->
-    <div class="mt-8 flex items-center gap-4">
-      <div class="flex-1">
-        <button
-          type="button"
-          class="btn-back inline-block text-xs font-medium transition-all duration-200"
-          @click="goBack"
-        >
-          戻る
-        </button>
+    <div class="order-main-form-actions">
+      <div class="order-main-form-actions-left">
+        <button type="button" class="btn-back" @click="goBack">戻る</button>
       </div>
-      <div class="flex-1 text-center">
+      <div class="order-main-form-actions-center">
         <button
           type="button"
-          class="px-10 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-lg shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+          class="btn-action"
           :disabled="registerButtonDisabled"
           @click="openRegisterConfirm"
         >
           {{ isValidatingAddress ? "住所を確認中..." : registerButtonLabel }}
         </button>
       </div>
-      <div class="flex-1 text-right">
+      <div class="order-main-form-actions-right">
         <RouterLink
           :to="orderDetailTo"
-          class="inline-block px-10 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 disabled:opacity-50 cursor-not-allowed pointer-events-none"
-          :class="{ 'opacity-50 cursor-not-allowed pointer-events-none': orderDetailLinkDisabled }"
+          class="btn-back"
+          :aria-disabled="orderDetailLinkDisabled"
           @click="handleOrderDetailClick"
         >
           看板編集
         </RouterLink>
       </div>
     </div>
+    </div>
 
     <!-- 未保存変更確認モーダル -->
     <Teleport to="body">
-      <div v-show="unsavedConfirmOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-normal text-white tracking-tight">変更の確認</h3>
-            </div>
-            <div class="px-8 py-6">
-              <p class="text-sm text-slate-600">{{ unsavedConfirmMessage }}</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-                @click="executePendingUnsaved"
-              >
-                {{ unsavedConfirmOkText }}
-              </button>
-            </div>
+      <div v-show="unsavedConfirmOpen" class="form-dialog" aria-hidden="false">
+        <div class="form-dialog-overlay" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"></div>
+        <div class="form-dialog-content form-dialog-content--wide">
+          <div class="form-dialog-header">
+            <h3>変更の確認</h3>
+          </div>
+          <div class="form-dialog-body">
+            <p>{{ unsavedConfirmMessage }}</p>
+          </div>
+          <div class="form-dialog-footer">
+            <button type="button" class="btn btn-secondary" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false">
+              キャンセル
+            </button>
+            <button type="button" class="btn btn-primary" @click="executePendingUnsaved">
+              {{ unsavedConfirmOkText }}
+            </button>
           </div>
         </div>
       </div>
@@ -1325,39 +1329,19 @@ watch(orderNo, () => {
 
     <!-- 新規→変更で入力変更あり案内 -->
     <Teleport to="body">
-      <div v-show="changeNoticeModalOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="changeNoticeModalOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-normal text-white tracking-tight">変更の確認</h3>
-            </div>
-            <div class="px-8 py-6">
-              <p class="text-sm text-slate-600">入力内容に変更があります。登録してから変更に切り替えますか？</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="changeNoticeModalOpen = false"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="changeNoticeDiscard"
-              >
-                破棄して切り替え
-              </button>
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-                @click="changeNoticeRegister"
-              >
-                登録して切り替え
-              </button>
-            </div>
+      <div v-show="changeNoticeModalOpen" class="form-dialog" aria-hidden="false">
+        <div class="form-dialog-overlay" @click="changeNoticeModalOpen = false"></div>
+        <div class="form-dialog-content form-dialog-content--wide">
+          <div class="form-dialog-header">
+            <h3>変更の確認</h3>
+          </div>
+          <div class="form-dialog-body">
+            <p>入力内容に変更があります。登録してから変更に切り替えますか？</p>
+          </div>
+          <div class="form-dialog-footer">
+            <button type="button" class="btn btn-secondary" @click="changeNoticeModalOpen = false">キャンセル</button>
+            <button type="button" class="btn btn-secondary btn-secondary--slate" @click="changeNoticeDiscard">破棄して切り替え</button>
+            <button type="button" class="btn btn-primary" @click="changeNoticeRegister">登録して切り替え</button>
           </div>
         </div>
       </div>
@@ -1365,22 +1349,14 @@ watch(orderNo, () => {
 
     <!-- 必須項目未入力 -->
     <Teleport to="body">
-      <div v-show="requiredValidationOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="closeRequiredValidationModal"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-            <div class="px-8 pt-8 pb-6 text-center">
-              <p class="text-sm text-slate-600">{{ requiredValidationMessage }}</p>
-            </div>
-            <div class="px-8 py-5 flex flex-nowrap justify-center">
-              <button
-                type="button"
-                class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-                @click="closeRequiredValidationModal"
-              >
-                OK
-              </button>
-            </div>
+      <div v-show="requiredValidationOpen" class="form-dialog" aria-hidden="false">
+        <div class="form-dialog-overlay" @click="closeRequiredValidationModal"></div>
+        <div class="form-dialog-content form-dialog-content--narrow">
+          <div class="form-dialog-body" style="text-align: center">
+            <p>{{ requiredValidationMessage }}</p>
+          </div>
+          <div class="form-dialog-footer form-dialog-footer--center">
+            <button type="button" class="btn btn-primary" @click="closeRequiredValidationModal">OK</button>
           </div>
         </div>
       </div>
@@ -1388,32 +1364,18 @@ watch(orderNo, () => {
 
     <!-- 登録確認 -->
     <Teleport to="body">
-      <div v-show="registerConfirmOpen" class="fixed inset-0 z-50" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="registerConfirmOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-md overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-normal text-white tracking-tight">{{ registerConfirmTitle }}</h3>
-            </div>
-            <div class="px-8 py-6">
-              <p class="text-sm text-slate-600">{{ registerConfirmMessage }}</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="registerConfirmOpen = false"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                class="px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-                @click="doRegisterConfirm"
-              >
-                OK
-              </button>
-            </div>
+      <div v-show="registerConfirmOpen" class="form-dialog" aria-hidden="false">
+        <div class="form-dialog-overlay" @click="registerConfirmOpen = false"></div>
+        <div class="form-dialog-content form-dialog-content--narrow">
+          <div class="form-dialog-header">
+            <h3>{{ registerConfirmTitle }}</h3>
+          </div>
+          <div class="form-dialog-body">
+            <p>{{ registerConfirmMessage }}</p>
+          </div>
+          <div class="form-dialog-footer">
+            <button type="button" class="btn btn-secondary" @click="registerConfirmOpen = false">キャンセル</button>
+            <button type="button" class="btn btn-primary" @click="doRegisterConfirm">OK</button>
           </div>
         </div>
       </div>
@@ -1421,39 +1383,31 @@ watch(orderNo, () => {
 
     <!-- 登録結果 -->
     <Teleport to="body">
-      <div v-show="registerResultOpen" class="fixed inset-0 z-[60]" aria-hidden="false">
-        <div class="fixed inset-0 bg-black/40" @click="registerResultOpen = false"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4">
-          <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-xl overflow-hidden">
-            <div class="px-6 py-3 bg-main">
-              <h3 class="text-base font-normal text-white tracking-tight">処理結果</h3>
-            </div>
-            <div class="px-8 py-6">
-              <p class="text-sm text-slate-600">{{ registerResultMessage }}</p>
-            </div>
-            <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
-              <RouterLink
-                :to="{ path: '/order/detail', query: { orderNo: orderNo, itemCode: '01', mode: 'edit' } }"
-                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 whitespace-nowrap"
-                @click="registerResultOpen = false"
-              >
-                看板編集
-              </RouterLink>
-              <RouterLink
-                :to="{ path: '/order/list', query: orderNo ? { orderNo } : {} }"
-                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="registerResultOpen = false"
-              >
-                注文一覧
-              </RouterLink>
-              <button
-                type="button"
-                class="inline-flex justify-center items-center px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
-                @click="registerResultOpen = false"
-              >
-                キャンセル
-              </button>
-            </div>
+      <div v-show="registerResultOpen" class="form-dialog" style="z-index: 60" aria-hidden="false">
+        <div class="form-dialog-overlay" @click="registerResultOpen = false"></div>
+        <div class="form-dialog-content form-dialog-content--wide">
+          <div class="form-dialog-header">
+            <h3>処理結果</h3>
+          </div>
+          <div class="form-dialog-body">
+            <p>{{ registerResultMessage }}</p>
+          </div>
+          <div class="form-dialog-footer">
+            <RouterLink
+              :to="{ path: '/order/detail', query: { orderNo: orderNo, itemCode: '01', mode: 'edit' } }"
+              class="btn btn-primary"
+              @click="registerResultOpen = false"
+            >
+              看板編集
+            </RouterLink>
+            <RouterLink
+              :to="{ path: '/order/list', query: orderNo ? { orderNo } : {} }"
+              class="btn btn-secondary"
+              @click="registerResultOpen = false"
+            >
+              注文一覧
+            </RouterLink>
+            <button type="button" class="btn btn-secondary" @click="registerResultOpen = false">キャンセル</button>
           </div>
         </div>
       </div>

@@ -95,7 +95,7 @@ function onSelect(v: HtmlObjectValueItem) {
                   class="html-object-value-img"
                 />
                 <div v-else class="html-object-value-placeholder">—</div>
-                <span class="html-object-value-name line-clamp-2">{{ v.valueName }}</span>
+                <span class="html-object-value-name">{{ v.valueName }}</span>
               </button>
             </div>
             <!-- 選択肢が0件の場合のメッセージ -->
@@ -182,5 +182,9 @@ function onSelect(v: HtmlObjectValueItem) {
   font-weight: 400;
   color: rgb(51 65 85);
   text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

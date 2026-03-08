@@ -403,6 +403,92 @@ export interface UpdateOrderItemEntry {
   orderItemVal: string
 }
 
+/** order_main 更新用パラメータ */
+export interface UpdateOrderMainParams {
+  orderName: string
+  orderAdd: string
+  customerId: number
+  templateId: number
+  designTypeId: number
+  attribute01: string
+  attribute02: string
+  attribute03: string
+  attribute04?: string
+  attribute05?: string
+  managerName?: string
+  deadlineDt?: string
+  proofreadingDt?: string
+  note?: string
+}
+
+/**
+ * 注文の order_main を更新（PATCH /orders/by-no）。
+ * 404: 注文なし、400: バリデーションエラー、その他: API エラー。15 秒タイムアウト。
+ */
+export async function updateOrderMain(
+  orderNo: string,
+  params: UpdateOrderMainParams
+): Promise<{ orderNo: string; updated: boolean }> {
+  const no = orderNo?.trim()
+  if (!no) throw new Error("注文番号を指定してください。")
+  const base = getApiBase()
+  const url = `${base}${API_PREFIX}/orders/by-no?order_no=${encodeURIComponent(no)}`
+  const body: Record<string, unknown> = {
+    orderName: params.orderName,
+    orderAdd: params.orderAdd,
+    customerId: params.customerId,
+    templateId: params.templateId,
+    designTypeId: params.designTypeId,
+    attribute01: params.attribute01,
+    attribute02: params.attribute02,
+    attribute03: params.attribute03,
+  }
+  if (params.attribute04 != null && params.attribute04 !== "") body.attribute04 = params.attribute04
+  if (params.attribute05 != null && params.attribute05 !== "") body.attribute05 = params.attribute05
+  if (params.managerName != null && params.managerName !== "") body.managerName = params.managerName
+  if (params.deadlineDt != null && params.deadlineDt !== "") body.deadlineDt = params.deadlineDt
+  if (params.proofreadingDt != null && params.proofreadingDt !== "") body.proofreadingDt = params.proofreadingDt
+  if (params.note != null && params.note !== "") body.note = params.note
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeoutId)
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("接続がタイムアウトしました。")
+    }
+    throw e
+  }
+  clearTimeout(timeoutId)
+  if (res.status === 404) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body?.detail ?? "該当する注文が見つかりませんでした")
+  }
+  if (res.status === 400) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body?.detail ?? "入力内容に誤りがあります")
+  }
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`
+    try {
+      const data = (await res.json().catch(() => ({}))) as { detail?: string; error?: string }
+      if (data?.detail && typeof data.detail === "string") detail = data.detail
+      else if (data?.error && typeof data.error === "string") detail = data.error
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
 /**
  * 注文の order_item（テンプレート項目の値）を登録・更新（PATCH /orders/by-no/items）。
  * 既存の order_item があれば UPDATE、なければ INSERT。

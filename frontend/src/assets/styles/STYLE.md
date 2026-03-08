@@ -41,6 +41,9 @@
 | `.modal-footer` | フッター（ボタン配置） |
 | `.modal-footer--end` | フッター右寄せ |
 | `.modal-footer--gap` | フッター内 gap |
+| `.form-dialog` | 確認ダイアログ（登録確認・更新確認等） |
+| `.form-dialog-header` | ダイアログヘッダー（コンパクトな余白） |
+| `.form-dialog-footer` | ダイアログフッター |
 
 ### カード
 
@@ -52,6 +55,7 @@
 | `.card-body` | 本文エリア |
 | `.card-footer` | フッター |
 | `.card-header-full` | ヘッダーが端まで続く青カード |
+| `.page-card-header` | 機能タイトルヘッダ（注文一覧・注文新規・看板編集・メニュー等で共通） |
 
 ### ボタン
 
@@ -59,6 +63,8 @@
 |--------|------|
 | `.btn` | ベース（flex、padding、角丸） |
 | `.btn-primary` | メイン色ボタン |
+| `.btn-action` | メインアクション（登録・更新等。OrderMain・OrderDetail で共用） |
+| `.btn-back` | 戻るボタン（グレー背景。看板編集リンクも同スタイル） |
 | `.btn-secondary` | 白背景・グレーボーダー |
 | `.btn-secondary--slate` | スレート系セカンダリ |
 | `.btn-icon` | アイコンボタン（正方形） |
@@ -93,7 +99,10 @@
 | `.section-title-accent` | 見出し左の縦線 |
 | `.section-title-text` | 見出しテキスト |
 | `.form-field` | フォームフィールド（ラベル+入力） |
-| `.form-label` | ラベル |
+| `.form-label` | フォームラベル（注文一覧・注文入力・看板編集等で共通） |
+| `.form-label--with-badge` | 必須バッジ等を横並びにするラベル |
+| `.detail-toggle-btn` | 詳細トグルボタン（看板編集・注文一覧で共通） |
+| `.detail-toggle-btn-icon` | トグルアイコン（展開時 rotate 180deg） |
 | `.form-input` | テキスト入力 |
 | `.form-input--readonly` | 読み取り専用 |
 | `.form-input--disabled` | 無効 |

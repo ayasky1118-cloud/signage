@@ -680,6 +680,125 @@ def update_order_items(
 
 
 # -----------------------------------------------------------------------------
+# 注文（order_main）の更新
+# -----------------------------------------------------------------------------
+
+
+@router.patch("/by-no")
+def update_order_main(
+    db: Session = Depends(get_db),
+    order_no: str = Query(..., description="注文番号（完全一致）"),
+    order_name: str = Body(..., embed=True, alias="orderName"),
+    order_add: str = Body(..., embed=True, alias="orderAdd"),
+    customer_id: int = Body(..., embed=True, alias="customerId"),
+    template_id: int = Body(..., embed=True, alias="templateId"),
+    design_type_id: int = Body(..., embed=True, alias="designTypeId"),
+    attribute_01: str = Body(..., embed=True, alias="attribute01"),
+    attribute_02: str = Body(..., embed=True, alias="attribute02"),
+    attribute_03: str = Body(..., embed=True, alias="attribute03"),
+    attribute_04: str = Body("", embed=True, alias="attribute04"),
+    attribute_05: str = Body("", embed=True, alias="attribute05"),
+    manager_name: str | None = Body(None, embed=True, alias="managerName"),
+    deadline_dt: str | None = Body(None, embed=True, alias="deadlineDt"),
+    proofreading_dt: str | None = Body(None, embed=True, alias="proofreadingDt"),
+    note: str | None = Body(None, embed=True, alias="note"),
+):
+    """
+    注文番号で指定した注文の order_main を更新する。
+
+    リクエスト Body: create_order と同様（orderNo はクエリパラメータ、templateItems は別 API）。
+    """
+    try:
+        no = (order_no or "").strip()
+        if not no:
+            return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
+        row = db.execute(
+            text("SELECT order_id FROM order_main WHERE order_no = :order_no AND is_deleted = 0"),
+            {"order_no": no},
+        ).fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"detail": "該当する注文が見つかりませんでした。"})
+        order_id = row[0]
+        user_id = DEFAULT_USER_ID
+
+        a01 = (attribute_01 or "").strip()
+        a02 = (attribute_02 or "").strip()
+        a03 = (attribute_03 or "").strip()
+        if not a01 or not a02 or not a03:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "社内CD・事業所CD・現場CDはすべて必須です。"},
+            )
+        cust = db.execute(
+            text("""
+                SELECT customer_id, company_id FROM customer
+                WHERE customer_id = :customer_id AND is_deleted = 0
+            """),
+            {"customer_id": customer_id},
+        ).fetchone()
+        if not cust:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "指定された顧客が存在しません。"},
+            )
+        company_id = cust[1]
+
+        deadline_val = None
+        if deadline_dt and deadline_dt.strip():
+            try:
+                deadline_val = datetime.strptime(deadline_dt.strip()[:10], "%Y-%m-%d")
+            except ValueError:
+                pass
+        proofreading_val = None
+        if proofreading_dt and proofreading_dt.strip():
+            try:
+                proofreading_val = datetime.strptime(proofreading_dt.strip()[:10], "%Y-%m-%d")
+            except ValueError:
+                pass
+
+        db.execute(
+            text("""
+                UPDATE order_main
+                SET company_id = :company_id, customer_id = :customer_id, template_id = :template_id,
+                    order_name = :order_name, order_add = :order_add, design_type_id = :design_type_id,
+                    manager_name = :manager_name, deadline_dt = :deadline_dt, proofreading_dt = :proofreading_dt,
+                    attribute_01 = :attribute_01, attribute_02 = :attribute_02, attribute_03 = :attribute_03,
+                    attribute_04 = :attribute_04, attribute_05 = :attribute_05, note = :note,
+                    updated_by = :updated_by
+                WHERE order_id = :order_id AND is_deleted = 0
+            """),
+            {
+                "order_id": order_id,
+                "company_id": company_id,
+                "customer_id": customer_id,
+                "template_id": template_id,
+                "order_name": order_name.strip(),
+                "order_add": order_add.strip(),
+                "design_type_id": design_type_id,
+                "manager_name": (manager_name or "").strip() or None,
+                "deadline_dt": deadline_val,
+                "proofreading_dt": proofreading_val,
+                "attribute_01": a01[:256],
+                "attribute_02": a02[:256],
+                "attribute_03": a03[:256],
+                "attribute_04": (attribute_04 or "").strip()[:256],
+                "attribute_05": (attribute_05 or "").strip()[:256],
+                "note": (note or "").strip() or None,
+                "updated_by": user_id,
+            },
+        )
+        db.commit()
+        return {"orderNo": no, "updated": True}
+    except Exception as e:
+        db.rollback()
+        logger.exception("order_main の更新でエラー")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "注文の更新に失敗しました。", "error": str(e)},
+        )
+
+
+# -----------------------------------------------------------------------------
 # 注文登録
 # -----------------------------------------------------------------------------
 
