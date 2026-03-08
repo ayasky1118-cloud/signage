@@ -63,9 +63,12 @@ function onSelect(v: HtmlObjectValueItem) {
     >
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
-      <!-- モーダル本体を中央に配置 -->
-      <div class="modal-dialog">
-        <div class="modal-content modal-content--narrow card-shadow card-header-full">
+      <!-- モーダル本体を中央に配置。コンテンツ外クリックで閉じる -->
+      <div class="modal-dialog" @click="close">
+        <div
+          class="modal-content modal-content--narrow card-shadow card-header-full"
+          @click.stop
+        >
           <!-- ヘッダー（メインカラー背景。「〇〇を選択」） -->
           <div class="modal-header">
             <h3 id="htmlObjectValueSelectModalTitle" class="modal-header-title">{{ title }}を選択</h3>

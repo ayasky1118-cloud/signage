@@ -1587,10 +1587,10 @@ watch(fullscreenEditVisible, async (visible) => {
             <div>
               <button
                 type="button"
-                class="order-detail-fullscreen-close-btn"
+                class="btn btn-small btn-primary w-full"
                 @click="closeFullscreenEdit"
               >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 閉じる
@@ -1653,7 +1653,8 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="btn btn-small btn-secondary btn-secondary--slate"
+                    :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
+                    class="btn btn-icon btn-secondary btn-secondary--slate"
                   >
                     <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
                     <svg
@@ -1673,7 +1674,6 @@ watch(fullscreenEditVisible, async (visible) => {
                     >
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
-                    <span>{{ ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName }}</span>
                   </button>
                 </div>
                 <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
@@ -1709,12 +1709,12 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="btn btn-small btn-secondary btn-secondary--slate"
+                    :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
+                    class="btn btn-icon btn-secondary btn-secondary--slate"
                   >
                     <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
-                    <span>{{ ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName }}</span>
                   </button>
                 </div>
               </template>
@@ -1726,10 +1726,16 @@ watch(fullscreenEditVisible, async (visible) => {
               </div>
               <div class="order-detail-item-select-buttons">
                 <button type="button" class="btn btn-small btn-secondary btn-secondary--slate">
-                  アイテムを選択モード
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.5 15.75h-1.5m-1.5 0h1.5m0-7.5h-1.5" />
+                  </svg>
+                  選択
                 </button>
                 <button type="button" class="btn btn-small btn-secondary">
-                  選択アイテムの削除
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                  削除
                 </button>
               </div>
             </div>

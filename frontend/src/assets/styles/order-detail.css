@@ -369,7 +369,7 @@
 .order-detail-layout-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 0.75rem;
 }
@@ -539,29 +539,6 @@
 .order-detail-fullscreen-sidebar-body > * + * {
   margin-top: 1.5rem;
 }
-.order-detail-fullscreen-close-btn {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 400;
-  font-family: inherit;
-  color: white;
-  background-color: var(--color-main);
-  border: 1px solid transparent;
-  border-radius: 0.75rem;
-  transition: all 0.2s;
-}
-.order-detail-fullscreen-close-btn:hover {
-  background-color: var(--color-sub-blue);
-}
-.order-detail-fullscreen-close-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
 .order-detail-fullscreen-map {
   flex: 1;
   min-width: 0;
@@ -613,6 +590,13 @@
   gap: 0.5rem;
   align-items: center;
 }
+/* 描画・配置ボタン（アイコンのみ） */
+.order-detail-object-row .btn-icon.btn-secondary svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgb(71 85 105);
+}
+
 .order-detail-object-row .order-detail-object-input {
   flex: 1;
   min-width: 0;

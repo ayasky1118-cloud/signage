@@ -65,8 +65,11 @@ function onSelect(order: OrderItem) {
     >
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
-      <div class="modal-dialog">
-        <div class="modal-content modal-content--wide select-modal order-no-select-modal">
+      <div class="modal-dialog" @click="close">
+        <div
+          class="modal-content modal-content--wide select-modal order-no-select-modal"
+          @click.stop
+        >
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header">
             <h3 id="orderNoSelectModalTitle" class="modal-header-title">注文番号を選択</h3>

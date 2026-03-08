@@ -69,8 +69,11 @@ function onClear() {
     >
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
-      <div class="modal-dialog">
-        <div class="modal-content select-modal customer-select-modal">
+      <div class="modal-dialog" @click="close">
+        <div
+          class="modal-content select-modal customer-select-modal"
+          @click.stop
+        >
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header">
             <h3 id="customerSelectModalTitle" class="modal-header-title">顧客を選択</h3>

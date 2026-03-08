@@ -66,13 +66,16 @@ onMounted(() => {
 }
 
 .header-menu-link {
+  margin: 0;
   font-size: 1.25rem;
-  font-weight: 400;
+  font-weight: 400 !important;
   letter-spacing: 0.05em;
 }
 
 .header-menu-link-anchor {
   color: white;
+  font-weight: inherit;
+  text-decoration: none;
   transition: opacity 0.2s;
 }
 
@@ -88,6 +91,7 @@ onMounted(() => {
 
 .header-login-text {
   font-size: 0.875rem;
+  font-weight: 400;
   opacity: 0.9;
 }
 
@@ -97,6 +101,7 @@ onMounted(() => {
   padding: 0.375rem 1rem;
   border-radius: 0.75rem;
   font-size: 0.875rem;
+  font-weight: 400;
   color: white;
   transition: background 0.2s;
 }
