@@ -267,13 +267,13 @@ function close() {
   margin: 0;
   font-size: 0.625rem;
   font-weight: 400;
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
 }
 
 .modal-dd {
   margin: 0;
   font-size: 0.75rem;
-  color: rgb(51 65 85);
+  color: rgb(100 116 139);
   text-align: left;
 }
 
@@ -282,7 +282,7 @@ function close() {
 }
 
 .modal-dd--muted {
-  color: rgb(71 85 105);
+  color: rgb(100 116 139);
 }
 
 .modal-dl-item--order-no .modal-dd--order-no {
@@ -293,7 +293,7 @@ function close() {
 /* 備考エリア。pre-wrap で改行保持、薄い背景で区別 */
 .modal-note-box {
   font-size: 0.75rem;
-  color: rgb(51 65 85);
+  color: rgb(100 116 139);
   white-space: pre-wrap;
   background-color: rgb(248 250 252);
   border-radius: 0.5rem;

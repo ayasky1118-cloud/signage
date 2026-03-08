@@ -134,7 +134,7 @@
   cursor: pointer;
 }
 .order-list-date-separator {
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
   flex-shrink: 0;
   font-size: 0.75rem;
 }
@@ -193,7 +193,7 @@
 /* テーブルヘッダー。グレー背景・大文字・左揃え */
 .order-list-table-header {
   background-color: rgb(248 250 252);
-  color: rgb(100 116 139);
+  color: rgb(71 85 105);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -230,7 +230,7 @@
 .order-list-info-tip-icon {
   position: relative;
   display: inline-flex;
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
   cursor: help;
   flex-shrink: 0;
 }
@@ -417,7 +417,7 @@
   font-variant-numeric: tabular-nums;
 }
 .order-list-pagination-separator {
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
 }
 
 /* -----------------------------------------------------------------------------
@@ -551,7 +551,7 @@
 }
 .order-list-cell-primary {
   font-size: 0.75rem;
-  color: rgb(51 65 85);
+  color: rgb(100 116 139);
 }
 .order-list-cell-secondary {
   font-size: 0.625rem;

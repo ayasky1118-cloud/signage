@@ -245,8 +245,9 @@
   overflow: hidden;
 }
 .order-detail-branch-tab-item--active {
-  background-color: rgb(0 59 130 / 0.1);
-  border: 1px solid var(--color-main);
+  background-color: rgb(241 245 249);
+  border: 1px solid rgb(203 213 225);
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
 }
 .order-detail-branch-tab-item--inactive {
   background-color: white;
@@ -264,8 +265,9 @@
   transition: all 0.2s;
 }
 .order-detail-branch-tab-item--active .order-detail-branch-tab {
-  color: var(--color-main);
+  color: rgb(71 85 105);
   background-color: transparent;
+  box-shadow: none;
 }
 .order-detail-branch-tab-item--inactive .order-detail-branch-tab {
   color: rgb(100 116 139);
@@ -437,7 +439,7 @@
 .order-detail-map-preview-placeholder svg {
   width: 4rem;
   height: 4rem;
-  color: rgb(203 213 225);
+  color: rgb(100 116 139);
 }
 .order-detail-map-preview-inner {
   position: absolute;
@@ -550,7 +552,7 @@
   display: block;
 }
 .order-detail-tooltip-icon {
-  color: rgb(148 163 184);
+  color: rgb(100 116 139);
   cursor: help;
 }
 
