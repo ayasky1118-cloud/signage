@@ -1,16 +1,24 @@
 /* ========================================
    order_main（注文新規・変更）専用スタイル
-   セマンティッククラス（OrderList と共用できるものは shared.css）
+   ========================================
+   OrderMain.vue 用。注文フォーム・モード切替・テンプレート項目等。
+   共用クラスは shared.css に定義。
    ======================================== */
 
-/* ページコンテナ（注文番号〜ステータス1行表示のため OrderList と同幅） */
+/* -----------------------------------------------------------------------------
+   ページ・コンテナ
+   ----------------------------------------------------------------------------- */
+
+/* 注文番号〜ステータスを1行表示するため OrderList と同幅（72rem） */
 .order-main-page-container {
   max-width: 72rem;
   margin: 0 auto;
   padding: 3rem 2rem;
 }
 
-/* フォームカード */
+/* -----------------------------------------------------------------------------
+   フォームカード・レイアウト
+   ----------------------------------------------------------------------------- */
 .order-main-card {
   background: white;
   border-radius: 1rem;
@@ -26,7 +34,7 @@
   gap: 1rem;
 }
 
-/* モード切替（新規／変更） */
+/* モード切替（新規／変更）。ラジオボタンで切り替え */
 .order-main-mode-section {
   padding-bottom: 1rem;
   border-bottom: 1px solid rgb(241 245 249);
@@ -72,7 +80,7 @@
   border-right: 1px solid rgb(226 232 240);
 }
 
-/* フォームセクション */
+/* フォームセクション。flex で縦並び、gap で余白 */
 .order-main-form-section {
   display: flex;
   flex-direction: column;
@@ -102,7 +110,7 @@
   gap: 1rem 1.5rem;
 }
 
-/* フォームフィールド */
+/* フォームフィールド。--w7 / --w8 / --design-type 等で幅を変種 */
 .order-main-form-field {
   display: flex;
   flex-direction: column;
@@ -161,7 +169,7 @@
   min-width: 0;
 }
 
-/* 日付入力（Flatpickr） */
+/* 日付入力。Flatpickr と幅を揃える（--date-width） */
 .order-main-date-input {
   width: var(--date-width);
   min-width: var(--date-width);
@@ -216,7 +224,7 @@
   }
 }
 
-/* テンプレート項目セクション */
+/* テンプレート項目セクション。区切り線の上に表示 */
 .order-main-template-section {
   margin-top: 1rem;
   padding-top: 1.25rem;
@@ -257,7 +265,7 @@
   object-fit: contain;
 }
 
-/* フォームアクション（画面下部ボタン） */
+/* フォームアクション。戻る・登録ボタンを3カラムで配置 */
 .order-main-form-actions {
   margin-top: 2rem;
   display: flex;

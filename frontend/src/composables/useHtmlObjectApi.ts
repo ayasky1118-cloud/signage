@@ -10,12 +10,19 @@
 //-- 【データ構造】
 //-- ・HtmlObjectItem: カテゴリ（ルート・テキスト・画像等）。hasChildTable が true のとき values に子を持つ
 //-- ・HtmlObjectValueItem: 選択肢の値（例: ルートの種類、吹き出しの形）。sampleImagePath でサンプル画像を表示
+//--
+//-- 【レスポンス形式】
+//-- ・API は camelCase で返す。バックエンドで変換済み
+//--
+//-- 【API ベースURL】
+//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
   if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
+//-- 同一オリジン時は /api を付与（Vite プロキシ用）
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 //-------------------------------------------------------------------------------
@@ -23,6 +30,7 @@ const API_PREFIX = getApiBase() ? "" : "/api"
 //-------------------------------------------------------------------------------
 
 //-- html_object_value の1件。選択肢の値（valueCode, valueName, sampleImagePath 等）
+//-- valueData: 選択肢ごとの設定（JSON 文字列等。例: ルート色・線種・stripeSize）
 export interface HtmlObjectValueItem {
   htmlObjectValueId: number
   valueCode: string

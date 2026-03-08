@@ -55,7 +55,8 @@ async function loadTemplates() {
   }
 }
 
-//-- モーダルが開いたとき、または companyId / customerId が変更されたときに再取得
+//-- モーダルが開いたとき（modelValue が true）に loadTemplates を実行。
+//-- companyId / customerId が変更されたときも open が true なら再取得
 watch(
   () => [props.modelValue, props.companyId, props.customerId] as const,
   ([open]) => {
@@ -80,7 +81,7 @@ function onSelect(opt: TemplateOption) {
 </script>
 
 <template>
-  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
+  <!-- Teleport to="body": モーダルを body 直下にマウント。親の z-index / overflow の影響を避ける -->
   <Teleport to="body">
     <div
       v-show="modelValue"
@@ -101,11 +102,11 @@ function onSelect(opt: TemplateOption) {
           <div class="modal-header template-select-modal-header">
             <h3 id="templateSelectModalTitle" class="modal-header-title">テンプレートを選択</h3>
           </div>
-          <!-- 本文: テンプレートカードグリッド（カードクリックで select 発火。2〜5列、最大高さでスクロール） -->
+          <!-- 本文: テンプレートカードグリッド。2列（SP）/ 5列（640px以上）。flex でヘッダー・本文・フッターを縦配置 -->
           <div class="modal-body template-select-modal-body">
             <p v-if="loading" class="text-muted">読み込み中...</p>
             <div v-else class="template-select-grid">
-              <!-- 各テンプレートをカード表示（サンプル画像 + テンプレート名） -->
+              <!-- 各テンプレートをカード表示。サンプル画像はダミー（template-dummy.png）を共通表示 -->
               <button
                 v-for="opt in items"
                 :key="opt.templateId"
@@ -142,6 +143,7 @@ function onSelect(opt: TemplateOption) {
 </template>
 
 <style scoped>
+/* モーダル本体。max-height: 95vh で画面内に収め、flex で縦方向レイアウト */
 .template-select-modal-content {
   max-height: 95vh;
   display: flex;
@@ -163,6 +165,7 @@ function onSelect(opt: TemplateOption) {
   flex-shrink: 0;
 }
 
+/* カードグリッド。SP: 2列、640px以上: 5列 */
 .template-select-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -175,6 +178,7 @@ function onSelect(opt: TemplateOption) {
   }
 }
 
+/* カード1枚。shared.css の .template-select-item と同様。ホバーでメインカラー枠 */
 .template-select-item {
   display: flex;
   flex-direction: column;

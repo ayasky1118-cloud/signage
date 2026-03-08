@@ -29,6 +29,13 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 # 認証未実装のため登録・更新者IDは固定（将来は認証から取得）
 DEFAULT_USER_ID = 1
 
+# order_main の attribute_01〜05 の用途（拡張用の汎用カラム）:
+#   attribute_01: 社内CD（必須）
+#   attribute_02: 事業所CD（必須）
+#   attribute_03: 現場CD（必須）
+#   attribute_04: 制作区分（検索条件用）
+#   attribute_05: ステータス（検索条件用）
+
 
 # -----------------------------------------------------------------------------
 # 注文一覧検索
@@ -266,9 +273,11 @@ def _search_orders_impl(
     rows = db.execute(text(sql), params).mappings().all()
 
     # 枝番ごとの design_data（デザイン編集データ）と note（備考）を order_detail から取得
+    # design_data: 地図上のルート・テキスト・画像等の配置情報（JSON）。フロントの編集画面で保存
     order_ids = [r.get("order_id") for r in rows if r.get("order_id")]
     design_by_order: dict[int, dict[str, object]] = {}
     if order_ids:
+        # order_ids は DB から取得した値のみなので SQL インジェクションの心配なし
         id_placeholders = ", ".join(str(i) for i in order_ids)
         detail_rows = db.execute(
             text(f"""
@@ -343,6 +352,8 @@ def _search_orders_impl(
             "designType": r.get("design_type_name") or "",
             "deadlineDt": deadline_str,
             "proofreadingDt": proofreading_str,
+            # attribute_01〜05: 社内CD・事業所CD・現場CD・制作区分・ステータス
+            # r.get("om.xxx") は DB ドライバによってキーが異なる場合のフォールバック
             "attribute_01": (r.get("attribute_01") or r.get("om.attribute_01")) or "",
             "attribute_02": (r.get("attribute_02") or r.get("om.attribute_02")) or "",
             "attribute_03": (r.get("attribute_03") or r.get("om.attribute_03")) or "",
@@ -501,9 +512,9 @@ def update_order_details(
     注文番号で指定した注文の order_detail（枝番毎の備考・design_data）を登録・更新する。
 
     リクエスト Body: { "branches": [ { "branchNo": "01", "note": "...", "designData": {...} }, ... ] }
-    - branchNo: 枝番（必須）
+    - branchNo: 枝番（01〜99 の2桁。必須）
     - note: 備考（任意）
-    - designData: デザイン編集データ（任意。JSON オブジェクト）
+    - designData: デザイン編集データ（任意。地図上のルート・テキスト・画像等の配置情報を JSON で格納）
 
     既存の order_detail 行があれば UPDATE、なければ INSERT。
     """
@@ -521,7 +532,8 @@ def update_order_details(
         order_id = row[0]
         user_id = DEFAULT_USER_ID
 
-        # 枝番ごとに order_detail を INSERT または UPDATE（branchNo が空または3文字超はスキップ）
+        # 枝番ごとに order_detail を INSERT または UPDATE
+        # branchNo: 01〜99 の2桁想定。空または3文字超はスキップ（DB の branch_no 制約に合わせる）
         for b in branches:
             bn = (b.get("branchNo") or "").strip()
             if not bn or len(bn) > 2:
@@ -807,10 +819,10 @@ def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
     """
     受注番号を採番する（order_no_seq に基づく）。
 
-    - ログイン会社（company_id）とシステムの当年の order_no_seq を取得。
-    - 取得できた場合: last_number + 1 で UPDATE。
-    - 取得できない場合: last_number = 1 で新規 INSERT。
-    - 戻り値: 年4桁 + last_number を0埋め6桁の文字列（例: 2025000001）。
+    採番ロジック:
+      - 単位: 会社（company_id）× 年（当年）。同一会社・同年で連番を採番。
+      - INSERT ... ON DUPLICATE KEY UPDATE で競合を安全に処理（last_number + 1）。
+      - 戻り値: 年4桁 + last_number を0埋め6桁（例: 2025000001）。
 
     Args:
         db: DB セッション
@@ -903,7 +915,8 @@ def create_order(
                 status_code=400,
                 content={"detail": "社内CD・事業所CD・現場CDはすべて必須です。"},
             )
-        # 指定された顧客を取得（order_main.company_id / customer_id 用）。いなければ 400
+        # 指定された顧客を取得。顧客の company_id を order_main.company_id に使用
+        # （会社＝顧客の所属会社。注文は顧客の所属会社に紐づく）
         cust = db.execute(
             text("""
                 SELECT customer_id, company_id FROM customer

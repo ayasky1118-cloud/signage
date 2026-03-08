@@ -7,12 +7,20 @@
 //-- 【API】
 //-- ・GET /design-types?company_id=:id: 指定会社のデザイン種別一覧
 //-- ・GET /design-types: company_id なしで全件取得（検索条件用）
+//--
+//-- 【レスポンス形式】
+//-- ・API は camelCase（designTypeId, companyId, designTypeName, displayOrder）で返す
+//-- ・バックエンドで既に camelCase に変換済み。型安全のため明示的にマッピング
+//--
+//-- 【API ベースURL】
+//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
   if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
+//-- 同一オリジン時は /api を付与（Vite プロキシ用）
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 //-- デザイン種別1件
@@ -43,7 +51,7 @@ export async function fetchDesignTypes(
   }))
 }
 
-//-- 全デザイン種別を取得。注文一覧の検索条件（デザイン種別フィルタ）で使用。company_id を指定しないため、全会社のデザイン種別が返る。
+//-- 全デザイン種別を取得。注文一覧の検索条件（デザイン種別フィルタ）で使用。company_id を指定しないため、全会社のデザイン種別が返る。エラー時は throw。
 export async function fetchAllDesignTypes(): Promise<DesignTypeItem[]> {
   const base = getApiBase()
   const res = await fetch(`${base}${API_PREFIX}/design-types`)

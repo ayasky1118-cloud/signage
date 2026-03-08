@@ -13,6 +13,7 @@ import { ensureStripePatterns } from "./useMapLayers"
 
 const genId = () => crypto.randomUUID()
 
+//-- 地図編集モード。useMapInteraction の editMode で使用
 export type EditMode = "none" | "text" | "image" | "balloon" | "route" | "move"
 
 //-- 空の FeatureCollection（型は as で付与。FeatureCollection を import するとランタイムエラーになる場合があるため）
@@ -36,12 +37,14 @@ export function useMapFeatures() {
   //-- ルート
   const routeFeatures = ref(emptyFC())
 
-  //-- 一時マーカー
+  //-- 一時マーカー（ルート描画中のクリックポイントを赤丸で表示）
   const tempMarkerFeatures = ref(emptyFC())
 
+  //-- ルート描画中の座標リスト。drawRoute で確定時に LineString に変換して routeFeatures に追加し、クリアされる。
+  //-- clearTempMarkers 呼び出し時（キャンセル時）もクリアされる。
   const tempCoordinates = ref<[number, number][]>([])
 
-  //-- テキスト追加
+  //-- テキスト追加。id は GeoJSON Feature 用、_id は design_data 互換・内部識別用
   const addText = (map: maplibregl.Map | null, lng: number, lat: number, text: string): EditMode => {
     if (!map) return "text"
     textFeatures.value.features.push({
@@ -151,7 +154,9 @@ export function useMapFeatures() {
     return first != null && "coordinates" in first && !("type" in first && first.type === "FeatureCollection")
   }
 
-  //-- データ復元。data のキーは design_data 形式（routes, texts, images, callouts）。balloons は callouts の互換で受け付ける
+  //-- design_data から地図要素を復元する。data のキーは design_data 形式（routes, texts, images, callouts）。
+  //-- routes: RouteItem[]（coordinates 配列）または FeatureCollection（GeoJSON）のいずれかに対応。
+  //-- balloons は callouts の互換名として受け付ける。
   const restoreFeatures = (map: maplibregl.Map | null, data: Record<string, unknown>): void => {
     if (!map) return
     const empty = emptyFC()

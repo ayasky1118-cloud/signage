@@ -64,8 +64,9 @@ export function useMapLayers() {
     }
   }
 
-  //-- Mapのソースとレイヤー初期化を行う関数。FeatureCollectionをMapLibreのデータソースとして登録する
-  //-- imageItems: html_object_value の IMAGE_PLACEMENT から getImageItemsFromHtmlObjects(htmlObjects) で取得
+  //-- Map のソースとレイヤーを初期化する。features は useMapFeatures の ref の .value を渡す。
+  //-- ソース ID: route, images, balloons, texts, temp-markers。レイヤーは各ソースに紐づく。
+  //-- imageItems: html_object_value の IMAGE_PLACEMENT から getImageItemsFromHtmlObjects(htmlObjects) で取得。未指定時はユーザー画像なし
   const initLayers = async (
     map: maplibregl.Map,
     features: {

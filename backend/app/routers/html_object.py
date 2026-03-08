@@ -36,10 +36,11 @@ def list_html_objects(db: Session = Depends(get_db)):
             "categoryCode": r["category_code"],
             "categoryName": r["category_name"],
             "htmlObjectType": r["html_object_type"],
-            "hasChildTable": bool(r["has_child_table"]),
+            "hasChildTable": bool(r["has_child_table"]),  # 子テーブル html_object_value を持つ場合 true
             "displayOrder": r["display_order"],
             "values": [],
         }
+        # has_child_table が true の場合、選択肢（ドロップダウンなど）を html_object_value から取得
         if r["has_child_table"]:
             sql_values = text("""
                 SELECT html_object_value_id, value_code, value_name, value_data, sample_image_path, display_order
@@ -53,7 +54,7 @@ def list_html_objects(db: Session = Depends(get_db)):
                     "htmlObjectValueId": v["html_object_value_id"],
                     "valueCode": v["value_code"],
                     "valueName": v["value_name"],
-                    "valueData": v["value_data"],
+                    "valueData": v["value_data"],  # 選択肢ごとの設定（JSON 等。例: ルート色・線種）
                     "sampleImagePath": v["sample_image_path"],
                     "displayOrder": v["display_order"],
                 }

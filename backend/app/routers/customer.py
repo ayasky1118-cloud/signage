@@ -36,6 +36,7 @@ def list_customers(
         .mappings()
         .all()
     )
+    # レスポンス: customer_add → address に変換（API のセマンティック名）。customer_post は省略
     return [
         {
             "customer_id": r["customer_id"],

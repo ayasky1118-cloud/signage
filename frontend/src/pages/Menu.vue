@@ -14,12 +14,19 @@
 </script>
 
 <template>
+  <!--
+    メニュー画面（トップ）。3つの操作への導線を提供。
+    - 注文一覧: /order/list
+    - 注文（新規・変更）: /order/main
+    - 看板編集: /order/detail
+  -->
   <main id="menu-page" class="menu-page">
     <div class="menu-card">
       <div class="page-card-header menu-card-header">
         <h2>メニュー</h2>
       </div>
       <div class="menu-card-body">
+        <!-- メニュー項目一覧。flex で縦並び、gap: 1rem -->
         <div class="menu-list">
           <RouterLink to="/order/list" class="menu-item">
             <div class="menu-item-icon">
@@ -72,7 +79,7 @@
 </template>
 
 <style scoped>
-/* 05f007f 準拠: max-w-3xl mx-auto py-10 px-6 */
+/* 05f007f 準拠: max-w-3xl(48rem) mx-auto py-10 px-6 */
 .menu-page {
   width: 100%;
   max-width: 48rem;
@@ -80,6 +87,7 @@
   padding: 2.5rem 1.5rem;
 }
 
+/* カード本体。白背景・角丸・シャドウ・ボーダー */
 .menu-card {
   background: white;
   border-radius: 1rem;
@@ -98,6 +106,7 @@
   gap: 1rem;
 }
 
+/* メニュー項目1件。RouterLink で遷移。ホバーで軽く浮き上がる（translateY -2px） */
 .menu-item {
   display: flex;
   align-items: center;

@@ -1,31 +1,44 @@
 /* ========================================
    共通スタイル - 注文・看板管理システム
+   ========================================
+   全画面で読み込むベーススタイル。リセット・ブランドカラー・ユーティリティを定義。
    ======================================== */
 
-/* リセット：ブラウザデフォルトの余白を除去 */
+/* -----------------------------------------------------------------------------
+   リセット・ボックスモデル
+   ----------------------------------------------------------------------------- */
+
+/* ブラウザデフォルトの余白を除去。body の margin/padding は多くのブラウザで 8px 等が入るため 0 に統一 */
 html,
 body {
   margin: 0;
   padding: 0;
 }
 
-/* ボックスモデル（padding を width に含める） */
+/* 全要素で box-sizing: border-box を適用。padding を width に含め、レイアウト計算を直感的にする */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* ブランドカラー */
+/* -----------------------------------------------------------------------------
+   ブランドカラー・レイアウト変数（:root）
+   ----------------------------------------------------------------------------- */
 :root {
+    /* メインカラー（ヘッダー・ボタン・リンク等） */
     --color-main: #003b82;
+    /* サブカラー（ホバー・アクセント） */
     --color-sub-blue: #007cba;
+    /* フォーカスリング・カレンダーホバー等 */
     --color-light-blue: #8ed1fc;
+    /* 背景アクセント（未使用の場合は残置） */
     --color-cream: #fff5cb;
+    /* ボーダー・無効状態等 */
     --color-neutral: #abb8c3;
-    /* 注文番号表示幅 */
+    /* 注文番号表示幅。一覧・フォーム・看板編集で統一 */
     --order-no-width: 8rem;
-    /* 日付入力・表示幅 */
+    /* 日付入力・表示幅。Flatpickr と揃える */
     --date-width: 8rem;
     /* デザイン種別ドロップダウン幅 */
     --design-type-width: 12rem;
@@ -35,12 +48,17 @@ body {
     --status-width: 12rem;
 }
 
+/* ユーティリティクラス（Tailwind 等で上書きされる場合に !important で確実に適用） */
 .bg-main { background-color: var(--color-main) !important; }
 .text-main { color: var(--color-main) !important; }
 .bg-subBlue { background-color: var(--color-sub-blue) !important; }
 .border-neutral { border-color: var(--color-neutral) !important; }
 
-/* 注文入力：新規/変更ラジオの選択・フォーカス表示 */
+/* -----------------------------------------------------------------------------
+   注文入力：新規/変更ラジオ（mode-radio-group）
+   ----------------------------------------------------------------------------- */
+
+/* フォーカス時のデフォルトアウトラインを除去（:focus-within でリング表示するため） */
 .mode-radio-group input:focus {
     outline: none;
 }
@@ -49,12 +67,16 @@ body {
     background-color: var(--color-main) !important;
     color: white !important;
 }
-/* フォーカス時：ライトブルーの内側リング */
+/* フォーカス時：ライトブルーの内側リング（キーボード操作時の視認性） */
 .mode-radio-group .mode-radio-label:focus-within span {
     box-shadow: inset 0 0 0 2px var(--color-light-blue);
 }
 
-/* メニューページのコンテンツが確実に表示されるようにする */
+/* -----------------------------------------------------------------------------
+   レイアウト・フォント
+   ----------------------------------------------------------------------------- */
+
+/* メニューページのコンテンツが確実に表示されるようにする。min-width: 0 で flex 子の縮小を許可 */
 #menu-page {
     width: 100%;
     min-width: 0;
@@ -66,25 +88,29 @@ body {
     min-width: 0;
 }
 
-/* ベース */
+/* ベースフォント。Noto Sans JP で日本語表示を統一 */
 body {
     font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* ボタン・リンクでキャレット・テキスト選択カーソルを防ぐ */
+/* -----------------------------------------------------------------------------
+   キャレット・カーソル制御
+   ----------------------------------------------------------------------------- */
+
+/* ボタン・リンクでキャレット（点滅）とテキスト選択を防ぐ。クリック時の誤選択を抑制 */
 a, button, [role="button"], input[type="button"], input[type="submit"] {
     caret-color: transparent;
     user-select: none;
     -webkit-user-select: none;
 }
 
-/* フォーカスが外れているとき、空欄ならキャレットを出さない */
+/* フォーカスが外れているとき、空欄（placeholder 表示中）ならキャレットを出さない */
 body input:not([type="button"]):not([type="submit"]):not([type="image"]):not([type="reset"]):placeholder-shown:not(:focus),
 body textarea:placeholder-shown:not(:focus) {
     caret-color: transparent !important;
 }
 
-/* フォーカスが当たったらキャレットを表示（readonly / disabled は除く） */
+/* フォーカスが当たったらキャレットを表示。readonly / disabled は入力不可のため表示しない */
 body input:not([type="button"]):not([type="submit"]):not([type="image"]):not([type="reset"]):not([readonly]):not(:disabled):focus,
 body textarea:not([readonly]):not(:disabled):focus {
     caret-color: #334155 !important;
@@ -103,19 +129,19 @@ p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
     caret-color: transparent;
 }
 
-/* 2行ヘッダー：改行位置を制御・データセルと左揃え */
+/* テーブルヘッダー等で2行表示する場合。line-height と text-align でデータセルと揃える */
 .header-2line {
     display: block;
     line-height: 1.25;
     text-align: left;
 }
 
-/* カード用シャドウ */
+/* カード用シャドウ。軽い影＋薄いボーダーで立体感を出す */
 .card-shadow {
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
 }
 
-/* 青ヘッダーカード：上・左右のボーダー・シャドウ線を消す（青ヘッダーが端まで続く） */
+/* 青ヘッダーカード（card-header-full）用。上・左右のボーダーを消し、青ヘッダーが端まで続くようにする */
 .card-header-full.card-shadow {
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
 }

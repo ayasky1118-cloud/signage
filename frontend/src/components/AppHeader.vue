@@ -1,5 +1,10 @@
 <template>
-  <!-- 共通ヘッダー（全ページ共通。メインメニューへのリンク・ログイン表示・ログアウト） -->
+  <!--
+    共通ヘッダー（全ページ共通）
+    - 左: メインメニュー（/menu）へのリンク
+    - 右: ログイン名表示 + ログアウトボタン
+    - App.vue で全ルートに配置
+  -->
   <header id="app-header" class="app-header">
     <!-- 左: メインメニューへのリンク（/menu） -->
     <h1 class="header-menu-link">
@@ -55,6 +60,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ヘッダー全体。メインカラー背景、flex で左右配置 */
 .app-header {
   background-color: var(--color-main);
   color: white;
@@ -65,6 +71,7 @@ onMounted(() => {
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 }
 
+/* メニューリンク（h1 でセマンティックに） */
 .header-menu-link {
   margin: 0;
   font-size: 1.25rem;
@@ -83,6 +90,7 @@ onMounted(() => {
   opacity: 0.9;
 }
 
+/* 右側エリア（ログイン名 + ログアウト） */
 .header-right {
   display: flex;
   align-items: center;
@@ -95,6 +103,7 @@ onMounted(() => {
   opacity: 0.9;
 }
 
+/* ログアウトボタン。半透明白でヘッダーに馴染む */
 .btn-header-logout {
   background: rgb(255 255 255 / 0.1);
   border: 1px solid rgb(255 255 255 / 0.3);

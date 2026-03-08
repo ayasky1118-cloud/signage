@@ -6,12 +6,19 @@
 //--
 //-- 【API】
 //-- ・GET /users?company_id=:id: 指定会社のユーザー一覧
+//--
+//-- 【レスポンス形式】
+//-- ・API は camelCase（userId, companyId, userName）で返す。バックエンドで変換済み
+//--
+//-- 【API ベースURL】
+//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
   if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
+//-- 同一オリジン時は /api を付与（Vite プロキシ用）
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 //-- ユーザー1件。担当者選択用

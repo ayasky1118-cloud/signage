@@ -21,6 +21,7 @@ def list_template_items(
 ):
     """
     指定テンプレートに紐づく template_item 一覧を表示順で返す。
+    各項目の item_type に応じてフロントで入力UI（テキスト・数値・日付等）を切り替える。
     """
     sql = text("""
         SELECT template_item_id, template_id, item_name, item_type, is_required, display_order

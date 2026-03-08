@@ -50,7 +50,7 @@ const MAX_BRANCH_DISPLAY = 10
 //-- 1注文あたりの枝番の上限数
 const MAX_BRANCH_COUNT = 99
 
-//-- ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1
+//-- ログイン会社IDを返す。VITE_LOGIN_COMPANY_ID がなければ 1。将来は認証ストアから取得
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -196,7 +196,7 @@ function branchExistsInOrder(branchNo: string): boolean {
   return allBranches.value.indexOf(n) >= 0
 }
 
-//-- 枝番タブの表示範囲をスライドし、指定枝番が表示されるようにする
+//-- 枝番タブの表示範囲をスライドし、指定枝番が visibleBranches 内に含まれるようにする
 function ensureVisible(branchNo: string) {
   const n = normalizeBranchNo(branchNo)
   const idx = allBranches.value.indexOf(n)
@@ -224,7 +224,7 @@ const {
 async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
   const no = orderNo.trim()
   if (!no) return
-  //-- 1) まず searchOrders で一覧APIから取得（枝番 branches が取れる）
+  //-- 1) searchOrders で一覧APIから取得（枝番・designDataByBranch・noteByBranch が取れる）
   try {
     const result = await searchOrders({
       companyId: getLoginCompanyId(),
@@ -295,7 +295,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
   } catch {
     //-- ignore
   }
-  //-- 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空）
+  //-- 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空。新規注文等）
   try {
     lastAddedBranchNo.value = null
     const detail = await getOrderByNo(no)
@@ -319,7 +319,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
     setOriginalBranchValues("", "")
     hasSearched.value = true
   } catch {
-    //-- 3) getOrderByNo も失敗（404等）：該当なしモーダルを表示し、入力値は注文番号のみ残す
+    //-- 3) getOrderByNo も失敗（404等）：該当なしモーダル表示。入力値は注文番号のみ残し、hasSearched は false
     lastAddedBranchNo.value = null
     orderDisplay.value = {
       orderName: "",
@@ -931,8 +931,9 @@ function handleBackClick(e: Event) {
   openBranchSwitchConfirmModal()
 }
 
-//-- 地図表示（注文住所を中心に MapTiler で表示）
+//-- 地図表示（注文住所を中心に MapTiler で表示）。全画面終了時にズームを保持
 const mapCenter = ref<[number, number] | null>(null)
+const mapZoom = ref(15)
 const mapCenterLoading = ref(false)
 const mapCenterError = ref<string | null>(null)
 const mapPreviewRef = ref<InstanceType<typeof MapPreview> | null>(null)
@@ -954,6 +955,7 @@ async function fetchMapCenter() {
   try {
     const { lat, lng } = await geocodeAddress(address)
     mapCenter.value = [lng, lat]
+    mapZoom.value = 15
   } catch (e) {
     mapCenter.value = null
     mapCenterError.value = e instanceof Error ? e.message : "住所の検索に失敗しました"
@@ -1027,8 +1029,14 @@ function openFullscreenEdit() {
   })
 }
 
-//-- 全画面編集オーバーレイを閉じ、背景のスクロールを復元する
+//-- 全画面編集オーバーレイを閉じ、背景のスクロールを復元する。地図の中心・ズームをプレビューに引き継ぐ
 function closeFullscreenEdit() {
+  const map = fullscreenMapRef.value?.getMap()
+  if (map) {
+    const center = map.getCenter()
+    mapCenter.value = [center.lng, center.lat]
+    mapZoom.value = map.getZoom()
+  }
   fullscreenEditVisible.value = false
   openSelectModalObjectId.value = null
   document.body.style.overflow = ""
@@ -1801,8 +1809,10 @@ watch(activeBranch, (newBranch, oldBranch) => {
                     v-else
                     ref="mapPreviewRef"
                     :center="mapCenter"
-                    :zoom="15"
+                    :zoom="mapZoom"
                     :api-key="mapTilerApiKey"
+                    :image-items="imageItemsForMap"
+                    :design-data="activeBranchDesignData"
                     :interactive="false"
                     class="order-detail-map-preview-map"
                   />
@@ -1937,8 +1947,8 @@ watch(activeBranch, (newBranch, oldBranch) => {
                   </div>
                 </div>
               </template>
-              <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素（画像配置等） -->
-              <template v-else-if="obj.hasChildTable && obj.values.length > 0">
+              <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素（画像配置等）。テキストは吹き出しと同様に入力欄を使用 -->
+              <template v-else-if="obj.hasChildTable && obj.values.length > 0 && obj.categoryCode !== 'TEXT_PLACEMENT'">
                 <div class="order-detail-object-row">
                   <select
                     :value="selectedValueIdByObjectId[obj.htmlObjectId] ?? (obj.categoryCode === 'IMAGE_PLACEMENT' ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)"
@@ -2074,7 +2084,7 @@ watch(activeBranch, (newBranch, oldBranch) => {
           <MapPreview
             ref="fullscreenMapRef"
             :center="mapCenter"
-            :zoom="15"
+            :zoom="mapZoom"
             :api-key="mapTilerApiKey"
             :image-items="imageItemsForMap"
             :design-data="activeBranchDesignData"

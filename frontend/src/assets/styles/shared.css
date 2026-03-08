@@ -8,20 +8,24 @@
    ----------------------------------------------------------------------------- */
 
 /* -----------------------------------------------------------------------------
-   モーダル
+   モーダル（OrderNoSelectModal・CustomerSelectModal・TemplateSelectModal 等）
    ----------------------------------------------------------------------------- */
+
+/* モーダル全体のラッパー。position: fixed で画面全体を覆う */
 .modal {
   position: fixed;
   inset: 0;
   z-index: 50;
 }
 
+/* オーバーレイ（半透明黒）。クリックで閉じる場合に使用 */
 .modal-overlay {
   position: fixed;
   inset: 0;
   background-color: rgb(0 0 0 / 0.4);
 }
 
+/* ダイアログ配置。flex で中央揃え、padding で端からの余白 */
 .modal-dialog {
   position: fixed;
   inset: 0;
@@ -32,6 +36,7 @@
   overflow-y: auto;
 }
 
+/* モーダル本体。max-width: 42rem がデフォルト。--wide / --narrow で変幅あり */
 .modal-content {
   position: relative;
   background: white;
@@ -42,7 +47,7 @@
   overflow: hidden;
 }
 
-/* ヘッダー角の隙間を防ぐ: 背景を青で描画し、角丸に沿って塗る（全モーダル共通） */
+/* 青ヘッダー付きモーダル用。linear-gradient で角丸に沿って青→白に切り替え、角の隙間を防ぐ */
 .modal-content:has(.modal-header) {
   background: linear-gradient(to bottom, var(--color-main) 0, var(--color-main) 2.75rem, white 2.75rem);
   box-shadow:
@@ -52,13 +57,8 @@
     0 0 0 1px rgb(226 232 240 / 0.8);
 }
 
-.modal-content--wide {
-  max-width: 56rem;
-}
-
-.modal-content--narrow {
-  max-width: 32rem;
-}
+.modal-content--wide { max-width: 56rem; }
+.modal-content--narrow { max-width: 32rem; }
 
 .modal-header {
   display: flex;
@@ -102,7 +102,10 @@
   gap: 0.75rem;
 }
 
-/* 確認ダイアログ（登録確認・更新確認等。OrderMain・OrderDetail で共用） */
+/* -----------------------------------------------------------------------------
+   確認ダイアログ（form-dialog）
+   -----------------------------------------------------------------------------
+   登録確認・更新確認等。OrderMain・OrderDetail で共用。modal と同様の構造だが独立したクラス名 */
 .form-dialog {
   position: fixed;
   inset: 0;
@@ -219,7 +222,7 @@
   border-top: 1px solid rgb(226 232 240);
 }
 
-/* 青ヘッダーカード（ヘッダーが端まで続く） */
+/* 青ヘッダーが端まで続くカード。card-header と組み合わせて使用。common.css の .card-header-full.card-shadow でシャドウ調整 */
 .card-header-full {
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
 }
@@ -526,7 +529,7 @@ a.btn-back {
 }
 
 /* -----------------------------------------------------------------------------
-   データテーブル
+   データテーブル（一覧表示用）
    ----------------------------------------------------------------------------- */
 .data-table {
   width: 100%;
@@ -677,7 +680,7 @@ a.btn-back {
   color: rgb(100 116 139);
   display: block;
 }
-/* 必須バッジ等を横並びにする場合 */
+/* 必須バッジ（.form-required-badge）等をラベルと横並びにする */
 .form-label--with-badge {
   display: flex;
   align-items: center;
@@ -718,6 +721,7 @@ a.btn-back {
   height: 0.875rem;
 }
 
+/* テキスト入力。高さ 2.25rem、フォーカス時ライトブルーリング */
 .form-input {
   height: 2.25rem;
   box-sizing: border-box;
@@ -752,6 +756,7 @@ textarea.form-input {
   pointer-events: none;
 }
 
+/* セレクトボックス。form-input と高さ・フォーカススタイルを統一 */
 .form-select {
   height: 2.25rem;
   box-sizing: border-box;
@@ -879,7 +884,10 @@ textarea.form-input {
 }
 
 /* -----------------------------------------------------------------------------
-   レイアウト互換（OrderMain / OrderDetail 用。Tailwind 削除後のフォールバック）
+   レイアウト互換（OrderMain / OrderDetail 用）
+   -----------------------------------------------------------------------------
+   Tailwind 削除後のフォールバック。max-w, padding, flex, gap 等のユーティリティを
+   個別クラスで提供。Vue テンプレートの class 名と対応。
    ----------------------------------------------------------------------------- */
 .max-w-5xl { max-width: 64rem; }
 .max-w-6xl { max-width: 72rem; }

@@ -45,8 +45,8 @@ engine = create_engine(
 # 実際の接続はここから生成される。
 SessionLocal = sessionmaker(
     bind=engine,
-    autoflush=False,
-    autocommit=False
+    autoflush=False,   # 明示的 flush のみ。自動 flush による予期せぬクエリを防ぐ
+    autocommit=False  # トランザクションを明示的に commit/rollback で制御
 )
 
 

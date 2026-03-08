@@ -41,7 +41,7 @@ const route = useRoute()
 //-------------------------------------------------------------------------------
 
 const mode = ref<"new" | "change">("new")
-//-- 注文一覧画面から遷移してきた場合 true（注文番号をクリアできない等の制御に使用）
+//-- 注文一覧画面から遷移してきた場合 true。注文番号をクリア不可・新規ラジオ無効等に使用
 const cameFromList = ref(false)
 //-- 変更モードで注文番号を検索してヒットした場合 true（他項目の編集可否に使用）
 const hasSearchedInChangeMode = ref(false)
@@ -88,7 +88,7 @@ const isLoadingTemplateItems = ref(false)
 const designTypeOptions = ref<DesignTypeItem[]>([])
 const isLoadingDesignTypes = ref(false)
 
-//-- ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得）
+//-- ログイン会社IDを返す。VITE_LOGIN_COMPANY_ID がなければ 1。将来は認証ストアから取得
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -362,7 +362,7 @@ function clearCustomer() {
   templateItemValues.value = []
 }
 
-//-- 変更モードで注文番号が変わったときに、注文番号以外の入力項目をすべてクリアする
+//-- 変更モードで注文番号が変わったとき、他項目をクリア。検索ボタンで再取得する前提
 function clearOtherFieldsOnOrderNoChange() {
   if (mode.value !== "change") return
   companyCd.value = ""
@@ -876,7 +876,10 @@ watch(orderNo, () => {
 </script>
 
 <template>
-  <!-- === 画面：注文（新規・変更） === -->
+  <!--
+    注文（新規・変更）画面。モード切替（新規/変更）→ フォーム入力 → 登録/更新。
+    一覧から遷移時は orderNo をクエリで受け取り、変更モードで表示。
+  -->
   <main id="order-main-page">
     <div class="order-main-page-container">
       <div class="order-main-card card-header-full">
@@ -886,7 +889,7 @@ watch(orderNo, () => {
 
         <form class="order-main-form" @submit.prevent>
           <div>
-            <!-- -- モード切替（新規／変更） -- -->
+            <!-- モード切替。新規: 自動採番。変更: 注文番号で検索して編集。一覧から来た場合は新規ラジオ無効 -->
             <div class="order-main-mode-section">
               <div class="order-main-mode-radio">
                 <label :class="{ 'mode-radio--disabled': newModeRadioDisabled }">
@@ -908,7 +911,7 @@ watch(orderNo, () => {
               </div>
             </div>
 
-          <!-- -- 入力ブロック1：注文番号・社内CD・事業所CD・現場CD・ステータス（1行表示） -- -->
+          <!-- 入力ブロック1。1行表示（overflow-x: auto で横スクロール可能）。注文番号は選択/検索ボタン付き -->
           <section class="order-main-form-section">
             <div class="order-main-form-row order-main-form-row--block1">
               <div class="order-main-form-field order-main-form-field--order-no">
@@ -1009,7 +1012,7 @@ watch(orderNo, () => {
               </div>
             </div>
 
-            <!-- -- 入力ブロック2：制作区分・納期・校正予定日 -- -->
+            <!-- 入力ブロック2。制作区分・納期・校正予定日。Flatpickr で日付選択（readonly input） -->
             <div class="order-main-form-row">
               <div class="order-main-form-field order-main-form-field--w24">
                 <label class="form-label form-label--with-badge" :for="FORM_IDS.order.productionType">制作区分</label>
@@ -1052,7 +1055,7 @@ watch(orderNo, () => {
               </div>
             </div>
 
-            <!-- -- 入力ブロック3：備考 -- -->
+            <!-- 入力ブロック3。備考（デフォルト: 営業担当者・制作担当者）。登録・更新時に note として送信 -->
             <div class="order-main-form-field order-main-form-field--flex1">
               <label class="form-label form-label--with-badge" :for="FORM_IDS.order.note">
                 <span class="form-required-badge">必須</span>
@@ -1069,7 +1072,7 @@ watch(orderNo, () => {
               />
             </div>
 
-            <!-- -- 入力ブロック4：注文名・住所 -- -->
+            <!-- 入力ブロック4。注文名・住所。住所は validateAddress API で検証し、地図プレビューに使用 -->
             <div class="order-main-form-field order-main-form-field--flex1">
               <label class="form-label form-label--with-badge" :for="FORM_IDS.order.orderName">
                 <span class="form-required-badge">必須</span>
@@ -1104,7 +1107,7 @@ watch(orderNo, () => {
           </section>
         </div>
 
-        <!-- -- 入力ブロック5：顧客・担当者・デザイン種別・テンプレート -- -->
+        <!-- 入力ブロック5。顧客（モーダル選択）・担当者・デザイン種別・テンプレート。顧客選択でテンプレート一覧取得 -->
         <section>
           <div class="order-main-form-block">
             <div class="order-main-form-block-row">
@@ -1283,7 +1286,7 @@ watch(orderNo, () => {
     </div>
     </div>
 
-    <!-- 未保存変更確認モーダル -->
+    <!-- 未保存変更確認。戻る・看板編集・モード切替時に hasUnsavedChanges で表示。pendingUnsavedAction で実行するアクションを保持 -->
     <Teleport to="body">
       <div
         v-show="unsavedConfirmOpen"

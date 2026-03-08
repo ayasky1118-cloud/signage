@@ -1,11 +1,8 @@
 """
-Companyテーブルの疎通確認用ルーター。
+会社一覧API。
 
-目的：
-- DB接続が正しいこと
-- SQLが通ること
-- FastAPI → DB → レスポンス の一連が動くこと
-を最小のAPIで確認する。
+Companyテーブルの一覧を返す。DB疎通確認用に設計された最小実装のため、
+ORMモデルを使わずSQLを直接実行する。注文フォーム等の会社選択にも利用される。
 """
 
 from fastapi import APIRouter, Depends
@@ -21,10 +18,7 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 @router.get("")
 def list_companies(db: Session = Depends(get_db)):
     """
-    companyテーブルの一覧を返す（疎通確認用）。
-
-    ORMモデルを使う前段階として、
-    まずはSQLを直接叩いて「接続が通っている」ことを確実にする。
+    companyテーブルの一覧を返す（削除済みを除く）。
     """
     rows = (
         db.execute(

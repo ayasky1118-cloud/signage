@@ -1,23 +1,41 @@
-/* Flatpickr テーマ（order/main・order/list 共通。main: #003b82, lightBlue: #8ed1fc） */
+/* ========================================
+   Flatpickr カレンダーテーマ
+   ========================================
+   order/main・order/list で共通。ブランドカラー（main: #003b82, lightBlue: #8ed1fc）に合わせる。
+   ======================================== */
+
+/* -----------------------------------------------------------------------------
+   フォントサイズ
+   ----------------------------------------------------------------------------- */
 .flatpickr-calendar { font-size: 12px !important; }
 .flatpickr-day, .flatpickr-weekday { font-size: 11px !important; }
+/* 月・年選択・入力欄はやや大きく */
 .flatpickr-current-month,
 .flatpickr-current-month .flatpickr-monthDropdown-months,
 .flatpickr-current-month .numInputWrapper input,
 .flatpickr-current-month span.cur-month { font-size: 14px !important; }
+
+/* -----------------------------------------------------------------------------
+   色（選択・ホバー・ヘッダー）
+   ----------------------------------------------------------------------------- */
+
+/* 選択日・範囲選択の開始/終了日：メインカラー背景 */
 .flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
     background: #003b82 !important;
     border-color: #003b82 !important;
     color: #fff !important;
 }
+/* ホバー・フォーカス：ライトブルー */
 .flatpickr-day:hover, .flatpickr-day:focus {
     background: #8ed1fc !important;
     border-color: #8ed1fc !important;
 }
+/* 月ヘッダー背景：メインカラー */
 .flatpickr-months .flatpickr-month {
     background: #003b82 !important;
     padding-bottom: 16px !important;
 }
+/* 月ヘッダー内のテキスト・矢印・セレクト：白 */
 .flatpickr-months .flatpickr-month,
 .flatpickr-current-month .flatpickr-monthDropdown-months,
 .flatpickr-current-month .numInputWrapper input,
@@ -28,6 +46,7 @@
     color: #fff !important;
     fill: #fff !important;
 }
+/* プレースホルダー：半透明白 */
 .flatpickr-current-month input::-webkit-input-placeholder { color: rgba(255,255,255,0.8) !important; }
 .flatpickr-current-month input::placeholder { color: rgba(255,255,255,0.8) !important; }
 .flatpickr-current-month .numInputWrapper span.arrowUp:after { border-bottom-color: #fff !important; }
@@ -40,10 +59,16 @@
 .flatpickr-months .flatpickr-next-month svg path { fill: #fff !important; }
 .flatpickr-current-month .flatpickr-prev-month:hover svg,
 .flatpickr-current-month .flatpickr-next-month:hover svg { fill: #8ed1fc !important; }
-/* 日付間のピッチを詰める・円を小さく中央揃え */
+
+/* -----------------------------------------------------------------------------
+   レイアウト（幅・日付セル）
+   ----------------------------------------------------------------------------- */
+
+/* カレンダー全体幅を 196px に固定。日付間のピッチを詰める */
 .flatpickr-calendar { width: 196px !important; }
 .flatpickr-days { width: 196px !important; }
 .dayContainer { width: 196px !important; min-width: 196px !important; max-width: 196px !important; padding: 0 !important; justify-content: flex-start !important; }
+/* 日付セル：28px 四方で中央揃え。flex で均等配置 */
 .flatpickr-day {
     max-width: 28px !important;
     width: 28px !important;
@@ -55,5 +80,6 @@
     justify-content: center !important;
     box-sizing: border-box !important;
 }
+/* 曜日ヘッダー行の高さ */
 .flatpickr-weekdays { height: 22px !important; }
 .flatpickr-weekdays .flatpickr-weekdaycontainer .flatpickr-weekday { flex: 0 0 28px !important; max-width: 28px !important; font-size: 10px !important; }

@@ -22,7 +22,7 @@ def list_templates(
 ):
     """
     指定会社に紐づくテンプレート一覧を表示順で返す。
-    customer_id を指定した場合はその顧客に紐づくテンプレートのみ返す。
+    customer_id 指定時は当該顧客専用テンプレートのみ返す（顧客ごとにテンプレートを紐づけ可能）。
     """
     if customer_id is not None:
         sql = text("""

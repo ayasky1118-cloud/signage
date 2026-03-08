@@ -26,7 +26,7 @@ def list_users(
         db.execute(
             text("""
                 SELECT user_id, company_id, user_name
-                FROM `user`
+                FROM `user`  -- user は MySQL 予約語のためバッククォートでエスケープ
                 WHERE company_id = :company_id AND is_deleted = 0
                 ORDER BY user_id
             """),

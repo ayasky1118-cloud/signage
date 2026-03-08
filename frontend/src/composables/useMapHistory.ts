@@ -1,4 +1,8 @@
-//-- ユーザーの操作を記録し、Undo/Redo機能を提供するComposable
+//-- ユーザーの操作を記録し、Undo 機能を提供する Composable
+//--
+//-- 【設計】
+//-- ・undoStack には「操作の種類（route/text/image/balloon）」のみを保持。フル状態は持たない（メモリ効率）。
+//-- ・undo 時は該当 FeatureCollection の末尾を pop する。追加順の逆順で取り消す。
 import { ref } from "vue"
 import type maplibregl from "maplibre-gl"
 import type { FeatureCollection } from "geojson"
@@ -12,6 +16,7 @@ type HistoryAction = {
 export function useMapHistory() {
   const undoStack = ref<HistoryAction[]>([])
 
+  //-- 操作を記録する。addText / addImage / addBalloon / drawRoute の直後に呼ぶこと。
   const pushHistory = (type: EditMode): void => {
     undoStack.value.push({ type })
   }
@@ -20,6 +25,7 @@ export function useMapHistory() {
     undoStack.value = []
   }
 
+  //-- 最後の操作を取り消す。features は useMapFeatures の ref をそのまま渡す（参照で pop される）。
   //-- callouts は useMapFeatures の balloonFeatures に相当。MapLibre のソース id は balloons
   const undoLastAction = (
     map: maplibregl.Map | null,

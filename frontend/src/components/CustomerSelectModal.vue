@@ -57,7 +57,10 @@ function onClear() {
 </script>
 
 <template>
-  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
+  <!--
+    Teleport to="body": モーダルを body 直下にマウント。親の z-index / overflow の影響を避ける。
+    v-show: 表示切替のみ（DOM は残る）。aria-* でアクセシビリティ対応。
+  -->
   <Teleport to="body">
     <div
       v-show="modelValue"
@@ -74,7 +77,8 @@ function onClear() {
           class="modal-content select-modal customer-select-modal"
           @click.stop
         >
-          <!-- ヘッダー（メインカラー背景） -->
+          <!-- @click.stop: モーダル内クリックでオーバーレイの close を発火させない -->
+          <!-- ヘッダー（shared.css の modal-header。メインカラー背景） -->
           <div class="modal-header">
             <h3 id="customerSelectModalTitle" class="modal-header-title">顧客を選択</h3>
           </div>
@@ -91,6 +95,7 @@ function onClear() {
                 </tr>
               </thead>
               <tbody>
+                <!-- 行クリックで onSelect 発火 → select emit → 親で選択値反映 -->
                 <tr
                   v-for="c in items"
                   :key="c.customerId"

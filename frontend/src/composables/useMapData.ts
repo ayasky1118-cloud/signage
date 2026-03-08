@@ -4,6 +4,7 @@ import type { Feature, FeatureCollection, LineString, Point } from "geojson"
 import type { MapDataJson, RouteItem } from "../types/map-data"
 import { geoJSONFeatureToRouteItem, type RouteFeatureProperties } from "../types/map-data"
 
+//-- 地図の表示状態（中心・ズーム等）。design_data の map フィールドに保存し、復元時に適用する
 export type MapState = {
   center: [number, number]
   zoom: number
@@ -27,7 +28,8 @@ function routeFeaturesToRouteItems(
   )
 }
 
-//-- design_data 形式でマップデータを構築する。routes は RouteItem[] に変換
+//-- design_data 形式でマップデータを構築する。routes は RouteItem[] に変換。
+//-- options.branchNo / orderNo: order_detail との紐づけ用。保存時に枝番・注文番号を埋め込む（OrderDetail の design_data 保存で使用）
 export function buildMapData(
   mapState: MapState | null,
   features: MapFeatures,
@@ -46,7 +48,7 @@ export function buildMapData(
   return data
 }
 
-//-- JSON をファイルとしてダウンロードする
+//-- design_data を JSON ファイルとしてダウンロードする。ファイル名は map_state.json
 export function downloadMapJson(data: MapDataJson): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
   const url = URL.createObjectURL(blob)
@@ -57,7 +59,9 @@ export function downloadMapJson(data: MapDataJson): void {
   URL.revokeObjectURL(url)
 }
 
-//-- JSON ファイルを読み込む。restoreFeatures に渡す形式で返す（routes は RouteItem[] または FeatureCollection のまま）
+//-- JSON ファイルを読み込む。design_data 形式（routes, texts, images, callouts）を期待。
+//-- routes は RouteItem[] または FeatureCollection のいずれか。restoreFeatures が両方に対応。
+//-- パース失敗時は reject。形式のバリデーションは行わない（restoreFeatures 側で柔軟に処理）
 export function loadMapJson(file: File): Promise<MapDataJson> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

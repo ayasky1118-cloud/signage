@@ -37,7 +37,7 @@ const emit = defineEmits<{
 //-- ヘルパー・モーダル操作
 //-------------------------------------------------------------------------------
 
-//-- 空・未定義の値を em dash（—）に変換する表示用ヘルパー
+//-- 空・未定義の値を em dash（—）に変換する表示用ヘルパー。テーブルの空セルを揃える
 function orDash(val: string | undefined): string {
   return (val ?? "").trim() || "—"
 }
@@ -49,7 +49,10 @@ function close() {
 </script>
 
 <template>
-  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
+  <!--
+    Teleport to="body": モーダルを body 直下にマウント。
+    order が null の場合は modal-content を描画しない（v-if="order"）。
+  -->
   <Teleport to="body">
     <div
       v-show="modelValue"
@@ -74,7 +77,7 @@ function close() {
           </div>
           <!-- 本文（最大高さ 85vh でスクロール可能） -->
           <div class="modal-body modal-body-detail">
-            <!-- 基本情報: 注文番号・注文名・住所・顧客名・担当者・デザイン種別・テンプレート -->
+            <!-- 基本情報。modal-dl--2col で2列グリッド（dt/dd の定義リスト） -->
             <section class="modal-section">
               <div class="section-title">
                 <div class="section-title-accent"></div>
@@ -112,7 +115,7 @@ function close() {
               </dl>
             </section>
 
-            <!-- 社内情報: 社内CD・事業所CD・現場CD・制作区分・ステータス・納期・校正予定日 -->
+            <!-- 社内情報。modal-dl--4col で4列グリッド。attribute_01〜05 を表示 -->
             <section class="modal-section">
               <div class="section-title">
                 <div class="section-title-accent"></div>
@@ -151,7 +154,7 @@ function close() {
               </dl>
             </section>
 
-            <!-- 備考（order.note が空でない場合のみ表示） -->
+            <!-- 備考。order.note が空でない場合のみ表示。pre-wrap で改行を保持 -->
             <section v-if="order.note?.trim()" class="modal-section">
               <div class="section-title">
                 <div class="section-title-accent"></div>
@@ -160,7 +163,7 @@ function close() {
               <div class="modal-note-box">{{ order.note }}</div>
             </section>
 
-            <!-- 登録情報: 登録日・登録者・枝番 -->
+            <!-- 登録情報。modal-section--border で上に区切り線。枝番は branches 配列を join 表示 -->
             <section class="modal-section modal-section--border">
               <dl class="modal-dl modal-dl--2col">
                 <div class="modal-dl-item">
@@ -195,6 +198,7 @@ function close() {
 </template>
 
 <style scoped>
+/* 本文パディング。768px以上でやや広く */
 .modal-body-detail {
   padding: 1.5rem 1.5rem 2.5rem;
 }
@@ -218,16 +222,19 @@ function close() {
   border-top: 1px solid rgb(226 232 240);
 }
 
+/* 定義リスト（dt/dd）。グリッドでラベルと値を並べる */
 .modal-dl {
   display: grid;
   gap: 1rem;
 }
 
+/* 2列レイアウト（基本情報・登録情報） */
 .modal-dl--2col {
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem 2rem;
 }
 
+/* 4列レイアウト（社内情報） */
 .modal-dl--4col {
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem 1.5rem;
@@ -245,6 +252,7 @@ function close() {
   gap: 0.25rem;
 }
 
+/* 住所・備考等、全幅で表示する項目 */
 .modal-dl-item--full {
   grid-column: 1 / -1;
 }
@@ -282,6 +290,7 @@ function close() {
   min-width: var(--order-no-width);
 }
 
+/* 備考エリア。pre-wrap で改行保持、薄い背景で区別 */
 .modal-note-box {
   font-size: 0.75rem;
   color: rgb(51 65 85);
@@ -292,10 +301,12 @@ function close() {
   border: 1px solid rgb(226 232 240);
 }
 
+/* ダイアログ全体をスクロール可能に（コンテンツが長い場合） */
 .order-detail-modal-dialog {
   overflow-y: auto;
 }
 
+/* モーダル本体に上下マージン。スクロール時に端が切れないように */
 .order-detail-modal-content {
   margin-top: 2rem;
   margin-bottom: 2rem;

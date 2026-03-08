@@ -51,7 +51,10 @@ function onSelect(v: HtmlObjectValueItem) {
 </script>
 
 <template>
-  <!-- body 直下にマウント（z-index や overflow の影響を避けるため Teleport 使用） -->
+  <!--
+    Teleport to="body": モーダルを body 直下にマウント。
+    z-index: 60 で全画面編集オーバーレイ（z-50）より前面に表示。
+  -->
   <Teleport to="body">
     <div
       v-show="modelValue"
@@ -73,7 +76,7 @@ function onSelect(v: HtmlObjectValueItem) {
           <div class="modal-header">
             <h3 id="htmlObjectValueSelectModalTitle" class="modal-header-title">{{ title }}を選択</h3>
           </div>
-          <!-- 選択肢一覧（2〜3列グリッド。最大高さ 60vh でスクロール可能） -->
+          <!-- 選択肢一覧。2列（SP）/ 3列（640px以上）。画像＋名称でクリック選択 -->
           <div class="modal-body modal-body--scroll">
             <div class="html-object-value-grid">
               <button
@@ -114,16 +117,19 @@ function onSelect(v: HtmlObjectValueItem) {
 </template>
 
 <style scoped>
+/* 全画面編集オーバーレイ（z-50）より前面に表示。ルート描画等の選択モーダル用 */
 .html-object-value-modal {
   z-index: 60;
 }
 
+/* 選択肢エリア。max-height: 60vh でスクロール可能。shared の modal-body--scroll を上書き */
 .modal-body--scroll {
   padding: 1.25rem 1.5rem;
   max-height: 60vh;
   overflow: auto;
 }
 
+/* 選択肢グリッド。SP: 2列、640px以上: 3列 */
 .html-object-value-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -136,6 +142,7 @@ function onSelect(v: HtmlObjectValueItem) {
   }
 }
 
+/* 選択肢1件。shared.css の .html-object-value-item と同様。ホバーでメインカラー枠 */
 .html-object-value-item {
   display: flex;
   flex-direction: column;
@@ -161,6 +168,7 @@ function onSelect(v: HtmlObjectValueItem) {
   flex-shrink: 0;
 }
 
+/* 画像がない場合のプレースホルダー。4rem 四方で「—」を中央表示 */
 .html-object-value-placeholder {
   width: 4rem;
   height: 4rem;

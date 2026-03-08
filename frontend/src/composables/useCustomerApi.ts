@@ -7,15 +7,20 @@
 //-- 【API】
 //-- ・GET /customers?company_id=:id: 指定会社の顧客一覧
 //--
-//-- 【注意】
-//-- ・API レスポンスは snake_case（customer_id, customer_name 等）。マッピングで camelCase に変換
-//-- ・address は customer_add（住所のみ。郵便番号は含まない）
+//-- 【レスポンス形式】
+//-- ・API は snake_case（customer_id, company_id, customer_name, address, contact_name）で返す
+//-- ・address は customer_add（住所のみ。郵便番号 customer_post は含まない）
+//-- ・本 composable 内で camelCase にマッピングして返却
+//--
+//-- 【API ベースURL】
+//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
   if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
+//-- 同一オリジン時は /api を付与（Vite プロキシ用）
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 //-- 顧客1件。address は住所（customer_add）、contactName は担当者名

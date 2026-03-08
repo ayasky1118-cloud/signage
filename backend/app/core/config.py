@@ -12,7 +12,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/.env（存在する場合のみ。本番では存在しない想定）
+# backend/.env の絶対パス（app/core/config.py から見て backend/ 直下）
+# 存在する場合のみ load_dotenv。本番では .env が無い想定で環境変数を使用
 _ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
 if _ENV_PATH.exists():
     load_dotenv(_ENV_PATH)

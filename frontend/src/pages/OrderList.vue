@@ -34,7 +34,8 @@ const route = useRoute()
 //-- ユーティリティ
 //-------------------------------------------------------------------------------
 
-//-- ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得）
+//-- ログイン会社IDを返す。VITE_LOGIN_COMPANY_ID がなければ 1。
+//-- 将来は認証ストア（Cognito 等）から取得する想定
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -93,9 +94,9 @@ function getSortOrder(column: "orderNo" | "createdDate"): "asc" | "desc" {
   return column === "orderNo" ? sortOrderByOrderNo.value : sortOrderByCreatedDate.value
 }
 
-//-- 指定カラムのソート順をトグルし、1ページ目から再検索する
+//-- 指定カラムのソート順をトグルし、1ページ目から再検索する。
+//-- 初期状態（sortBy=null）は createdDate 昇順とみなし、登録日クリックでトグル
 function toggleSortOrder(column: "orderNo" | "createdDate") {
-  //-- 初期検索時は createdDate 昇順なので、登録日クリックはトグル扱い
   const isSameColumn = sortBy.value === column || (sortBy.value === null && column === "createdDate")
   if (isSameColumn) {
     const ref = column === "orderNo" ? sortOrderByOrderNo : sortOrderByCreatedDate
@@ -124,7 +125,7 @@ const currentPage = ref(1)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PER_PAGE)))
 
 const paginationStartPage = ref(1)
-//-- ページネーションで表示するページ番号の配列（最大5件表示）
+//-- ページネーションで表示するページ番号の配列。最大5件。現在ページを中心に表示
 const visiblePageNumbers = computed(() => {
   const maxVisible = 5
   let start = Math.max(1, Math.min(currentPage.value - Math.floor((maxVisible - 1) / 2), totalPages.value - maxVisible + 1))
@@ -184,7 +185,7 @@ async function fetchOrders() {
   isLoading.value = true
   apiError.value = ""
   try {
-    //-- 日付系は DOM から取得（Flatpickr が値を保持）
+    //-- 日付系は Flatpickr が DOM に値を保持するため、getElementById で取得
     const inputFrom = document.getElementById(FORM_IDS.search.createdDateFrom) as HTMLInputElement
     const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
     const inputDeadline = document.getElementById(FORM_IDS.search.deadline) as HTMLInputElement
@@ -230,7 +231,7 @@ async function fetchOrders() {
   }
 }
 
-//-- 登録日の開始日が終了日より後でないかチェックする
+//-- 登録日の開始日が終了日より後でないかチェック。不正時は showDateRangeErrorDialog を表示
 function isDateRangeInvalid(): boolean {
   const inputFrom = document.getElementById(FORM_IDS.search.createdDateFrom) as HTMLInputElement
   const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
@@ -285,12 +286,12 @@ function closeDateRangeErrorDialog() {
   })
 }
 
-//-- 注文（新規・変更）画面へのルートパラメータを生成する
+//-- 注文（新規・変更）画面へのルートパラメータ。orderNo をクエリで渡し、変更モードで表示
 function orderMainParams(order: OrderItem) {
   return { path: "/order/main", query: { orderNo: order.orderNo } }
 }
 
-//-- 看板編集画面へのルートパラメータ（注文番号・枝番・編集モード）を生成する
+//-- 看板編集画面へのルートパラメータ。orderNo・itemCode（枝番）・mode=edit をクエリで渡す
 function orderDetailParams(order: OrderItem, branch: string) {
   return { path: "/order/detail", query: { orderNo: order.orderNo, itemCode: branch, mode: "edit" } }
 }
@@ -408,7 +409,7 @@ onMounted(async () => {
   if (detailSearchExpanded.value) initDatePickers()
 })
 
-//-- 詳細検索を展開したときに日付ピッカーを初期化（登録日・納期・校正予定日が納期と同様に日付ダイアログを出す）
+//-- 詳細検索を展開したときに日付ピッカーを初期化。DOM が描画された後に nextTick で initDatePickers
 watch(detailSearchExpanded, (expanded) => {
   if (expanded) nextTick(() => initDatePickers())
 })
@@ -423,7 +424,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- === 画面：注文一覧 === -->
+  <!--
+    注文一覧画面。検索条件カード → 結果テーブル → ページネーション。
+    行ダブルクリックで OrderDetailModal、枝番クリックで OrderDetail へ遷移。
+  -->
   <main id="order-list-page" class="order-list-page">
     <div class="order-list-page-container">
       <!-- === 検索条件カード === -->
@@ -513,7 +517,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- -- 詳細検索（展開で表示） -- -->
+            <!-- 詳細検索。v-show で展開時のみ表示。展開時に initDatePickers で Flatpickr 初期化 -->
             <div class="order-list-detail-toggle">
               <button
                 type="button"
@@ -796,7 +800,7 @@ onUnmounted(() => {
                   <th class="col-action">枝番</th>
                 </tr>
               </thead>
-              <!-- 行ダブルクリックで注文詳細モーダル表示。注文番号・枝番は各画面へのリンク -->
+              <!-- 行ダブルクリックで openOrderView → OrderDetailModal。注文番号は OrderMain、枝番は OrderDetail への RouterLink -->
               <tbody>
                 <tr
                   v-for="order in orderItems"

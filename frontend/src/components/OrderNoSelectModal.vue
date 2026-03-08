@@ -35,7 +35,7 @@ const emit = defineEmits<{
 //-- ヘルパー・モーダル操作
 //-------------------------------------------------------------------------------
 
-//-- デザイン種別の表示用。空の場合は em dash（—）を返す
+//-- デザイン種別・テンプレート等の表示用。空・undefined の場合は em dash（—）を返してテーブルを揃える
 function designTypeLabel(value: string): string {
   return value || "—"
 }
@@ -53,7 +53,7 @@ function onSelect(order: OrderItem) {
 </script>
 
 <template>
-  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
+  <!-- Teleport to="body": モーダルを body 直下にマウント。親の z-index / overflow の影響を避ける -->
   <Teleport to="body">
     <div
       v-show="modelValue"
@@ -74,7 +74,7 @@ function onSelect(order: OrderItem) {
           <div class="modal-header">
             <h3 id="orderNoSelectModalTitle" class="modal-header-title">注文番号を選択</h3>
           </div>
-          <!-- 本文: 注文一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
+          <!-- 本文: 注文一覧テーブル。loading / errorMessage / データ の3状態で表示を切り替え -->
           <div class="modal-body modal-body--scroll">
             <p v-if="loading" class="text-muted">読み込み中...</p>
             <p v-else-if="errorMessage" class="text-muted">{{ errorMessage }}</p>
@@ -144,6 +144,7 @@ function onSelect(order: OrderItem) {
 </template>
 
 <style scoped>
+/* 注文番号列の幅を common.css の --order-no-width で統一。フォントサイズはやや大きく */
 .order-no-select-modal .order-no-select-modal-th-order-no,
 .order-no-select-modal .order-no-select-modal-td-order-no {
   width: var(--order-no-width);

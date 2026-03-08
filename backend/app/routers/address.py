@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/address", tags=["address"])
 
 MAPTILER_GEOCODING_URL = "https://api.maptiler.com/geocoding/{query}.json"
-TIMEOUT_SEC = 10
+TIMEOUT_SEC = 10  # 外部API呼び出しのタイムアウト（秒）
 
 # macOS 等で Python がシステム証明書を持たない場合に certifi の CA バンドルを使用
 _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
@@ -33,8 +33,11 @@ def validate_address(
 ):
     """
     住所を MapTiler Geocoding API で検証する。
-    1件以上ヒットすれば valid: true、0件またはエラー時は valid: false。
-    API キー未設定時はスキップし valid: true を返す。
+
+    レスポンス:
+      - ヒット時: { "valid": true, "message": null }
+      - 0件時: { "valid": false, "message": "該当する住所が見つかりません。" }
+      - API キー未設定時: { "valid": true, "skipped": true }（検証スキップ。フロントで区別可能）
     """
     address = (address or "").strip()
     if not address:
@@ -43,9 +46,10 @@ def validate_address(
     api_key = (settings.MAPTILER_API_KEY or "").strip()
     if not api_key:
         logger.info("住所検証: MAPTILER_API_KEY 未設定のためスキップ（valid=true で返却）")
-        return {"valid": True, "skipped": True}
+        return {"valid": True, "skipped": True}  # skipped: 検証をスキップした旨（フロントで区別可能）
 
     try:
+        # safe="" で日本語等を % エンコード
         encoded = quote(address, safe="")
         url = MAPTILER_GEOCODING_URL.format(query=encoded) + f"?key={api_key}&country=jp"
         req = Request(url, headers={"User-Agent": "MapSign-Backend/1.0"})
@@ -66,8 +70,11 @@ def geocode_address(
 ):
     """
     住所を MapTiler Geocoding API で検索し、最初の結果の座標を返す。
-    ヒット時: { "lat": number, "lng": number }
-    0件またはエラー時: 404
+
+    レスポンス:
+      - ヒット時: { "lat": number, "lng": number }（緯度・経度。地図表示用）
+      - 0件時: 404
+      - API キー未設定時: 503（地図表示不可のため）
     """
     address = (address or "").strip()
     if not address:
@@ -79,6 +86,7 @@ def geocode_address(
         return JSONResponse(status_code=503, content={"detail": "地図表示の設定がありません。"})
 
     try:
+        # safe="" で日本語等を % エンコード
         encoded = quote(address, safe="")
         url = MAPTILER_GEOCODING_URL.format(query=encoded) + f"?key={api_key}&country=jp"
         req = Request(url, headers={"User-Agent": "MapSign-Backend/1.0"})
@@ -87,6 +95,7 @@ def geocode_address(
         features = data.get("features") or []
         if not features:
             return JSONResponse(status_code=404, content={"detail": "該当する住所が見つかりません。"})
+        # GeoJSON 形式: coordinates は [lng, lat] の順
         geom = features[0].get("geometry") or {}
         coords = geom.get("coordinates") or []
         if len(coords) < 2:

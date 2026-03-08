@@ -7,12 +7,19 @@
 //-- 【API】
 //-- ・GET /templates?company_id=:id&customer_id=:id: テンプレート一覧。customer_id 指定時は当該顧客のテンプレートのみ
 //-- ・GET /template-items?template_id=:id: テンプレート項目一覧（項目名・必須フラグ・項目種別）
+//--
+//-- 【レスポンス形式】
+//-- ・API は camelCase（templateId, companyId, templateName 等）で返す。バックエンドで変換済み
+//--
+//-- 【API ベースURL】
+//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
   if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
+//-- 同一オリジン時は /api を付与（Vite プロキシ用）
 const API_PREFIX = getApiBase() ? "" : "/api"
 
 //-- テンプレート1件。TemplateSelectModal の選択肢用

@@ -86,7 +86,8 @@ function initMap() {
     interactive: props.interactive,
   })
 
-  //-- styleimagemissing: MapTiler スタイルが参照する POI アイコン等が未ロードの場合に発火。空画像を追加して Console 警告を抑制
+  //-- styleimagemissing: MapTiler スタイルが参照する POI アイコン等が未ロードの場合に発火。
+  //-- 空の 32x32 画像を追加して Console 警告を抑制（SDF 形式で MapTiler POI と互換）
   map.on("styleimagemissing", (e) => {
     const id = e.id
     if (map?.hasImage(id)) return
@@ -166,14 +167,13 @@ onBeforeUnmount(() => {
 //-- Props 監視（center / apiKey 変更時の対応）
 //-------------------------------------------------------------------------------
 
-//-- center または apiKey が変更されたときの処理。apiKey が有効で map が存在: center が有効なら setCenter で中心を更新。apiKey が有効だが map が未作成: initMap で初期化
+//-- center / zoom / apiKey が変更されたときの処理。map が存在する場合は setCenter / setZoom で更新
 watch(
-  () => [props.center, props.apiKey] as const,
-  ([center, apiKey]) => {
+  () => [props.center, props.zoom, props.apiKey] as const,
+  ([center, zoom, apiKey]) => {
     if (map && apiKey?.trim()) {
-      if (center && center.length === 2) {
-        map.setCenter(center as [number, number])
-      }
+      if (center && center.length === 2) map.setCenter(center as [number, number])
+      if (typeof zoom === "number") map.setZoom(zoom)
     } else if (apiKey?.trim() && !map && mapContainerRef.value) {
       initMap()
     }
@@ -238,6 +238,8 @@ function applyDesignDataToMap() {
   if (balloonsSource && data.callouts !== undefined) balloonsSource.setData(data.callouts ?? emptyPoint)
 }
 
+//-- designData の変更を監視。deep: true でネストされた routes/texts 等の変更も検知
+//-- immediate: true でマウント時にも applyDesignDataToMap を実行（map.load 後に実行されるよう once で待機）
 watch(
   () => props.designData,
   () => {
@@ -260,7 +262,10 @@ defineExpose({
 </script>
 
 <template>
-  <!-- apiKey 未設定時: 地図の代わりに設定促進メッセージを表示 -->
+  <!--
+    apiKey 未設定時: 地図の代わりに設定促進メッセージを表示。
+    apiKey 設定時: MapLibre が mapContainerRef をコンテナとして地図を描画。
+  -->
   <div v-if="!apiKey?.trim()" class="map-placeholder">
     VITE_MAPTILER_API_KEY を設定してください
   </div>
@@ -273,6 +278,7 @@ defineExpose({
 </template>
 
 <style scoped>
+/* apiKey 未設定時のプレースホルダー。中央にメッセージ表示 */
 .map-placeholder {
   width: 100%;
   height: 100%;
@@ -284,6 +290,7 @@ defineExpose({
   font-size: 0.75rem;
 }
 
+/* 地図コンテナ。親の高さに合わせて伸縮。min-height で最低表示を確保 */
 .map-container {
   width: 100%;
   height: 100%;
@@ -291,7 +298,7 @@ defineExpose({
   border-radius: inherit;
 }
 
-/* MapLibre が生成する .maplibregl-map にも角丸を適用（子要素のため :deep で指定） */
+/* MapLibre が生成する .maplibregl-map にも角丸を適用。子要素のため :deep で指定 */
 :deep(.maplibregl-map) {
   border-radius: inherit;
 }

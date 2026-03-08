@@ -1,9 +1,15 @@
-//-- ユーザーのマウス操作を処理するComposable
+//-- ユーザーのマウス操作（クリック・ドラッグ）を処理する Composable
+//--
+//-- 【editMode】
+//-- ・route: ルート描画モード（クリックでポイント追加）。デフォルト。地図編集の主操作であるため初期値を route にしている
+//-- ・text / image / balloon: 配置モード。1回クリックで配置後、自動で route に戻る
+//-- ・move: ドラッグでテキスト・画像・吹き出しを移動
 import { ref } from "vue"
 import type maplibregl from "maplibre-gl"
 import type { FeatureCollection, Point } from "geojson"
 import type { EditMode } from "./useMapFeatures"
 
+//-- layer は useMapLayers で登録した MapLibre のソース/レイヤー ID と一致させる必要がある（texts, images, balloons, routes）
 type SelectedItem =
   | { layer: "texts"; index: number }
   | { layer: "images"; index: number }
@@ -16,6 +22,7 @@ export function useMapInteraction() {
   const selectedItem = ref<SelectedItem>(null)
   const isDragging = ref(false)
 
+  //-- 地図クリック時のハンドラを登録。editMode に応じて onText / onImage / onBalloon / onRoute を呼ぶ
   const setupClickHandler = (
     map: maplibregl.Map,
     handlers: {

@@ -1,9 +1,15 @@
 <!doctype html>
+<!--
+  signage フロントエンドのエントリーポイント。
+  Vite がこのファイルをベースにビルドし、main.ts で #app に Vue アプリをマウントする。
+-->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- レスポンシブ対応。モバイルでも正しく表示されるように -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<!-- Google Fonts: Noto Sans JP（日本語フォント）。400/500/700 のウェイトをプリロード -->
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 	<link
@@ -13,7 +19,9 @@
     <title>frontend</title>
   </head>
   <body>
+    <!-- Vue アプリのマウント先。main.ts で createApp(App).mount('#app') により置換される -->
     <div id="app"></div>
+    <!-- Vite のエントリーポイント。type="module" で ES モジュールとして読み込む -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
