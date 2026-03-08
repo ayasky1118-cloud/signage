@@ -72,7 +72,7 @@ function onSelect(v: HtmlObjectValueItem) {
       <div class="modal-overlay" @click="close"></div>
       <!-- モーダル本体を中央に配置 -->
       <div class="modal-dialog">
-        <div class="modal-content modal-content--narrow">
+        <div class="modal-content modal-content--narrow card-shadow card-header-full">
           <!-- ヘッダー（メインカラー背景。「〇〇を選択」） -->
           <div class="modal-header">
             <h3 id="htmlObjectValueSelectModalTitle" class="modal-header-title">{{ title }}を選択</h3>

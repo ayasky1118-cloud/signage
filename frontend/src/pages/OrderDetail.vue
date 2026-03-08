@@ -1264,37 +1264,36 @@ watch(fullscreenEditVisible, async (visible) => {
             </span>
             <span>{{ orderInfoExpanded ? "閉じる" : "開く" }}</span>
           </button>
-          <div v-show="orderInfoExpanded" class="mt-4 space-y-4 min-w-0">
-            <!-- 注文番号・検索／選択ボタン・検索実行。右側に顧客名・更新日・デザイン種別・注文名などを表示 -->
-            <div class="grid grid-cols-1 md:[grid-template-columns:minmax(360px,380px)_minmax(0,1fr)_minmax(0,1fr)] gap-4 text-sm">
-          <div class="space-y-1.5 min-w-0">
-            <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
-              <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
-              注文番号
-            </label>
-            <div class="flex flex-nowrap items-center gap-2 min-w-0">
-              <input
+          <div v-show="orderInfoExpanded" class="mt-4 space-y-6 min-w-0">
+            <!-- 注文番号・検索／選択ボタン・検索実行 -->
+            <div class="space-y-1.5 min-w-0">
+              <label class="flex items-center gap-2 text-xs font-normal text-slate-500">
+                <span class="bg-main text-white text-[10px] px-1.5 py-0.5 rounded">必須</span>
+                注文番号
+              </label>
+              <div class="flex flex-wrap items-center gap-2 min-w-0">
+                <input
                 ref="orderNoInputRef"
                 v-model="inputOrderNo"
                 type="text"
                 placeholder="注文番号を入力してください"
                 maxlength="20"
                 :readonly="orderNoReadOnly"
-                class="w-48 min-w-[12rem] h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
+                class="w-full min-w-0 max-w-xs h-[2.25rem] bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs box-border"
                 :class="{
                   'bg-white border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue': !orderNoReadOnly,
                   'opacity-50 cursor-not-allowed pointer-events-none': orderNoReadOnly
                 }"
                 @blur="onOrderNoBlur"
-              />
-              <button
-                type="button"
-                title="選択"
+                />
+                <button
+                  type="button"
+                  title="選択"
                 class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                 :disabled="selectSearchDisabled"
-                @click="openOrderNoSelectModal"
-              >
-                <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  @click="openOrderNoSelectModal"
+                >
+                  <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </button>
@@ -1318,29 +1317,31 @@ watch(fullscreenEditVisible, async (visible) => {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
-              </button>
+                </button>
+              </div>
             </div>
-          </div>
-          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
-            <div class="text-xs text-slate-400 font-normal">顧客名 / 担当者</div>
-            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.customerName) }}</div>
-            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.manager) }}</div>
-          </div>
-          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
-            <div class="text-xs text-slate-400 font-normal">更新日 / 更新者</div>
-            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
-            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.updater) }}</div>
-          </div>
-          <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
-            <div class="text-xs text-slate-400 font-normal">デザイン種別 / テンプレート</div>
-            <div class="text-slate-700 text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.designType) }}</div>
-            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.template) }}</div>
-          </div>
-          <div class="space-y-1 md:pl-6 min-h-[3.25rem] flex flex-col justify-center">
-            <div class="text-xs text-slate-400 font-normal">注文名 / 住所</div>
-            <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.orderName) }}</div>
-            <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.address) }}</div>
-          </div>
+            <!-- 顧客名・更新日・デザイン種別・注文名など（検索後に表示） -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm border-t border-slate-100 pt-4">
+              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
+                <div class="text-xs text-slate-400 font-normal">顧客名 / 担当者</div>
+                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.customerName) }}</div>
+                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.manager) }}</div>
+              </div>
+              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
+                <div class="text-xs text-slate-400 font-normal">更新日 / 更新者</div>
+                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
+                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.updater) }}</div>
+              </div>
+              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center">
+                <div class="text-xs text-slate-400 font-normal">デザイン種別 / テンプレート</div>
+                <div class="text-slate-700 text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.designType) }}</div>
+                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.template) }}</div>
+              </div>
+              <div class="space-y-1 min-h-[3.25rem] flex flex-col justify-center sm:col-span-2 lg:col-span-1">
+                <div class="text-xs text-slate-400 font-normal">注文名 / 住所</div>
+                <div class="text-slate-700 font-normal text-sm min-h-[1.25rem]">{{ fieldDisplay(orderDisplay.orderName) }}</div>
+                <div class="text-[11px] text-slate-500 min-h-[1rem]">{{ fieldDisplay(orderDisplay.address) }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1640,7 +1641,7 @@ watch(fullscreenEditVisible, async (visible) => {
                 >
                   <span class="text-slate-400 cursor-help">ⓘ</span>
                   <span
-                    class="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
+                    class="pointer-events-none absolute left-0 bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
                     role="tooltip"
                   >
                     {{ TOOLTIP_BY_CATEGORY[obj.categoryCode] }}
@@ -1682,12 +1683,12 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
                   >
-                    <!-- ルート描画: 鉛筆アイコン、画像/テキスト配置: マップピンアイコン -->
+                    <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
                     <svg
                       v-if="obj.categoryCode === 'ROUTE_DRAWING'"
-                      class="w-5 h-5 text-slate-600"
+                      class="w-3.5 h-3.5 text-slate-600"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1695,16 +1696,16 @@ watch(fullscreenEditVisible, async (visible) => {
                     >
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <!-- 画像/テキスト/吹き出し配置: マップピン（配置の標準記号） -->
                     <svg
                       v-else
-                      class="w-5 h-5 text-slate-600"
+                      class="w-3.5 h-3.5 text-slate-600"
                       fill="currentColor"
                       viewBox="0 0 24 24"
                       aria-hidden="true"
                     >
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
+                    <span>{{ ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName }}</span>
                   </button>
                 </div>
                 <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
@@ -1741,11 +1742,12 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                    class="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
                   >
-                    <svg class="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="w-3.5 h-3.5 text-slate-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
+                    <span>{{ ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName }}</span>
                   </button>
                 </div>
               </template>

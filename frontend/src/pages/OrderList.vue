@@ -744,9 +744,20 @@ onUnmounted(() => {
 
       <!-- === 検索結果一覧（05f007f準拠: 該当件数は白カード外、結果テーブルは別の白カード） === -->
       <div v-show="hasSearched && !isLoading && orderItems.length > 0">
-        <!-- -- 該当件数（白カードの外、右寄せ。一覧との余白を確保） -- -->
-        <div class="flex justify-end items-center gap-4 mb-6 pl-6 pr-6">
-          <span class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs">
+        <!-- -- インフォメーション＋該当件数（同一ブロック。前者は左寄せ、後者は右寄せ） -- -->
+        <div class="flex items-center gap-4 mb-6 pl-3 pr-2 w-full min-w-0">
+          <span class="flex items-center gap-2 text-sm text-slate-500 min-w-0 flex-1">
+            <span class="group relative inline-flex text-slate-400 cursor-help shrink-0">
+              ⓘ
+              <span
+                class="pointer-events-none absolute left-0 bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
+                role="tooltip"
+              >
+              </span>
+            </span>
+            対象行をダブルクリックすると、注文詳細画面が表示されます
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs shrink-0 ml-auto">
             <span class="text-slate-500 font-medium">該当</span>
             <span class="font-normal text-main tabular-nums">{{ totalCount }}</span>
             <span class="text-slate-500 font-medium">件</span>
