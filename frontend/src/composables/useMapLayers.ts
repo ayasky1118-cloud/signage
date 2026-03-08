@@ -8,6 +8,15 @@
 import type maplibregl from "maplibre-gl"
 import type { FeatureCollection } from "geojson"
 
+//-- 縞線用: ensureStripePatterns は不要（2レイヤー方式のためパターン画像不要）
+//-- 互換のため export は残す（他から呼ばれている可能性）
+export function ensureStripePatterns(
+  _map: maplibregl.Map,
+  _routeFeatures: FeatureCollection
+): void {
+  // 2レイヤー方式（白ベース + 選択色点線）で縞を実現。パターン画像は不要
+}
+
 //-- html_object_value の IMAGE_PLACEMENT から画像登録用の配列を生成する
 //-- 利用例: initLayers(map, features, getImageItemsFromHtmlObjects(htmlObjects))
 export function getImageItemsFromHtmlObjects(
@@ -52,16 +61,57 @@ export function useMapLayers() {
     },
     imageItems?: { id: string; url: string }[]
   ) => {
-    //-- 線描画用のGeoJSONデータをソースとして追加。線描画レイヤーを追加（手順 10-2: properties の color/width で data-driven）
-    map.addSource("route", { type: "geojson", data: features.routeFeatures })
+    //-- 線描画用のGeoJSONデータをソースとして追加。線描画レイヤーを追加（手順 10-2: properties の color/width/stripe で data-driven）
+    map.addSource("route", { type: "geojson", data: features.routeFeatures, lineMetrics: true })
+    //-- 単色（実線）: round で滑らか
     map.addLayer({
-      id: "route-line",
+      id: "route-line-solid",
       type: "line",
       source: "route",
+      filter: ["all", ["!=", ["get", "stripe"], true], ["!=", ["get", "style"], "dashed"]],
       layout: { "line-join": "round", "line-cap": "round" },
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
         "line-width": ["coalesce", ["get", "width"], 4],
+      },
+    })
+    ensureStripePatterns(map, features.routeFeatures)
+    //-- 縞線: 2レイヤー方式で 選択色 白 選択色 白 を実現
+    //-- line-pattern の白が透明になる問題を回避。下に白線、上に選択色の点線を重ねる
+    map.addLayer({
+      id: "route-line-stripe-base",
+      type: "line",
+      source: "route",
+      filter: ["==", ["get", "stripe"], true],
+      layout: { "line-join": "miter", "line-cap": "butt" },
+      paint: {
+        "line-color": "#FFFFFF",
+        "line-width": ["coalesce", ["get", "width"], 4],
+      },
+    })
+    map.addLayer({
+      id: "route-line-stripe",
+      type: "line",
+      source: "route",
+      filter: ["==", ["get", "stripe"], true],
+      layout: { "line-join": "miter", "line-cap": "butt" },
+      paint: {
+        "line-color": ["coalesce", ["get", "color"], "#FF0000"],
+        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-dasharray": [2, 2],
+      },
+    })
+    //-- 点線のみ: 縞線は route-line-stripe の line-pattern で描画。stripe を明示的に除外し余計な選択色線を防止
+    map.addLayer({
+      id: "route-line",
+      type: "line",
+      source: "route",
+      filter: ["all", ["==", ["get", "style"], "dashed"], ["!=", ["get", "stripe"], true]],
+      layout: { "line-join": "miter", "line-cap": "butt" },
+      paint: {
+        "line-color": ["coalesce", ["get", "color"], "#FF0000"],
+        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-dasharray": [1, 1],
       },
     })
 
@@ -137,5 +187,6 @@ export function useMapLayers() {
   return {
     initLayers,
     loadMapImage,
+    ensureStripePatterns,
   }
 }

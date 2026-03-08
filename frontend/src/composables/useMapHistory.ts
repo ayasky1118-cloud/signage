@@ -3,6 +3,7 @@ import { ref } from "vue"
 import type maplibregl from "maplibre-gl"
 import type { FeatureCollection } from "geojson"
 import type { EditMode } from "./useMapFeatures"
+import { ensureStripePatterns } from "./useMapLayers"
 
 type HistoryAction = {
   type: EditMode
@@ -35,6 +36,7 @@ export function useMapHistory() {
     switch (last.type) {
       case "route":
         features.routeFeatures.features.pop()
+        ensureStripePatterns(map, features.routeFeatures)
         ;(map.getSource("route") as maplibregl.GeoJSONSource)?.setData(features.routeFeatures)
         break
       case "text":

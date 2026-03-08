@@ -19,12 +19,14 @@ import type { Feature, FeatureCollection, LineString, Point } from "geojson"
  */
 export interface RouteItem {
   id: string
-  /** value_code（例: ROAD_CLOSED, DETOUR） */
+  /** value_code（例: SOLID_RED_W4, STRIPE_BLUE_W4） */
   type: string
   /** 経路の座標 [[lng, lat], [lng, lat], ...] */
   coordinates: [number, number][]
   width?: number
   color?: string
+  /** 縞線: true のとき選択色と白を交互に表示 */
+  stripe?: boolean
 }
 
 /** design_data.routes の型。RouteItem[] に統一 */
@@ -49,10 +51,18 @@ export interface RouteFeatureProperties {
   type?: string
   width?: number
   color?: string
+  /** 縞線: true のとき選択色と白を交互に表示 */
+  stripe?: boolean
+  /** 点線: "dashed" のとき破線表示 */
+  style?: "solid" | "dashed"
+  /** 縞線用 line-pattern の画像 ID（stripe 時のみ） */
+  patternId?: string
 }
 
 //-- RouteItem を GeoJSON Feature<LineString> に変換する
 export function routeItemToGeoJSONFeature(route: RouteItem): Feature<LineString, RouteFeatureProperties> {
+  const color = route.color ?? "#FF0000"
+  const stripe = route.stripe === true
   return {
     type: "Feature",
     id: route.id,
@@ -64,7 +74,10 @@ export function routeItemToGeoJSONFeature(route: RouteItem): Feature<LineString,
       _id: route.id,
       type: route.type,
       width: route.width,
-      color: route.color,
+      color,
+      stripe,
+      style: route.type?.includes("DASHED") ? "dashed" : "solid",
+      ...(stripe && { patternId: `stripe-pattern-${color.replace("#", "")}` }),
     },
   }
 }
@@ -79,6 +92,7 @@ export function geoJSONFeatureToRouteItem(feature: Feature<LineString, RouteFeat
     coordinates: [...(feature.geometry.coordinates as [number, number][])],
     width: props.width,
     color: props.color,
+    stripe: props.stripe,
   }
 }
 

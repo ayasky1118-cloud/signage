@@ -20,6 +20,7 @@ import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
 import { getImageItemsFromHtmlObjects } from "../composables/useMapLayers"
+import { installMapWarnSuppress, uninstallMapWarnSuppress } from "../composables/useMapWarnSuppress"
 import { useMapFeatures } from "../composables/useMapFeatures"
 import { useMapInteraction } from "../composables/useMapInteraction"
 import { useMapHistory } from "../composables/useMapHistory"
@@ -1101,6 +1102,7 @@ function syncMapFeaturesToBranch(branchNo: string) {
 //-- コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元）
 onBeforeUnmount(() => {
   document.body.style.overflow = ""
+  uninstallMapWarnSuppress()
 })
 
 //-- ルート描画モードか（地図クリックで一時マーカーを打てる状態）
@@ -1145,6 +1147,8 @@ function buildRouteDrawOptionsFromThreeDropdowns(): {
   type: string
   color: string
   width: number
+  stripe: boolean
+  style: "solid" | "dashed"
 } {
   const typeVal = routeLineTypeObj.value ? getSelectedValue(routeLineTypeObj.value) : undefined
   const colorVal = routeLineColorObj.value ? getSelectedValue(routeLineColorObj.value) : undefined
@@ -1154,6 +1158,8 @@ function buildRouteDrawOptionsFromThreeDropdowns(): {
   const widthCode = widthVal?.valueCode ?? ""
   let color = "#FF0000"
   let width = 4
+  let stripe = false
+  let style: "solid" | "dashed" = "solid"
   if (colorVal?.valueData) {
     try {
       const parsed = JSON.parse(colorVal.valueData) as { color?: string }
@@ -1170,9 +1176,18 @@ function buildRouteDrawOptionsFromThreeDropdowns(): {
       /* ignore */
     }
   }
-  //-- type は復元用に複合コード（例: SOLID_RED_W4）
+  if (typeVal?.valueData) {
+    try {
+      const parsed = JSON.parse(typeVal.valueData) as { stripe?: boolean; style?: string }
+      stripe = parsed.stripe === true
+      if (parsed.style === "dashed") style = "dashed"
+    } catch {
+      /* ignore */
+    }
+  }
+  //-- type は復元用に複合コード（例: SOLID_RED_W4, STRIPE_BLUE_W4）
   const type = `${typeCode}_${colorCode}_${widthCode}`.replace(/^_|_$/g, "") || "LINE"
-  return { type, color, width }
+  return { type, color, width, stripe, style }
 }
 
 //-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映。方式B: 3つのドロップダウン選択値を組み合わせて drawRoute に渡す
@@ -1180,6 +1195,7 @@ function onConfirmRouteDraw() {
   const map = fullscreenMapRef.value?.getMap() ?? null
   const drawOptions = buildRouteDrawOptionsFromThreeDropdowns()
   mapFeatures.drawRoute(map, drawOptions)
+  mapInteraction.editMode.value = "none"
   mapHistory.pushHistory("route")
   syncMapFeaturesToBranch(activeBranch.value)
 }
@@ -1387,6 +1403,8 @@ function onOrderNoBlur() {
 }
 
 onMounted(() => {
+  //-- MapLibre の SDF/non-SDF 混在ワーニングを抑制（検索時・全画面時ともに有効）
+  installMapWarnSuppress()
   //-- ページ表示時に状態をリセット（メニューからの遷移・bfcache 復元時もクリーンな状態で開始）
   selectedValueIdByObjectId.value = {}
   inputTextByObjectId.value = {}
@@ -1861,22 +1879,23 @@ watch(activeBranch, (newBranch, oldBranch) => {
                   </span>
                 </span>
               </div>
-              <!-- 方式B: ルート描画セクション（線の種類・色・太さの3つのドロップダウン＋描画・確定ボタン） -->
+              <!-- 方式B: ルート描画セクション（線の種類・色・太さの3つのドロップダウン1行＋その下に描画・確定ボタン） -->
               <template v-if="obj.categoryCode === 'ROUTE_DRAWING'">
-                <div class="order-detail-route-drawing-row">
-                  <div
-                    v-for="routeObj in [routeLineTypeObj, routeLineColorObj, routeLineWidthObj]"
-                    :key="routeObj?.htmlObjectId ?? ''"
-                    v-show="routeObj"
-                    class="order-detail-route-dropdown-wrap"
-                  >
-                    <select
-                      :value="selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE"
-                      class="order-detail-object-input"
-                      :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE) === SELECT_PLACEHOLDER_VALUE }"
-                      :disabled="isRouteDrawingMode()"
-                      @change="(e) => { selectedValueIdByObjectId[routeObj!.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
+                <div class="order-detail-route-drawing-block">
+                  <div class="order-detail-route-drawing-row">
+                    <div
+                      v-for="routeObj in [routeLineTypeObj, routeLineColorObj, routeLineWidthObj]"
+                      :key="routeObj?.htmlObjectId ?? ''"
+                      v-show="routeObj"
+                      class="order-detail-route-dropdown-wrap"
                     >
+                      <select
+                        :value="selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE"
+                        class="order-detail-object-input"
+                        :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE) === SELECT_PLACEHOLDER_VALUE }"
+                        :disabled="isRouteDrawingMode()"
+                        @change="(e) => { selectedValueIdByObjectId[routeObj!.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
+                      >
                       <option :value="SELECT_PLACEHOLDER_VALUE">選択してください</option>
                       <option
                         v-for="v in routeObj!.values"
@@ -1885,36 +1904,37 @@ watch(activeBranch, (newBranch, oldBranch) => {
                       >
                         {{ v.valueName }}
                       </option>
-                    </select>
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <div class="order-detail-object-row">
-                  <button
-                    type="button"
-                    :title="isRouteDrawingMode() ? 'キャンセル（描画をやめる）' : '描画'"
-                    :aria-label="isRouteDrawingMode() ? 'キャンセル' : '描画'"
-                    :aria-pressed="mapInteraction.editMode.value === 'route'"
-                    :class="[
-                      'btn-icon btn-icon--select',
-                      { 'order-detail-draw-btn--active': mapInteraction.editMode.value === 'route' }
-                    ]"
-                    :disabled="!isRouteDrawingMode() && !allRouteOptionsSelected"
-                    @click="onActionButtonClick(obj)"
-                  >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    title="ルートを確定"
-                    aria-label="ルートを確定"
-                    class="btn btn-small btn-primary"
-                    :disabled="mapFeatures.tempCoordinates.value.length < 2 || !allRouteOptionsSelected"
-                    @click="onConfirmRouteDraw"
-                  >
-                    確定
-                  </button>
+                  <div class="order-detail-object-row">
+                    <button
+                      type="button"
+                      :title="isRouteDrawingMode() ? 'キャンセル（描画をやめる）' : '描画'"
+                      :aria-label="isRouteDrawingMode() ? 'キャンセル' : '描画'"
+                      :aria-pressed="mapInteraction.editMode.value === 'route'"
+                      :class="[
+                        'btn-icon btn-icon--select',
+                        { 'order-detail-draw-btn--active': mapInteraction.editMode.value === 'route' }
+                      ]"
+                      :disabled="!isRouteDrawingMode() && !allRouteOptionsSelected"
+                      @click="onActionButtonClick(obj)"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      title="ルートを確定"
+                      aria-label="ルートを確定"
+                      class="btn btn-small btn-primary"
+                      :disabled="mapFeatures.tempCoordinates.value.length < 2 || !allRouteOptionsSelected"
+                      @click="onConfirmRouteDraw"
+                    >
+                      確定
+                    </button>
+                  </div>
                 </div>
               </template>
               <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素（画像配置等） -->

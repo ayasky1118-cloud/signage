@@ -19,7 +19,7 @@ import { useMapLayers } from "../composables/useMapLayers"
 import type { RouteItem } from "../types/map-data"
 import { routeItemsToFeatureCollection } from "../types/map-data"
 
-const { loadMapImage, initLayers } = useMapLayers()
+const { loadMapImage, initLayers, ensureStripePatterns } = useMapLayers()
 
 //-------------------------------------------------------------------------------
 //-- Props 定義
@@ -87,7 +87,6 @@ function initMap() {
   })
 
   //-- styleimagemissing: MapTiler スタイルが参照する POI アイコン等が未ロードの場合に発火。空画像を追加して Console 警告を抑制
-  //-- MapTiler の POI は SDF 形式のため、sdf: true を指定して「SBF and non-SBF icons in one buffer」警告を回避
   map.on("styleimagemissing", (e) => {
     const id = e.id
     if (map?.hasImage(id)) return
@@ -214,10 +213,24 @@ function applyDesignDataToMap() {
   const emptyPoint: FeatureCollection<Point> = { type: "FeatureCollection", features: [] }
   if (routeSource && data.routes !== undefined) {
     const routes = data.routes
-    const fc: FeatureCollection<LineString> =
+    let fc: FeatureCollection<LineString> =
       Array.isArray(routes) && routes.length > 0 && "coordinates" in (routes[0] as RouteItem)
         ? routeItemsToFeatureCollection(routes as RouteItem[])
         : (routes as FeatureCollection<LineString>) ?? emptyRoute
+    //-- 生 GeoJSON 時: stripe な feature に patternId を付与
+    if (fc.features?.length && fc.features.some((f: { properties?: Record<string, unknown> }) => f.properties?.stripe === true && !f.properties?.patternId)) {
+      fc = {
+        ...fc,
+        features: fc.features.map((f: { properties?: Record<string, unknown> }) => {
+          const p = f.properties
+          if (p?.stripe === true && p?.color && !p.patternId) {
+            return { ...f, properties: { ...p, patternId: `stripe-pattern-${String(p.color).replace("#", "")}` } }
+          }
+          return f
+        }),
+      }
+    }
+    ensureStripePatterns(map, fc)
     routeSource.setData(fc)
   }
   if (textsSource && data.texts !== undefined) textsSource.setData(data.texts ?? emptyPoint)

@@ -9,6 +9,7 @@ import type { Feature, Point, LineString } from "geojson"
 import type maplibregl from "maplibre-gl"
 import type { RouteItem } from "../types/map-data"
 import { routeItemsToFeatureCollection } from "../types/map-data"
+import { ensureStripePatterns } from "./useMapLayers"
 
 const genId = () => crypto.randomUUID()
 
@@ -82,12 +83,20 @@ export function useMapFeatures() {
     return "balloon"
   }
 
-  //-- ルート描画（手順 10-2: lineType / color / width をドロップダウン選択値から渡す）
-  type DrawRouteOptions = { type?: string; color?: string; width?: number }
+  //-- ルート描画（手順 10-2: lineType / color / width / stripe / style をドロップダウン選択値から渡す）
+  type DrawRouteOptions = {
+    type?: string
+    color?: string
+    width?: number
+    stripe?: boolean
+    style?: "solid" | "dashed"
+  }
   const drawRoute = (map: maplibregl.Map | null, options?: DrawRouteOptions): EditMode | null => {
     if (!map || tempCoordinates.value.length === 0) return null
     const opts = options ?? {}
     const routeId = genId()
+    const color = opts.color ?? "#FF0000"
+    const stripe = opts.stripe === true
     const newRoute: Feature<LineString, Record<string, unknown>> = {
       type: "Feature",
       id: routeId,
@@ -95,11 +104,15 @@ export function useMapFeatures() {
       properties: {
         _id: routeId,
         type: opts.type ?? "",
-        color: opts.color ?? "#FF0000",
+        color,
         width: opts.width ?? 4,
+        stripe,
+        style: opts.style ?? "solid",
+        ...(stripe && { patternId: `stripe-pattern-${color.replace("#", "")}` }),
       },
     }
     routeFeatures.value.features.push(newRoute)
+    ensureStripePatterns(map, routeFeatures.value)
     const routeSource = map.getSource("route") as maplibregl.GeoJSONSource
     routeSource?.setData(routeFeatures.value)
     tempCoordinates.value = []
@@ -153,11 +166,24 @@ export function useMapFeatures() {
     if (isRouteItemArray(rawRoutes)) {
       routeFeatures.value = routeItemsToFeatureCollection(rawRoutes)
     } else {
-      routeFeatures.value = (rawRoutes as { type: string; features: unknown[] }) || empty
+      const fc = (rawRoutes as { type: string; features: unknown[] }) || empty
+      //-- 生 GeoJSON 復元時: stripe な feature に patternId を付与
+      if (fc.features?.length) {
+        fc.features = fc.features.map((f: unknown) => {
+          const feat = f as { properties?: Record<string, unknown> }
+          const p = feat.properties
+          if (p?.stripe === true && p?.color && !p.patternId) {
+            return { ...feat, properties: { ...p, patternId: `stripe-pattern-${String(p.color).replace("#", "")}` } }
+          }
+          return feat
+        })
+      }
+      routeFeatures.value = fc
     }
     ;(map.getSource("texts") as maplibregl.GeoJSONSource)?.setData(textFeatures.value)
     ;(map.getSource("images") as maplibregl.GeoJSONSource)?.setData(imageFeatures.value)
     ;(map.getSource("balloons") as maplibregl.GeoJSONSource)?.setData(balloonFeatures.value)
+    ensureStripePatterns(map, routeFeatures.value)
     ;(map.getSource("route") as maplibregl.GeoJSONSource)?.setData(routeFeatures.value)
   }
 

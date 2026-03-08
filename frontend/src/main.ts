@@ -11,6 +11,16 @@
 //-- 3. mount('#app') で index.html の #app 要素にマウント
 import { createApp } from "vue"
 
+//-- MapLibre の「Cannot mix SDF and non-SDF icons」等のスタイル警告を抑制
+//-- MapTiler（SDF）と吹き出し/ユーザー画像（non-SDF）の混在は既知の制約で、表示には影響しない
+const originalWarn = console.warn
+console.warn = (...args: unknown[]) => {
+  const msg = String(args[0] ?? "")
+  if (msg.includes("SDF") && msg.includes("non-SDF")) return
+  if (msg.includes("Style sheet warning")) return
+  originalWarn.apply(console, args)
+}
+
 //-- グローバル CSS（読み込み順: shared → common）
 import "./assets/styles/shared.css"
 import "./assets/styles/common.css"

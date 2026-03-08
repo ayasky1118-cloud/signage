@@ -588,16 +588,21 @@
   cursor: help;
 }
 
-/* 方式B: ルート描画の3つのドロップダウン行 */
+/* 方式B: ルート描画ブロック（3つのドロップダウン1行＋その下に描画・確定ボタン） */
+.order-detail-route-drawing-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .order-detail-route-drawing-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
   align-items: center;
 }
 .order-detail-route-dropdown-wrap {
   flex: 1;
-  min-width: 6rem;
+  min-width: 0;
 }
 .order-detail-route-dropdown-wrap .order-detail-object-input {
   width: 100%;

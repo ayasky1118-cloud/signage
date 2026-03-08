@@ -26,8 +26,8 @@ INSERT INTO html_object (category_code, category_name, html_object_type, has_chi
 -- value_data: {"style":"solid|dashed","stripe":bool}
 INSERT INTO html_object_value (html_object_id, value_code, value_name, value_data, sample_image_path, display_order) VALUES
 (2, 'SOLID', '単色', '{"style":"solid","stripe":false}', NULL, 10),
-(2, 'STRIPE', '選択した色と白の縞線', '{"style":"solid","stripe":true}', NULL, 20),
-(2, 'DASHED', '選択した色の点線', '{"style":"dashed","stripe":false}', NULL, 30);
+(2, 'STRIPE', '縞線', '{"style":"solid","stripe":true}', NULL, 20),
+(2, 'DASHED', '点線', '{"style":"dashed","stripe":false}', NULL, 30);
 
 -- html_object_value（線の色）
 -- value_data: {"color":"#HEX"}
@@ -40,12 +40,16 @@ INSERT INTO html_object_value (html_object_id, value_code, value_name, value_dat
 (3, 'PINK', 'ピンク', '{"color":"#E6007E"}', NULL, 50);
 
 -- html_object_value（線の太さ）
--- value_data: {"width":N}
+-- value_data: {"width":N} 最小6px〜20px、2px刻み
 INSERT INTO html_object_value (html_object_id, value_code, value_name, value_data, sample_image_path, display_order) VALUES
-(4, 'W2', '2px', '{"width":2}', NULL, 10),
-(4, 'W3', '3px', '{"width":3}', NULL, 20),
-(4, 'W4', '4px', '{"width":4}', NULL, 30),
-(4, 'W6', '6px', '{"width":6}', NULL, 40);
+(4, 'W6', '6px', '{"width":6}', NULL, 10),
+(4, 'W8', '8px', '{"width":8}', NULL, 20),
+(4, 'W10', '10px', '{"width":10}', NULL, 30),
+(4, 'W12', '12px', '{"width":12}', NULL, 40),
+(4, 'W14', '14px', '{"width":14}', NULL, 50),
+(4, 'W16', '16px', '{"width":16}', NULL, 60),
+(4, 'W18', '18px', '{"width":18}', NULL, 70),
+(4, 'W20', '20px', '{"width":20}', NULL, 80);
 
 -- html_object_value（テキスト配置: プレースホルダー）
 INSERT INTO html_object_value (html_object_id, value_code, value_name, value_data, sample_image_path, display_order) VALUES
