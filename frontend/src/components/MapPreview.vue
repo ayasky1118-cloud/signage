@@ -14,6 +14,9 @@
 import { ref, onMounted, onBeforeUnmount, watch } from "vue"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
+import { useMapLayers } from "../composables/useMapLayers"
+
+const { loadMapImage } = useMapLayers()
 
 //-------------------------------------------------------------------------------
 //-- Props 定義
@@ -25,8 +28,10 @@ const props = withDefaults(
     zoom?: number  //-- 初期ズームレベル（1〜22。15 が市街地の標準的な表示）
     apiKey?: string | null  //-- MapTiler API キー。未設定または空文字の場合は地図を表示せず「設定してください」メッセージを表示
     interactive?: boolean  //-- true: パン・ズーム・ナビゲーション有効。false: 表示のみ（クリック・ドラッグ無効）
+    //-- html_object_value の IMAGE_PLACEMENT から取得した画像。getImageItemsFromHtmlObjects(htmlObjects) で生成
+    imageItems?: { id: string; url: string }[]
   }>(),
-  { center: null, zoom: 15, apiKey: null, interactive: true }
+  { center: null, zoom: 15, apiKey: null, interactive: true, imageItems: () => [] }
 )
 
 //-------------------------------------------------------------------------------
@@ -112,6 +117,26 @@ watch(
       initMap()
     }
   }
+)
+
+//-- imageItems が後から設定された場合（htmlObjects の非同期取得後）に画像を登録する
+watch(
+  () => props.imageItems,
+  async (items) => {
+    if (!map || !items?.length) return
+    if (map.isStyleLoaded()) {
+      for (const item of items) {
+        await loadMapImage(map, item.id, item.url)
+      }
+    } else {
+      map.once("load", async () => {
+        for (const item of items) {
+          await loadMapImage(map!, item.id, item.url)
+        }
+      })
+    }
+  },
+  { immediate: true }
 )
 
 //-- 親コンポーネントから fitMapToContainer を呼び出せるように公開

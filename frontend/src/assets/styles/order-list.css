@@ -264,12 +264,14 @@
 
 /* 画面タイトル（bfcache復元時も色を維持） */
 #order-list-page .card-header-full > div:first-child {
-  background-color: #003b82 !important;
+  background-color: rgb(241 245 249) !important;
+  border-bottom-color: rgb(226 232 240) !important;
 }
 #order-list-page .card-header-full > div:first-child h2 {
-  color: #fff !important;
+  color: var(--color-main) !important;
   text-align: left;
 }
+
 
 /* Flatpickr テーマは flatpickr-theme.css で共通読み込み */
 

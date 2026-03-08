@@ -95,31 +95,34 @@
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   width: 100%;
-  background-color: var(--color-main);
+  background-color: white;
   padding: 1rem;
   border-radius: 0.75rem;
-  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.1);
+  border: 1px solid rgb(0 59 130 / 0.25);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(226 232 240 / 0.8);
   transition: all 0.2s;
   text-decoration: none;
-  color: white;
+  color: var(--color-main);
 }
 
 .menu-item:hover,
 .menu-item:focus {
-  background-color: var(--color-sub-blue);
+  background-color: rgb(0 59 130 / 0.06);
+  border-color: rgb(0 59 130 / 0.4);
   transform: translateY(-2px);
+  box-shadow: 0 6px 12px -2px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 59 130 / 0.2);
   outline: none;
 }
 
 .menu-item-icon {
-  background: rgb(255 255 255 / 0.1);
+  background: rgb(0 59 130 / 0.08);
   padding: 0.75rem;
   border-radius: 0.5rem;
   transition: background 0.2s;
@@ -127,34 +130,33 @@
 
 .menu-item:hover .menu-item-icon,
 .menu-item:focus .menu-item-icon {
-  background: rgb(255 255 255 / 0.2);
+  background: rgb(0 59 130 / 0.12);
 }
 
 .menu-item-icon svg {
   width: 1.5rem;
   height: 1.5rem;
-  color: white;
+  color: var(--color-main);
 }
 
-/* 05f007f 準拠: text-lg font-normal */
 .menu-item-label {
   flex: 1;
   text-align: center;
   font-size: 1.125rem;
   font-weight: 400;
-  color: white;
+  color: var(--color-main);
 }
 
 .menu-item-arrow {
   width: 1.5rem;
   height: 1.5rem;
-  color: rgb(255 255 255 / 0.5);
+  color: rgb(0 59 130 / 0.5);
   margin-left: auto;
   transition: color 0.2s;
 }
 
 .menu-item:hover .menu-item-arrow,
 .menu-item:focus .menu-item-arrow {
-  color: white;
+  color: var(--color-main);
 }
 </style>

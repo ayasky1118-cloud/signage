@@ -250,10 +250,11 @@
   overflow: hidden;
 }
 .order-detail-branch-tab-item--active {
-  background-color: var(--color-main);
+  background-color: rgb(0 59 130 / 0.1);
+  border: 1px solid var(--color-main);
 }
 .order-detail-branch-tab-item--inactive {
-  background-color: rgb(241 245 249);
+  background-color: white;
   border: 1px solid rgb(226 232 240);
 }
 .order-detail-branch-tab {
@@ -262,18 +263,21 @@
   font-size: 0.75rem;
   font-family: inherit;
   font-weight: 400;
-  color: white;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   background: transparent;
   border: none;
   transition: all 0.2s;
 }
+.order-detail-branch-tab-item--active .order-detail-branch-tab {
+  color: var(--color-main);
+  background-color: transparent;
+}
 .order-detail-branch-tab-item--inactive .order-detail-branch-tab {
-  color: rgb(71 85 105);
-  background-color: rgb(241 245 249);
+  color: rgb(100 116 139);
+  background-color: transparent;
 }
 .order-detail-branch-tab-item--inactive .order-detail-branch-tab:hover {
-  background-color: rgb(226 232 240);
+  background-color: rgb(248 250 252);
 }
 
 /* 枝番詳細2カラム */
@@ -677,8 +681,9 @@
 
 /* 画面タイトル（bfcache復元時も色を維持） */
 #order-detail-page .card-header-full > div:first-child {
-  background-color: #003b82 !important;
+  background-color: rgb(241 245 249) !important;
+  border-bottom-color: rgb(226 232 240) !important;
 }
 #order-detail-page .card-header-full > div:first-child h2 {
-  color: #fff !important;
+  color: var(--color-main) !important;
 }

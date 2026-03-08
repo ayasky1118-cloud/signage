@@ -19,6 +19,7 @@ import { FORM_IDS } from "../constants/form-ids"
 import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
+import { getImageItemsFromHtmlObjects } from "../composables/useMapLayers"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import MapPreview from "../components/MapPreview.vue"
@@ -948,6 +949,8 @@ const fullscreenEditVisible = ref(false)
 
 //-- HTMLオブジェクトマスタ（ルート描画・テキスト配置・画像配置・吹き出し配置等）
 const htmlObjects = ref<HtmlObjectItem[]>([])
+//-- 地図用画像（IMAGE_PLACEMENT の sampleImagePath から取得）。MapPreview の imageItems に渡す
+const imageItemsForMap = computed(() => getImageItemsFromHtmlObjects(htmlObjects.value))
 //-- 各オブジェクトで選択中の値ID（has_child_table のとき使用）
 const selectedValueIdByObjectId = ref<Record<number, number>>({})
 //-- 吹き出し等の入力テキスト（has_child_table でないとき使用）
@@ -1748,6 +1751,7 @@ watch(fullscreenEditVisible, async (visible) => {
             :center="mapCenter"
             :zoom="15"
             :api-key="mapTilerApiKey"
+            :image-items="imageItemsForMap"
             class="order-detail-map-fullscreen"
           />
         </div>

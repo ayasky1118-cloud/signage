@@ -224,23 +224,19 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
 }
 
-/* 機能タイトルヘッダ（注文一覧・注文新規・看板編集・メニュー等で共通。以前の高さ＝padding 1rem） */
+/* 機能タイトルヘッダ（モック準拠: 薄いグレー背景＋メインカラーのタイトル） */
 .page-card-header {
-  background-color: var(--color-main);
-  padding: 1rem 2rem;
+  background-color: rgb(241 245 249);
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgb(226 232 240);
 }
 .page-card-header h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 400;
-  color: white;
+  color: var(--color-main);
   letter-spacing: -0.025em;
   text-align: left;
-}
-@media (min-width: 768px) {
-  .page-card-header h2 {
-    font-size: 1.125rem;
-  }
 }
 
 /* -----------------------------------------------------------------------------
