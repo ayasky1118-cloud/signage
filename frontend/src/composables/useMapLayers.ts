@@ -117,7 +117,7 @@ export function useMapLayers() {
         "line-dasharray": [8, 8],
       },
     })
-    //-- 点線のみ: 縞線は route-line-stripe の line-pattern で描画。stripe を明示的に除外し余計な選択色線を防止
+    //-- 点線のみ: 縞線と同様の処理（layout・dasharray）だが隙間は透明のまま 選択色 透明 選択色 透明
     map.addLayer({
       id: "route-line",
       type: "line",
@@ -127,7 +127,7 @@ export function useMapLayers() {
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
         "line-width": lineWidthZoomExpr,
-        "line-dasharray": [1, 1],
+        "line-dasharray": [8, 8],
       },
     })
 
