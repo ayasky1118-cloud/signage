@@ -546,15 +546,14 @@
   padding: 0;
 }
 
-/* 一覧セル：セマンティッククラス */
+/* 一覧セル：注文番号モーダルに合わせたフォントスタイル */
 .order-list-cell-order-no {
-  font-family: ui-monospace, monospace;
   font-size: 0.875rem;
   color: var(--color-main);
 }
 .order-list-cell-primary {
   font-size: 0.75rem;
-  color: rgb(71 85 105);
+  color: rgb(51 65 85);
 }
 .order-list-cell-secondary {
   font-size: 0.625rem;
@@ -568,8 +567,8 @@
   font-size: 0.75rem;
   color: rgb(100 116 139);
 }
+/* 枝番は注文番号に合わせる */
 .order-list-branch-link {
-  font-family: ui-monospace, monospace;
   font-size: 0.875rem;
   color: var(--color-main);
 }

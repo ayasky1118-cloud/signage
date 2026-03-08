@@ -24,7 +24,8 @@ import "flatpickr/dist/flatpickr.min.css"
 import "../assets/styles/flatpickr-theme.css"
 import "../assets/styles/order-main.css"
 import { validateAddress } from "../composables/useAddressApi"
-import { searchOrders, createOrder, getOrderByNo, updateOrderMain, updateOrderItems, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
+import { createOrder, getOrderByNo, updateOrderMain, updateOrderItems, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
+import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
@@ -249,9 +250,13 @@ const hasUnsavedChanges = computed(() => {
 // モーダル（注文番号選択・顧客選択・テンプレート選択・各種確認）
 // -----------------------------------------------------------------------------
 
-const orderListForSelect = ref<OrderItem[]>([])
-const orderNoSelectModalOpen = ref(false)
-const isLoadingOrders = ref(false)
+const {
+  orderListForSelect,
+  isLoadingOrders,
+  fetchErrorMessage,
+  modalOpen: orderNoSelectModalOpen,
+  openOrderNoSelectModal,
+} = useOrderNoSelectModal(getLoginCompanyId)
 
 const customerListForSelect = ref<CustomerItem[]>([])
 const customerSelectModalOpen = ref(false)
@@ -380,27 +385,6 @@ function clearOtherFieldsOnOrderNoChange() {
   templateId.value = null
   templateItemValues.value = []
   hasSearchedInChangeMode.value = false
-}
-
-/** 注文番号選択モーダルを開く。APIで一覧取得し、0件のときはメッセージのみ表示 */
-async function openOrderNoSelectModal() {
-  isLoadingOrders.value = true
-  try {
-    const result = await searchOrders({ companyId: getLoginCompanyId(), perPage: 50, page: 1 })
-    orderListForSelect.value = result.items
-    if (result.items.length === 0) {
-      requiredValidationMessage.value = "データがありません"
-      requiredValidationOpen.value = true
-      return
-    }
-    orderNoSelectModalOpen.value = true
-  } catch {
-    orderListForSelect.value = []
-    requiredValidationMessage.value = "データの取得に失敗しました。"
-    requiredValidationOpen.value = true
-  } finally {
-    isLoadingOrders.value = false
-  }
 }
 
 /** 注文番号選択モーダルで選択した注文の番号をフォームにセットし、他項目をクリアする */
@@ -942,7 +926,7 @@ watch(orderNo, () => {
                     type="text"
                     :readonly="orderNoReadOnly"
                     :placeholder="orderNoPlaceholder"
-                    class="form-input text-mono order-main-input--order-no"
+                    class="form-input order-main-input--order-no"
                     :class="{ 'form-input--readonly': orderNoReadOnly }"
                   />
                   <button
@@ -1307,6 +1291,7 @@ watch(orderNo, () => {
       v-model="orderNoSelectModalOpen"
       :items="orderListForSelect"
       :loading="isLoadingOrders"
+      :error-message="fetchErrorMessage"
       @select="selectOrderNo"
     />
 

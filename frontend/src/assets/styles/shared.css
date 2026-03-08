@@ -676,7 +676,7 @@ a.btn-back {
   gap: 0.5rem;
 }
 
-/* 詳細トグルボタン（看板編集・注文一覧で共通。看板編集の開くトグルを正とする） */
+/* 詳細トグルボタン（看板編集・注文一覧で共通） */
 .detail-toggle-btn {
   display: inline-flex;
   align-items: center;

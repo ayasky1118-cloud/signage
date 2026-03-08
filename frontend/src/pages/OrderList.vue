@@ -20,6 +20,7 @@ import "flatpickr/dist/flatpickr.min.css"
 import "../assets/styles/flatpickr-theme.css"
 import "../assets/styles/order-list.css"
 import { searchOrders, type OrderItem } from "../composables/useOrderApi"
+import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { STATUS_OPTIONS, PRODUCTION_TYPE_OPTIONS } from "../constants/order"
@@ -350,9 +351,13 @@ const customerListForSelect = ref<CustomerItem[]>([])
 const customerSelectModalOpen = ref(false)
 const isLoadingCustomers = ref(false)
 
-const orderListForSelect = ref<OrderItem[]>([])
-const orderNoSelectModalOpen = ref(false)
-const isLoadingOrders = ref(false)
+const {
+  orderListForSelect,
+  isLoadingOrders,
+  fetchErrorMessage,
+  modalOpen: orderNoSelectModalOpen,
+  openOrderNoSelectModal,
+} = useOrderNoSelectModal(getLoginCompanyId)
 
 /** 顧客選択モーダルを開く。未取得の場合はAPIで顧客一覧を取得する */
 function openCustomerSelectModal() {
@@ -376,20 +381,6 @@ function selectCustomer(c: CustomerItem) {
 function clearCustomer() {
   searchCustomerId.value = null
   searchCustomerName.value = ""
-}
-
-/** 注文番号選択モーダルを開く。APIで注文一覧を取得してから表示する */
-async function openOrderNoSelectModal() {
-  orderNoSelectModalOpen.value = true
-  isLoadingOrders.value = true
-  try {
-    const result = await searchOrders({ companyId: getLoginCompanyId(), perPage: 50, page: 1 })
-    orderListForSelect.value = result.items
-  } catch {
-    orderListForSelect.value = []
-  } finally {
-    isLoadingOrders.value = false
-  }
 }
 
 /** 注文番号選択モーダルで選択した注文番号を検索条件に反映する */
@@ -540,7 +531,7 @@ onUnmounted(() => {
                         v-model="searchOrderNo"
                         type="text"
                         id="inputOrderNo"
-                        class="form-input text-mono order-list-input--order-no"
+                        class="form-input order-list-input--order-no"
                         placeholder="注文番号を入力してください"
                       />
                       <button
@@ -642,6 +633,7 @@ onUnmounted(() => {
         v-model="orderNoSelectModalOpen"
         :items="orderListForSelect"
         :loading="isLoadingOrders"
+        :error-message="fetchErrorMessage"
         @select="selectOrderNo"
       />
 

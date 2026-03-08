@@ -56,7 +56,8 @@ function close() {
     <div v-show="modelValue" class="modal" aria-hidden="false">
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
-      <div class="modal-dialog order-detail-modal-dialog">
+      <!-- モーダル外（コンテンツ外）クリックで閉じる -->
+      <div class="modal-dialog order-detail-modal-dialog" @click="close">
         <div
           v-if="order"
           class="modal-content card-header-full order-detail-modal-content"
@@ -77,7 +78,7 @@ function close() {
               <dl class="modal-dl modal-dl--2col">
                 <div class="modal-dl-item modal-dl-item--order-no">
                   <dt class="modal-dt">注文番号</dt>
-                  <dd class="modal-dd modal-dd--order-no text-mono">{{ order.orderNo }}</dd>
+                  <dd class="modal-dd modal-dd--order-no">{{ order.orderNo }}</dd>
                 </div>
                 <div class="modal-dl-item">
                   <dt class="modal-dt">注文名</dt>
@@ -167,7 +168,7 @@ function close() {
                 </div>
                 <div v-if="order.branches?.length" class="modal-dl-item modal-dl-item--full">
                   <dt class="modal-dt">枝番</dt>
-                  <dd class="modal-dd modal-dd--muted text-mono">{{ order.branches.join(", ") }}</dd>
+                  <dd class="modal-dd modal-dd--muted">{{ order.branches.join(", ") }}</dd>
                 </div>
               </dl>
             </section>
@@ -250,14 +251,17 @@ function close() {
 }
 
 .modal-dt {
+  margin: 0;
   font-size: 0.625rem;
   font-weight: 400;
   color: rgb(148 163 184);
 }
 
 .modal-dd {
+  margin: 0;
   font-size: 0.75rem;
   color: rgb(51 65 85);
+  text-align: left;
 }
 
 .modal-dd--pre {

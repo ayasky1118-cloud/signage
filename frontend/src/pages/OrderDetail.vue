@@ -17,6 +17,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
+import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
@@ -199,25 +200,13 @@ function ensureVisible(branchNo: string) {
 // 注文一覧（選択モーダル用）
 // -----------------------------------------------------------------------------
 
-const orderListForSelect = ref<OrderItem[]>([])
-const isLoadingOrders = ref(false)
-
-/** 注文番号選択モーダル用に注文一覧をAPIで取得する */
-async function loadOrderListForSelect() {
-  isLoadingOrders.value = true
-  try {
-    const result = await searchOrders({
-      companyId: getLoginCompanyId(),
-      page: 1,
-      perPage: 100,
-    })
-    orderListForSelect.value = result.items
-  } catch {
-    orderListForSelect.value = []
-  } finally {
-    isLoadingOrders.value = false
-  }
-}
+const {
+  orderListForSelect,
+  isLoadingOrders,
+  fetchErrorMessage,
+  modalOpen: showOrderNoSelectModal,
+  openOrderNoSelectModal,
+} = useOrderNoSelectModal(getLoginCompanyId)
 
 /** 注文番号で検索し、取得した注文の表示項目・枝番一覧を反映する。見つからない場合は該当なしモーダルを表示 */
 /** preferBranchNo: 取得後にこの枝番をカレント選択する（登録後の再取得時など） */
@@ -467,7 +456,6 @@ const orderDetailForModal = ref<OrderItem | null>(null)
 const showRegisterConfirmModal = ref(false)
 const showRegisterResultModal = ref(false)
 const registerResultMessage = ref("")
-const showOrderNoSelectModal = ref(false)
 const showBranchAddModal = ref(false)
 const branchAddInput = ref("")
 const showBranchSwitchConfirmModal = ref(false)
@@ -516,12 +504,6 @@ function openRegisterResultModal(message: string) {
   showRegisterResultModal.value = true
 }
 
-/** 注文番号選択モーダル用に一覧を取得してからモーダルを開く */
-function openOrderNoSelectModal() {
-  loadOrderListForSelect().then(() => {
-    showOrderNoSelectModal.value = true
-  })
-}
 
 /** 枝番追加モーダルを開き、入力欄にフォーカスする */
 function openBranchAddModal() {
@@ -1266,7 +1248,7 @@ watch(fullscreenEditVisible, async (visible) => {
             <span>{{ orderInfoExpanded ? "閉じる" : "開く" }}</span>
           </button>
           <div v-show="orderInfoExpanded" class="order-detail-order-info-expanded">
-            <!-- 注文番号＋顧客名/担当者（同一行）・検索／選択ボタン・検索実行 -->
+            <!-- 注文番号＋顧客名/担当者＋更新日/更新者（同一行）・検索／選択ボタン・検索実行 -->
             <div class="order-detail-order-no-row">
               <div class="order-detail-form-field order-detail-form-field--order-no">
               <label class="form-label form-label--with-badge">
@@ -1281,7 +1263,7 @@ watch(fullscreenEditVisible, async (visible) => {
                   placeholder="注文番号を入力してください"
                   maxlength="20"
                   :readonly="orderNoReadOnly"
-                  class="order-detail-order-no-input text-mono"
+                  class="order-detail-order-no-input"
                   @blur="onOrderNoBlur"
                 />
                 <button
@@ -1323,20 +1305,20 @@ watch(fullscreenEditVisible, async (visible) => {
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.customerName) }}</div>
                 <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.manager) }}</div>
               </div>
-            </div>
-            <!-- 更新日・デザイン種別・注文名など（検索後に表示） -->
-            <div class="order-detail-order-info-grid">
-              <div class="order-detail-order-info-cell">
+              <div class="order-detail-order-info-cell order-detail-order-info-cell--update">
                 <div class="form-label">更新日 / 更新者</div>
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.updateDate) }}</div>
                 <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.updater) }}</div>
               </div>
+            </div>
+            <!-- デザイン種別/テンプレート・注文名/住所（同一ブロック） -->
+            <div class="order-detail-order-info-block">
               <div class="order-detail-order-info-cell">
                 <div class="form-label">デザイン種別 / テンプレート</div>
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.designType) }}</div>
                 <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.template) }}</div>
               </div>
-              <div class="order-detail-order-info-cell order-detail-order-info-cell--span-2">
+              <div class="order-detail-order-info-cell">
                 <div class="form-label">注文名 / 住所</div>
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.orderName) }}</div>
                 <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.address) }}</div>
@@ -1349,7 +1331,7 @@ watch(fullscreenEditVisible, async (visible) => {
 
     <!-- === 看板情報カード（検索済み時のみ表示） === -->
     <section v-show="hasSearched" class="order-detail-card order-detail-card--bordered card-shadow">
-      <!-- -- カードヘッダー -- -->
+      <!-- -- カードヘッダー（白背景・青アクセント） -- -->
       <div class="order-detail-signboard-header">
         <div class="order-detail-signboard-header-inner">
           <div class="order-detail-signboard-header-accent"></div>
@@ -1905,6 +1887,7 @@ watch(fullscreenEditVisible, async (visible) => {
     v-model="showOrderNoSelectModal"
     :items="orderListForSelect"
     :loading="isLoadingOrders"
+    :error-message="fetchErrorMessage"
     @select="selectOrderFromList"
   />
 

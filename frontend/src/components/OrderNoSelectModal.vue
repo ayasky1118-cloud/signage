@@ -24,6 +24,8 @@ defineProps<{
   items: OrderItem[]
   /** 一覧取得中のローディング状態。true のとき「読み込み中...」を表示 */
   loading: boolean
+  /** 取得失敗時のエラーメッセージ。指定時はテーブル代わりに表示 */
+  errorMessage?: string | null
 }>()
 
 // -----------------------------------------------------------------------------
@@ -80,6 +82,7 @@ function onSelect(order: OrderItem) {
           <!-- 本文: 注文一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
           <div class="modal-body modal-body--scroll">
             <p v-if="loading" class="text-muted">読み込み中...</p>
+            <p v-else-if="errorMessage" class="text-muted">{{ errorMessage }}</p>
             <table v-else class="data-table select-modal-table order-no-select-modal-table">
               <thead>
                 <tr class="data-table-header">
@@ -106,7 +109,7 @@ function onSelect(order: OrderItem) {
                   @click="onSelect(order)"
                 >
                   <td class="select-modal-table-td order-no-select-modal-td-order-no">
-                    <span class="data-table-cell-primary text-mono">{{ order.orderNo }}</span>
+                    <span class="data-table-cell-primary">{{ order.orderNo }}</span>
                   </td>
                   <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ order.orderName }}</div>
@@ -127,7 +130,7 @@ function onSelect(order: OrderItem) {
                 </tr>
               </tbody>
             </table>
-            <p v-if="!loading && items.length === 0" class="text-muted">データがありません</p>
+            <p v-if="!loading && !errorMessage && items.length === 0" class="text-muted">データがありません</p>
           </div>
           <!-- フッター（キャンセルボタン） -->
           <div class="modal-footer modal-footer--end">
