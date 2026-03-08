@@ -2,7 +2,21 @@
    共通スタイル - 注文・看板管理システム
    ======================================== */
 
-/* ブランドカラー（Tailwind CDN のカスタム色フォールバック） */
+/* リセット：ブラウザデフォルトの余白を除去 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* ボックスモデル（padding を width に含める） */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ブランドカラー */
 :root {
     --color-main: #003b82;
     --color-sub-blue: #007cba;
@@ -14,15 +28,13 @@
 .bg-main { background-color: var(--color-main) !important; }
 .text-main { color: var(--color-main) !important; }
 .bg-subBlue { background-color: var(--color-sub-blue) !important; }
-.hover\:bg-subBlue:hover { background-color: var(--color-sub-blue) !important; }
 .border-neutral { border-color: var(--color-neutral) !important; }
-.focus\:ring-lightBlue:focus { --tw-ring-color: var(--color-light-blue) !important; }
 
 /* 注文入力：新規/変更ラジオの選択・フォーカス表示 */
 .mode-radio-group input:focus {
     outline: none;
 }
-/* 選択時：濃い青背景・白文字（Tailwind peer-checked のフォールバック） */
+/* 選択時：濃い青背景・白文字 */
 .mode-radio-group input.peer:checked ~ span {
     background-color: var(--color-main) !important;
     color: white !important;
@@ -107,21 +119,3 @@ p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
 }
 
 
-/* メニューページ：選択肢ボタンの表示を確実にする（Tailwindカスタム色のフォールバック） */
-#menu-page .flex.flex-col.gap-3 > a {
-    background-color: #003b82;
-    color: white;
-    display: flex;
-    align-items: center;
-}
-#menu-page .flex.flex-col.gap-3 > a:hover {
-    background-color: #007cba;
-}
-#menu-page .flex.flex-col.gap-3 > a svg {
-    color: white;
-    flex-shrink: 0;
-}
-body {
-	font-family: "Noto Sans JP", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji",
-	  "Segoe UI Emoji";
-}

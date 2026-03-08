@@ -1,4 +1,17 @@
 <script setup lang="ts">
+/**
+ * OrderList - 注文一覧画面
+ *
+ * 【用途】
+ * ・注文の検索・一覧表示・ページネーション
+ * ・行ダブルクリックで注文詳細モーダル表示
+ * ・「看板編集」ボタンで OrderDetail へ遷移（orderNo, itemCode をクエリで渡す）
+ *
+ * 【主な機能】
+ * ・検索条件: 顧客・担当者・注文名・デザイン種別（主項目）、詳細検索で日付・ステータス等
+ * ・ソート: 注文番号・登録日で昇順/降順切り替え
+ * ・ページネーション: サーバー側（10件/ページ）
+ */
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
 import { RouterLink, useRouter, useRoute } from "vue-router"
 import flatpickr from "flatpickr"
@@ -16,6 +29,10 @@ import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 const router = useRouter()
 const route = useRoute()
 
+// -----------------------------------------------------------------------------
+// ユーティリティ
+// -----------------------------------------------------------------------------
+
 /** ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得） */
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
@@ -26,14 +43,17 @@ function getLoginCompanyId(): number {
   return 1
 }
 
-/* 主項目（常時表示） */
+// -----------------------------------------------------------------------------
+// 検索条件（主項目: 常時表示）
+// -----------------------------------------------------------------------------
+
 const searchCustomerId = ref<number | null>(null)
 const searchCustomerName = ref("")
 const searchManager = ref("")
 const searchOrderName = ref("")
 const searchDesignTypeId = ref<string>("")
 
-/* 詳細検索（展開時のみ表示） */
+// 検索条件（詳細: 展開時のみ表示）
 const searchOrderNo = ref("")
 const searchAddress = ref("")
 const searchStatus = ref("")
@@ -56,10 +76,13 @@ const STATUS_OPTIONS = [
 /** 検索条件「制作区分」の選択肢。注文登録画面と同一の固定値 */
 const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as const
 
-/* 詳細検索の開閉（初期は非表示） */
+// 詳細検索の開閉（初期は非表示）
 const detailSearchExpanded = ref(false)
 
-/* API検索結果 */
+// -----------------------------------------------------------------------------
+// API 検索結果・ローディング・エラー
+// -----------------------------------------------------------------------------
+
 const orderItems = ref<OrderItem[]>([])
 const totalCount = ref(0)
 const hasSearched = ref(false)
@@ -69,7 +92,10 @@ const showNoDataDialog = ref(false)
 const showApiErrorDialog = ref(false)
 const showDateRangeErrorDialog = ref(false)
 
-/* ソート（各項目ごとに直前のソート順を保持） */
+// -----------------------------------------------------------------------------
+// ソート（各カラムごとに昇順/降順を保持）
+// -----------------------------------------------------------------------------
+
 const sortBy = ref<"orderNo" | "createdDate" | null>(null)
 const sortOrderByOrderNo = ref<"asc" | "desc">("asc")
 const sortOrderByCreatedDate = ref<"asc" | "desc">("asc")
@@ -100,7 +126,10 @@ function toggleSortOrder(column: "orderNo" | "createdDate") {
   fetchOrders()
 }
 
-/* ページネーション（サーバー側） */
+// -----------------------------------------------------------------------------
+// ページネーション（サーバー側。10件/ページ）
+// -----------------------------------------------------------------------------
+
 /** 1ページあたりの表示件数。API の perPage にそのまま渡す */
 const PER_PAGE = 10
 const currentPage = ref(1)
@@ -156,13 +185,13 @@ function toJapaneseError(e: unknown): string {
   return msg || "検索に失敗しました。"
 }
 
-/** 画面上の日付（Y/m/d）をAPI用の YYYY-MM-DD 形式に変換する */
+/** 画面上の日付（Y/m/d）を API 用の YYYY-MM-DD 形式に変換 */
 function toApiDate(val: string): string {
   if (!val?.trim()) return ""
   return val.trim().replace(/\//g, "-")
 }
 
-/** 検索条件で注文一覧APIを呼び出し、結果を orderItems に反映する */
+/** 検索条件で注文一覧 API を呼び出し、結果を orderItems に反映。日付は Flatpickr の DOM から取得 */
 async function fetchOrders() {
   isLoading.value = true
   apiError.value = ""
@@ -268,7 +297,10 @@ function orderDetailParams(order: OrderItem, branch: string) {
   return { path: "/order/detail", query: { orderNo: order.orderNo, itemCode: branch, mode: "edit" } }
 }
 
-/* 注文詳細モーダル用 */
+// -----------------------------------------------------------------------------
+// 注文詳細モーダル
+// -----------------------------------------------------------------------------
+
 const orderDetailModalOpen = ref(false)
 const orderDetailSelected = ref<OrderItem | null>(null)
 
@@ -287,18 +319,23 @@ function designTypeLabel(value: string): string {
   return value || "—"
 }
 
-/* Flatpickr インスタンス */
+// -----------------------------------------------------------------------------
+// Flatpickr（日付ピッカー）
+// -----------------------------------------------------------------------------
+
 let fpFrom: flatpickr.Instance | null = null
 let fpTo: flatpickr.Instance | null = null
 let fpDeadline: flatpickr.Instance | null = null
 let fpProofreading: flatpickr.Instance | null = null
 
-/* 顧客選択モーダル用 */
+// -----------------------------------------------------------------------------
+// 顧客選択モーダル・注文番号選択モーダル
+// -----------------------------------------------------------------------------
+
 const customerListForSelect = ref<CustomerItem[]>([])
 const customerSelectModalOpen = ref(false)
 const isLoadingCustomers = ref(false)
 
-/* 注文番号選択モーダル用 */
 const orderListForSelect = ref<OrderItem[]>([])
 const orderNoSelectModalOpen = ref(false)
 const isLoadingOrders = ref(false)
@@ -388,7 +425,7 @@ onUnmounted(() => {
 
 <template>
   <!-- === 画面：注文一覧 === -->
-  <main id="order-list-page" class="bg-[#e2e8f0] text-slate-600 min-h-screen">
+  <main id="order-list-page" class="order-list-page text-slate-600 min-h-screen">
     <div class="max-w-6xl mx-auto py-12 px-8">
       <!-- === 検索条件カード === -->
       <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-4">
@@ -408,12 +445,12 @@ onUnmounted(() => {
                     type="text"
                     readonly
                     placeholder="顧客を選択してください"
-                    class="flex-1 min-w-0 h-[2.25rem] box-border bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 text-xs"
+                    class="flex-1 min-w-0 form-input form-input--readonly"
                   />
                   <button
                     type="button"
                     title="選択"
-                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all duration-200 btn-icon btn-icon--select"
                     @click="openCustomerSelectModal"
                   >
                     <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -427,7 +464,7 @@ onUnmounted(() => {
                 <input
                   v-model="searchManager"
                   type="text"
-                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
                   placeholder="担当者名を入力"
                 />
               </div>
@@ -436,7 +473,7 @@ onUnmounted(() => {
                 <input
                   v-model="searchOrderName"
                   type="text"
-                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
                   placeholder="注文名を入力"
                 />
               </div>
@@ -444,7 +481,7 @@ onUnmounted(() => {
                 <label class="text-xs font-normal text-slate-500 block">デザイン種別</label>
                 <select
                   v-model="searchDesignTypeId"
-                  class="w-40 md:w-48 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                  class="w-40 md:w-48 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-select"
                 >
                   <option value="">デザイン種別を選択</option>
                   <option
@@ -460,28 +497,28 @@ onUnmounted(() => {
                 <label class="text-xs font-normal text-slate-500 block invisible select-none">検索</label>
                 <button
                   type="button"
-                  class="shrink-0 h-[2.25rem] px-6 py-2 text-xs rounded-xl bg-main hover:bg-subBlue text-white font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  title="検索"
+                  class="order-list-btn-search shrink-0 h-[2.25rem] w-[2.25rem] flex items-center justify-center rounded-xl bg-main hover:bg-subBlue text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                   :disabled="isLoading"
                   @click="performSearch"
                 >
-                  検索
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
                 </button>
               </div>
             </div>
 
             <!-- -- 詳細検索（展開で表示） -- -->
-            <div class="border-t border-slate-200/80 pt-4 mt-2">
+            <div class="order-list-detail-toggle">
               <button
                 type="button"
-                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all duration-200"
+                class="order-list-detail-btn"
                 :aria-expanded="detailSearchExpanded"
                 @click="detailSearchExpanded = !detailSearchExpanded"
               >
-                <span
-                  class="inline-flex transition-transform duration-200"
-                  :class="{ 'rotate-180': detailSearchExpanded }"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="order-list-detail-btn-icon" :class="{ 'order-list-detail-btn-icon--expanded': detailSearchExpanded }">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </span>
@@ -497,13 +534,13 @@ onUnmounted(() => {
                         v-model="searchOrderNo"
                         type="text"
                         id="inputOrderNo"
-                        class="w-32 min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                        class="w-32 min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 form-input"
                         placeholder="注文番号を入力してください"
                       />
                       <button
                         type="button"
                         title="選択"
-                        class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                        class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all duration-200 btn-icon btn-icon--select"
                         @click="openOrderNoSelectModal"
                       >
                         <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -517,7 +554,7 @@ onUnmounted(() => {
                     <input
                       v-model="searchAddress"
                       type="text"
-                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
                       placeholder="住所を入力してください"
                     />
                   </div>
@@ -529,7 +566,7 @@ onUnmounted(() => {
                         id="inputCreatedDateFrom"
                         readonly
                         placeholder="開始日"
-                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
                       />
                       <span class="text-slate-400 shrink-0 text-xs">～</span>
                       <input
@@ -537,7 +574,7 @@ onUnmounted(() => {
                         id="inputCreatedDateTo"
                         readonly
                         placeholder="終了日"
-                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
                       />
                     </div>
                   </div>
@@ -545,7 +582,7 @@ onUnmounted(() => {
                     <label class="text-xs font-normal text-slate-500 block">ステータス</label>
                     <select
                       v-model="searchStatus"
-                      class="w-28 max-w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-select"
                     >
                       <option value="">ステータスを選択してください</option>
                       <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
@@ -558,7 +595,7 @@ onUnmounted(() => {
                     <label class="text-xs font-normal text-slate-500 block">制作区分</label>
                     <select
                       v-model="searchProductionType"
-                      class="w-32 max-w-32 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                      class="w-32 min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-select"
                     >
                       <option value="">制作区分を選択してください</option>
                       <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
@@ -571,7 +608,7 @@ onUnmounted(() => {
                       id="inputDeadline"
                       readonly
                       placeholder="納期を選択"
-                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
                     />
                   </div>
                   <div class="space-y-1.5 shrink-0">
@@ -581,7 +618,7 @@ onUnmounted(() => {
                       id="inputProofreading"
                       readonly
                       placeholder="校正予定日を選択"
-                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200 bg-white cursor-pointer"
+                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
                     />
                   </div>
                   <div class="space-y-1.5 flex-1 min-w-0">
@@ -589,7 +626,7 @@ onUnmounted(() => {
                     <input
                       v-model="searchNote"
                       type="text"
-                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none transition-all duration-200"
+                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
                       placeholder="備考を入力してください"
                     />
                   </div>
@@ -623,7 +660,7 @@ onUnmounted(() => {
         @clear="clearCustomer"
       />
 
-      <!-- 該当データなしダイアログ -->
+      <!-- 該当データなしダイアログ（05f007f準拠: fixed inset-0 等のモーダル） -->
       <div
         v-show="showNoDataDialog"
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -639,7 +676,7 @@ onUnmounted(() => {
           <div class="px-8 py-5 flex justify-center">
             <button
               type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200"
+              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
               @click="showNoDataDialog = false"
             >
               OK
@@ -664,7 +701,7 @@ onUnmounted(() => {
           <div class="px-8 py-5 flex justify-center">
             <button
               type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200"
+              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
               @click="closeApiErrorDialog"
             >
               OK
@@ -691,7 +728,7 @@ onUnmounted(() => {
           <div class="px-8 py-5 flex justify-center">
             <button
               type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200"
+              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
               @click="closeDateRangeErrorDialog"
             >
               OK
@@ -705,10 +742,10 @@ onUnmounted(() => {
         読み込み中...
       </div>
 
-      <!-- === 検索結果一覧 === -->
-      <div v-show="hasSearched && !isLoading && orderItems.length > 0" class="orderListSection">
-        <!-- -- 該当件数 -- -->
-        <div class="flex justify-end items-center gap-4 mb-2 pl-6 pr-6">
+      <!-- === 検索結果一覧（05f007f準拠: 該当件数は白カード外、結果テーブルは別の白カード） === -->
+      <div v-show="hasSearched && !isLoading && orderItems.length > 0">
+        <!-- -- 該当件数（白カードの外、右寄せ。一覧との余白を確保） -- -->
+        <div class="flex justify-end items-center gap-4 mb-6 pl-6 pr-6">
           <span class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs">
             <span class="text-slate-500 font-medium">該当</span>
             <span class="font-normal text-main tabular-nums">{{ totalCount }}</span>
@@ -716,7 +753,7 @@ onUnmounted(() => {
           </span>
         </div>
 
-        <!-- -- 結果テーブル -- -->
+        <!-- -- 結果テーブル（別の白カードで囲む） -- -->
         <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="order-list-table w-full text-left">
@@ -729,14 +766,14 @@ onUnmounted(() => {
                 <col id="col-action" />
               </colgroup>
               <thead>
-                <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider data-table-header">
                   <th class="px-5 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
                     <span class="inline-flex items-center gap-1">
                       注文番号
                       <button
                         type="button"
+                        class="sort-btn"
                         :title="getSortOrder('orderNo') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
-                        class="w-5 h-6 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 text-[10px] leading-none transition-colors hover:bg-slate-50 hover:border-slate-400"
                         @click="toggleSortOrder('orderNo')"
                       >{{ getSortOrder('orderNo') === 'asc' ? '↓' : '↑' }}</button>
                     </span>
@@ -755,8 +792,8 @@ onUnmounted(() => {
                       <span class="header-2line">登録日<br />登録者</span>
                       <button
                         type="button"
+                        class="sort-btn"
                         :title="getSortOrder('createdDate') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
-                        class="w-5 h-6 flex items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-500 text-[10px] leading-none transition-colors hover:bg-slate-50 hover:border-slate-400"
                         @click="toggleSortOrder('createdDate')"
                       >{{ getSortOrder('createdDate') === 'asc' ? '↓' : '↑' }}</button>
                     </span>
@@ -769,7 +806,7 @@ onUnmounted(() => {
                 <tr
                   v-for="order in orderItems"
                   :key="order.orderNo"
-                  class="hover:bg-slate-100 transition-colors cursor-pointer"
+                  class="hover:bg-slate-100 transition-colors cursor-pointer order-list-table-row"
                   @dblclick="openOrderView(order)"
                 >
                   <td class="px-5 py-2">
@@ -813,7 +850,7 @@ onUnmounted(() => {
             </table>
           </div>
 
-          <!-- ページネーション -->
+          <!-- ページネーション（05f007f準拠） -->
           <div class="bg-slate-50 px-5 py-4 border-t border-slate-200">
             <nav class="flex w-full items-center">
               <div class="flex-1"></div>
@@ -866,7 +903,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- -- 戻るボタン -- -->
+      <!-- -- 戻るボタン（05f007f準拠） -- -->
       <div class="mt-8 flex justify-start">
         <button
           type="button"

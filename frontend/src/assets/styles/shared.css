@@ -1,0 +1,637 @@
+/* ========================================
+   共通スタイル - 注文・看板管理システム
+   shared.css: セマンティックなクラス名による共通パターン
+   ======================================== */
+
+/* -----------------------------------------------------------------------------
+   ブランドカラー（common.css の :root を参照）
+   ----------------------------------------------------------------------------- */
+
+/* -----------------------------------------------------------------------------
+   モーダル
+   ----------------------------------------------------------------------------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(0 0 0 / 0.4);
+}
+
+.modal-dialog {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  width: 100%;
+  max-width: 42rem;
+  overflow: hidden;
+}
+
+.modal-content--wide {
+  max-width: 56rem;
+}
+
+.modal-content--narrow {
+  max-width: 32rem;
+}
+
+.modal-header {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--color-main);
+}
+
+.modal-header-title {
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  letter-spacing: -0.025em;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-body--scroll {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.modal-footer {
+  padding: 1.25rem 2rem;
+  border-top: 1px solid rgb(226 232 240);
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.modal-footer--end {
+  justify-content: flex-end;
+}
+
+.modal-footer--gap {
+  gap: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   カード
+   ----------------------------------------------------------------------------- */
+.card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 1rem 2rem;
+  background-color: var(--color-main);
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.card-header-title {
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  letter-spacing: -0.025em;
+}
+
+.card-body {
+  padding: 1.25rem 1.5rem;
+}
+
+.card-footer {
+  padding: 1rem 2rem;
+  border-top: 1px solid rgb(226 232 240);
+}
+
+/* 青ヘッダーカード（ヘッダーが端まで続く） */
+.card-header-full {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 1px 0 0 rgb(0 0 0 / 0.03);
+}
+
+/* -----------------------------------------------------------------------------
+   ボタン
+   ----------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.btn-primary {
+  background-color: var(--color-main);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-sub-blue);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: white;
+  color: rgb(100 116 139);
+  border: 1px solid var(--color-neutral);
+}
+
+.btn-secondary:hover {
+  background-color: rgb(248 250 252);
+}
+
+.btn-secondary--slate {
+  border-color: rgb(203 213 225);
+  color: rgb(71 85 105);
+}
+
+.btn-secondary--slate:hover {
+  background-color: rgb(241 245 249);
+}
+
+.btn-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-icon--select {
+  background-color: rgb(241 245 249);
+  border: 1px solid rgb(203 213 225);
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
+}
+
+.btn-icon--select:hover {
+  background-color: rgb(226 232 240);
+}
+
+.btn-icon--search {
+  background-color: var(--color-main);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
+}
+
+.btn-icon--search:hover {
+  background-color: var(--color-sub-blue);
+}
+
+.btn-icon--search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
+   データテーブル
+   ----------------------------------------------------------------------------- */
+.data-table {
+  width: 100%;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.data-table-header {
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.data-table-header th {
+  padding: 0.5rem 0.75rem;
+  font-weight: 400;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.data-table-row {
+  transition: background-color 0.2s;
+}
+
+.data-table-row:hover {
+  background-color: rgb(241 245 249);
+  cursor: pointer;
+}
+
+.data-table-row td {
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table-cell-primary {
+  color: rgb(51 65 85);
+  font-size: 0.75rem;
+}
+
+.data-table-cell-secondary {
+  color: rgb(100 116 139);
+  font-size: 0.625rem;
+  margin-top: 0.125rem;
+}
+
+/* -----------------------------------------------------------------------------
+   ページ・レイアウト
+   ----------------------------------------------------------------------------- */
+.page {
+  min-height: 100vh;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.page-container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+.page-container--narrow {
+  max-width: 64rem;
+}
+
+.page-container--form {
+  max-width: 80rem;
+}
+
+/* -----------------------------------------------------------------------------
+   セクション・フォーム
+   ----------------------------------------------------------------------------- */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--color-main);
+}
+
+.section-title-accent {
+  width: 0.375rem;
+  height: 1.5rem;
+  background-color: var(--color-sub-blue);
+  border-radius: 9999px;
+}
+
+.section-title-text {
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: -0.025em;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgb(100 116 139);
+  display: block;
+}
+
+.form-input {
+  height: 2.25rem;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-input:focus {
+  box-shadow: 0 0 0 2px var(--color-light-blue);
+}
+
+.form-input--readonly {
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
+}
+
+.form-input--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-select {
+  height: 2.25rem;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-select:focus {
+  box-shadow: 0 0 0 2px var(--color-light-blue);
+}
+
+.form-required-badge {
+  background-color: var(--color-main);
+  color: white;
+  font-size: 0.625rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+/* -----------------------------------------------------------------------------
+   その他ユーティリティ
+   ----------------------------------------------------------------------------- */
+.text-muted {
+  color: rgb(100 116 139);
+  font-size: 0.75rem;
+}
+
+.text-main {
+  color: var(--color-main);
+}
+
+.text-mono {
+  font-family: ui-monospace, monospace;
+}
+
+.bg-main {
+  background-color: var(--color-main);
+}
+
+.bg-sub-blue {
+  background-color: var(--color-sub-blue);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* テンプレート選択カード */
+.template-select-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  border: 2px solid rgb(226 232 240);
+  background: white;
+  overflow: hidden;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.template-select-item:hover,
+.template-select-item:focus {
+  box-shadow: 0 0 0 2px var(--color-main);
+  outline: none;
+}
+
+/* HTMLオブジェクト値選択アイテム */
+.html-object-value-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240);
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.html-object-value-item:hover {
+  border-color: var(--color-main);
+  background-color: rgb(0 59 130 / 0.05);
+}
+
+/* ソートボタン */
+.sort-btn {
+  width: 1.25rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  background: white;
+  color: rgb(100 116 139);
+  font-size: 0.625rem;
+  line-height: 1;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.sort-btn:hover {
+  background-color: rgb(248 250 252);
+  border-color: rgb(148 163 184);
+}
+
+/* -----------------------------------------------------------------------------
+   レイアウト互換（OrderMain / OrderDetail 用。Tailwind 削除後のフォールバック）
+   ----------------------------------------------------------------------------- */
+.max-w-5xl { max-width: 64rem; }
+.max-w-6xl { max-width: 72rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.py-12 { padding-top: 3rem; padding-bottom: 3rem; }
+.px-8 { padding-left: 2rem; padding-right: 2rem; }
+.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.px-10 { padding-left: 2.5rem; padding-right: 2.5rem; }
+.pt-4 { padding-top: 1rem; }
+.pt-5 { padding-top: 1.25rem; }
+.pb-4 { padding-bottom: 1rem; }
+.pb-10 { padding-bottom: 2.5rem; }
+.min-w-\[5rem\] { min-width: 5rem; }
+.min-w-\[11rem\] { min-width: 11rem; }
+.min-w-\[12rem\] { min-width: 12rem; }
+.w-48 { width: 12rem; }
+.w-24 { width: 6rem; }
+.h-\[2\.25rem\] { height: 2.25rem; }
+.inline-flex { display: inline-flex; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-5 > * + * { margin-top: 1.25rem; }
+.flex { display: flex; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1; }
+.flex-none { flex: none; }
+.items-end { align-items: flex-end; }
+.items-center { align-items: center; }
+.gap-2 { gap: 0.5rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+.gap-x-6 { column-gap: 1.5rem; }
+.gap-y-4 { row-gap: 1rem; }
+.shrink-0 { flex-shrink: 0; }
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.whitespace-nowrap { white-space: nowrap; }
+.w-full { width: 100%; }
+.min-w-0 { min-width: 0; }
+.min-h-0 { min-height: 0; }
+.min-h-screen { min-height: 100vh; }
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-x-auto { overflow-x: auto; }
+.rounded-2xl { border-radius: 1rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
+.border { border-width: 1px; }
+.border-b { border-bottom-width: 1px; }
+.border-r { border-right-width: 1px; }
+.border-slate-100 { border-color: rgb(241 245 249); }
+.border-slate-200 { border-color: rgb(226 232 240); }
+.border-slate-200\/80 { border-color: rgb(226 232 240 / 0.8); }
+.border-slate-300 { border-color: rgb(203 213 225); }
+.bg-white { background-color: white; }
+.bg-slate-50 { background-color: rgb(248 250 252); }
+.bg-slate-100 { background-color: rgb(241 245 249); }
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-slate-500 { color: rgb(100 116 139); }
+.text-slate-600 { color: rgb(71 85 105); }
+.text-white { color: white; }
+.font-normal { font-weight: 400; }
+.font-mono { font-family: ui-monospace, monospace; }
+.tracking-tight { letter-spacing: -0.025em; }
+.block { display: block; }
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+.pointer-events-none { pointer-events: none; }
+.opacity-60 { opacity: 0.6; }
+.opacity-50 { opacity: 0.5; }
+.transition-colors { transition-property: color, background-color, border-color; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 0.15s; }
+.transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 0.2s; }
+.hover\:bg-slate-50:hover { background-color: rgb(248 250 252); }
+.hover\:bg-slate-100:hover { background-color: rgb(241 245 249); }
+.hover\:bg-slate-200:hover { background-color: rgb(226 232 240); }
+.hover\:bg-subBlue:hover { background-color: var(--color-sub-blue); }
+.hover\:underline:hover { text-decoration: underline; }
+/* focus ring（フォーム要素用） */
+[class*="focus:ring-2"]:focus,
+[class*="focus:ring-lightBlue"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-light-blue);
+}
+.box-border { box-sizing: border-box; }
+.resize-y { resize: vertical; }
+.divide-y > * + * { border-top-width: 1px; }
+.divide-slate-100 > * + * { border-color: rgb(241 245 249); }
+@media (min-width: 640px) {
+  .sm\:flex-row { flex-direction: row; }
+  .sm\:flex-1 { flex: 1; }
+  .sm\:flex-\[2\] { flex: 2; }
+  .sm\:items-end { align-items: flex-end; }
+  .sm\:gap-6 { gap: 1.5rem; }
+}
+@media (min-width: 768px) {
+  .md\:text-lg { font-size: 1.125rem; }
+  .md\:px-8 { padding-left: 2rem; padding-right: 2rem; }
+  .md\:pt-5 { padding-top: 1.25rem; }
+  .md\:pb-7 { padding-bottom: 1.75rem; }
+  .md\:w-40 { width: 10rem; }
+  .md\:w-48 { width: 12rem; }
+}
+/* OrderList 用追加互換クラス */
+.fixed { position: fixed; }
+.inset-0 { inset: 0; }
+.z-50 { z-index: 50; }
+.relative { position: relative; }
+.mb-4 { margin-bottom: 1rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-8 { margin-top: 2rem; }
+.pb-6 { padding-bottom: 1.5rem; }
+.pt-8 { padding-top: 2rem; }
+.py-5 { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+.p-4 { padding: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.max-w-md { max-width: 28rem; }
+.space-y-1\.5 > * + * { margin-top: 0.375rem; }
+.w-36 { width: 9rem; }
+.w-40 { width: 10rem; }
+.w-32 { width: 8rem; }
+.w-28 { width: 7rem; }
+.gap-1 { gap: 0.25rem; }
+.gap-1\.5 { gap: 0.375rem; }
+.gap-3 { gap: 0.75rem; }
+.w-8 { width: 2rem; }
+.h-8 { height: 2rem; }
+.mt-0\.5 { margin-top: 0.125rem; }
+.tracking-wider { letter-spacing: 0.05em; }
+.font-medium { font-weight: 500; }
+.duration-200 { transition-duration: 0.2s; }
+.w-5 { width: 1.25rem; }
+.h-5 { height: 1.25rem; }
+.w-3\.5 { width: 0.875rem; }
+.h-3\.5 { height: 0.875rem; }
+.bg-slate-200 { background-color: rgb(226 232 240); }
+.bg-slate-50\/80 { background-color: rgb(248 250 252 / 0.8); }
+.bg-black\/40 { background-color: rgb(0 0 0 / 0.4); }
+.bg-white\/80 { background-color: rgb(255 255 255 / 0.8); }
+.border-slate-200\/60 { border-color: rgb(226 232 240 / 0.6); }
+.rotate-180 { transform: rotate(180deg); }
+.text-slate-400 { color: rgb(148 163 184); }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.invisible { visibility: hidden; }
+.select-none { user-select: none; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.text-\[10px\] { font-size: 10px; }
+.text-\[11px\] { font-size: 11px; }
+.text-\[12px\] { font-size: 12px; }
+.disabled\:opacity-40:disabled { opacity: 0.4; }
+.disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+@media (min-width: 1024px) {
+  .lg\:flex-row { flex-direction: row; }
+  .lg\:items-end { align-items: flex-end; }
+  .lg\:gap-4 { gap: 1rem; }
+}

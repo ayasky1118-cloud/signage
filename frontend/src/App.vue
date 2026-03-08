@@ -15,6 +15,8 @@ watch(
   () => route.path,
   (path) => {
     document.body.classList.toggle("header-menu-only", path === "/menu")
+    // ルート遷移時に body の overflow をリセット（全画面編集等で hidden が残るのを防ぐ）
+    document.body.style.overflow = ""
   },
   { immediate: true }
 )

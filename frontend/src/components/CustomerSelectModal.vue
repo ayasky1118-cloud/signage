@@ -1,35 +1,63 @@
 <script setup lang="ts">
 /**
- * 顧客選択モーダル（共通）
- * OrderMain / OrderList で利用。
- * 選択時の反映（担当者名を入れるかどうか）は各画面の @select で制御する。
+ * CustomerSelectModal - 顧客選択モーダル
+ *
+ * 【用途】
+ * ・OrderMain: 注文登録フォームの「顧客」選択時に表示
+ * ・OrderList: 一覧の顧客フィルタ選択時に表示
+ * ・親が渡した CustomerItem 一覧をテーブル表示し、行クリックで選択
+ *
+ * 【表示内容】
+ * ・顧客名・住所・担当者（contactName）
+ *
+ * 【親コンポーネントとの連携】
+ * ・select: 顧客を選択したときに発火。選択値の反映（担当者名の自動入力等）は親の @select で制御
+ * ・clear: 「クリア」ボタンで発火。選択を解除したい場合に使用
  */
 import type { CustomerItem } from "../composables/useCustomerApi"
 
+// -----------------------------------------------------------------------------
+// Props 定義
+// -----------------------------------------------------------------------------
+
 defineProps<{
+  /** モーダルの表示/非表示。v-model で双方向バインディング */
   modelValue: boolean
+  /** 選択肢として表示する顧客一覧（親が company_id で API 取得して渡す） */
   items: CustomerItem[]
+  /** 一覧取得中のローディング状態。true のとき「読み込み中...」を表示 */
   loading: boolean
 }>()
 
+// -----------------------------------------------------------------------------
+// Emits 定義
+// -----------------------------------------------------------------------------
+
 const emit = defineEmits<{
+  /** モーダルを閉じる際に false を発火 */
   "update:modelValue": [value: boolean]
+  /** ユーザーが行をクリックした際に、選択した CustomerItem を発火 */
   select: [customer: CustomerItem]
+  /** 「クリア」ボタン押下時に発火。選択解除を親に通知 */
   clear: []
 }>()
 
-/** モーダルを閉じる（v-model を false に更新） */
+// -----------------------------------------------------------------------------
+// モーダル操作
+// -----------------------------------------------------------------------------
+
+/** モーダルを閉じる（オーバーレイクリック・キャンセルボタン・選択時・クリア時で呼ばれる） */
 function close() {
   emit("update:modelValue", false)
 }
 
-/** 顧客を選択し select イベントを発火してからモーダルを閉じる */
+/** 顧客行をクリックしたときの処理。親に選択値を渡し、モーダルを閉じる */
 function onSelect(c: CustomerItem) {
   emit("select", c)
   close()
 }
 
-/** クリアを選択し clear イベントを発火してからモーダルを閉じる */
+/** 「クリア」ボタン押下時の処理。親に clear を通知し、モーダルを閉じる */
 function onClear() {
   emit("clear")
   close()
@@ -37,63 +65,63 @@ function onClear() {
 </script>
 
 <template>
+  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
   <Teleport to="body">
-    <!-- === 顧客選択モーダル === -->
     <div
       v-show="modelValue"
-      class="fixed inset-0 z-50"
+      class="modal"
       aria-hidden="false"
       role="dialog"
       aria-modal="true"
       aria-labelledby="customerSelectModalTitle"
     >
-      <!-- -- オーバーレイ（クリックで閉じる） -- -->
-      <div class="fixed inset-0 bg-black/40" @click="close"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-2xl overflow-hidden">
-          <!-- -- ヘッダー -- -->
-          <div class="px-6 py-3 bg-main">
-            <h3 id="customerSelectModalTitle" class="text-base font-normal text-white tracking-tight">顧客を選択</h3>
+      <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
+      <div class="modal-overlay" @click="close"></div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <!-- ヘッダー（メインカラー背景） -->
+          <div class="modal-header">
+            <h3 id="customerSelectModalTitle" class="modal-header-title">顧客を選択</h3>
           </div>
-          <!-- -- 本文：顧客一覧（行クリックで select 発火） -- -->
-          <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-            <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
-            <table v-else class="w-full text-left text-xs">
+          <!-- 本文: 顧客一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
+          <div class="modal-body modal-body--scroll">
+            <p v-if="loading" class="text-muted">読み込み中...</p>
+            <table v-else class="data-table">
               <thead>
-                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                  <th class="px-3 py-2 font-normal border-b border-slate-200"><span class="header-2line">顧客名<br>住所</span></th>
-                  <th class="px-3 py-2 font-normal border-b border-slate-200">担当者</th>
+                <tr class="data-table-header">
+                  <th><span class="header-2line">顧客名<br>住所</span></th>
+                  <th>担当者</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody>
                 <tr
                   v-for="c in items"
                   :key="c.customerId"
-                  class="hover:bg-slate-100 cursor-pointer transition-colors"
+                  class="data-table-row"
                   @click="onSelect(c)"
                 >
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 text-xs">{{ c.customerName }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ c.address }}</div>
+                  <td>
+                    <div class="data-table-cell-primary">{{ c.customerName }}</div>
+                    <div class="data-table-cell-secondary">{{ c.address }}</div>
                   </td>
-                  <td class="px-3 py-2 text-slate-600 text-xs">{{ c.contactName?.trim() || "—" }}</td>
+                  <td class="data-table-cell-primary">{{ c.contactName?.trim() || "—" }}</td>
                 </tr>
               </tbody>
             </table>
-            <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>
+            <p v-if="!loading && items.length === 0" class="text-muted">データがありません</p>
           </div>
-          <!-- -- フッター：クリア／キャンセル -- -->
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end gap-3">
+          <!-- フッター（クリア・キャンセルボタン） -->
+          <div class="modal-footer modal-footer--end modal-footer--gap">
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              class="btn btn-secondary btn-secondary--slate"
               @click="onClear"
             >
               クリア
             </button>
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              class="btn btn-secondary"
               @click="close"
             >
               キャンセル
@@ -104,3 +132,27 @@ function onClear() {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.modal-body--scroll {
+  padding: 1.5rem 2rem;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.data-table th {
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table td {
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table-cell-primary {
+  font-size: 0.75rem;
+}
+
+.data-table-cell-secondary {
+  margin-top: 0.125rem;
+}
+</style>

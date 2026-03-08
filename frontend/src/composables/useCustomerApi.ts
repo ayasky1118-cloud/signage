@@ -1,8 +1,16 @@
 /**
- * 顧客一覧API用 composable
+ * useCustomerApi - 顧客一覧 API 用 composable
  *
- * バックエンド GET /customers を呼び出し、指定会社に紐づく顧客一覧を返す。
- * 注文フォームの「顧客」選択モーダル用。
+ * 【用途】
+ * ・OrderMain / OrderList の顧客選択モーダル（CustomerSelectModal）で使用
+ * ・company_id に紐づく customer 一覧を返す
+ *
+ * 【API】
+ * ・GET /customers?company_id=:id: 指定会社の顧客一覧
+ *
+ * 【注意】
+ * ・API レスポンスは snake_case（customer_id, customer_name 等）。マッピングで camelCase に変換
+ * ・address は customer_post + customer_add を結合した文字列
  */
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
@@ -12,6 +20,7 @@ function getApiBase(): string {
 }
 const API_PREFIX = getApiBase() ? "" : "/api"
 
+/** 顧客1件。address は郵便番号+住所を結合、contactName は担当者名 */
 export interface CustomerItem {
   customerId: number
   companyId: number
@@ -20,6 +29,10 @@ export interface CustomerItem {
   contactName?: string
 }
 
+/**
+ * 指定会社に紐づく顧客一覧を取得。顧客選択モーダルで使用。
+ * API の snake_case を camelCase にマッピング。エラー時は throw。
+ */
 export async function fetchCustomers(companyId: number): Promise<CustomerItem[]> {
   const base = getApiBase()
   const res = await fetch(`${base}${API_PREFIX}/customers?company_id=${companyId}`)

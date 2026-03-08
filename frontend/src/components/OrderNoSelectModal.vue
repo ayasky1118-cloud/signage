@@ -1,32 +1,57 @@
 <script setup lang="ts">
 /**
- * 注文番号選択モーダル（共通）
- * OrderMain / OrderList / OrderDetail で利用
+ * OrderNoSelectModal - 注文番号選択モーダル
+ *
+ * 【用途】
+ * ・OrderMain: 注文登録画面で「既存注文を開く」時に表示
+ * ・OrderList: 一覧から注文を選択して詳細へ遷移する際に表示
+ * ・OrderDetail: 注文番号を切り替える際に表示
+ * ・親が渡した OrderItem 一覧をテーブル表示し、行クリックで選択
+ *
+ * 【表示内容】
+ * ・注文番号・注文名/住所・顧客名/担当者・デザイン種別/テンプレート・登録日/登録者
  */
 import type { OrderItem } from "../composables/useOrderApi"
 
+// -----------------------------------------------------------------------------
+// Props 定義
+// -----------------------------------------------------------------------------
+
 defineProps<{
+  /** モーダルの表示/非表示。v-model で双方向バインディング */
   modelValue: boolean
+  /** 選択肢として表示する注文一覧（親が API 等で取得して渡す） */
   items: OrderItem[]
+  /** 一覧取得中のローディング状態。true のとき「読み込み中...」を表示 */
   loading: boolean
 }>()
 
+// -----------------------------------------------------------------------------
+// Emits 定義
+// -----------------------------------------------------------------------------
+
 const emit = defineEmits<{
+  /** モーダルを閉じる際に false を発火 */
   "update:modelValue": [value: boolean]
+  /** ユーザーが行をクリックした際に、選択した OrderItem を発火 */
   select: [order: OrderItem]
 }>()
 
-/** デザイン種別の表示用。空の場合は — を返す */
+// -----------------------------------------------------------------------------
+// ヘルパー・モーダル操作
+// -----------------------------------------------------------------------------
+
+/** デザイン種別の表示用。空の場合は em dash（—）を返す */
 function designTypeLabel(value: string): string {
   return value || "—"
 }
 
-/** モーダルを閉じる（v-model を false に更新） */
+/** モーダルを閉じる（オーバーレイクリック・キャンセルボタンで呼ばれる） */
 function close() {
   emit("update:modelValue", false)
 }
 
-/** 注文を選択し select イベントを発火してからモーダルを閉じる */
+/** 注文行をクリックしたときの処理。親に選択値を渡し、モーダルを閉じる */
 function onSelect(order: OrderItem) {
   emit("select", order)
   close()
@@ -34,71 +59,71 @@ function onSelect(order: OrderItem) {
 </script>
 
 <template>
+  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
   <Teleport to="body">
-    <!-- === 注文番号選択モーダル === -->
     <div
       v-show="modelValue"
-      class="fixed inset-0 z-50"
+      class="modal"
       aria-hidden="false"
       role="dialog"
       aria-modal="true"
       aria-labelledby="orderNoSelectModalTitle"
     >
-      <!-- -- オーバーレイ -- -->
-      <div class="fixed inset-0 bg-black/40" @click="close"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl overflow-hidden">
-          <!-- -- ヘッダー -- -->
-          <div class="px-6 py-3 bg-main">
-            <h3 id="orderNoSelectModalTitle" class="text-base font-normal text-white tracking-tight">注文番号を選択</h3>
+      <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
+      <div class="modal-overlay" @click="close"></div>
+      <div class="modal-dialog">
+        <div class="modal-content modal-content--wide">
+          <!-- ヘッダー（メインカラー背景） -->
+          <div class="modal-header">
+            <h3 id="orderNoSelectModalTitle" class="modal-header-title">注文番号を選択</h3>
           </div>
-          <!-- -- 本文：注文一覧テーブル（行クリックで select） -- -->
-          <div class="px-8 py-6 max-h-[60vh] overflow-auto">
-            <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
-            <table v-else class="w-full text-left text-xs">
+          <!-- 本文: 注文一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
+          <div class="modal-body modal-body--scroll">
+            <p v-if="loading" class="text-muted">読み込み中...</p>
+            <table v-else class="data-table">
               <thead>
-                <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wider">
-                  <th class="px-3 py-2 font-normal border-b border-slate-200">注文番号</th>
-                  <th class="px-3 py-2 font-normal border-b border-slate-200"><span class="header-2line">注文名<br>住所</span></th>
-                  <th class="px-3 py-2 font-normal border-b border-slate-200"><span class="header-2line">顧客名<br>担当者</span></th>
-                  <th class="px-3 py-2 font-normal border-b border-slate-200"><span class="header-2line">デザイン種別<br>テンプレート</span></th>
-                  <th class="px-3 py-2 font-normal border-b border-slate-200"><span class="header-2line">登録日<br>登録者</span></th>
+                <tr class="data-table-header">
+                  <th class="header-2line">注文番号</th>
+                  <th><span class="header-2line">注文名<br>住所</span></th>
+                  <th><span class="header-2line">顧客名<br>担当者</span></th>
+                  <th><span class="header-2line">デザイン種別<br>テンプレート</span></th>
+                  <th><span class="header-2line">登録日<br>登録者</span></th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
+              <tbody>
                 <tr
                   v-for="order in items"
                   :key="order.orderNo"
-                  class="hover:bg-slate-100 cursor-pointer transition-colors"
+                  class="data-table-row"
                   @click="onSelect(order)"
                 >
-                  <td class="px-3 py-2"><span class="font-mono text-xs text-slate-700">{{ order.orderNo }}</span></td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 text-xs">{{ order.orderName }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ order.address }}</div>
+                  <td><span class="text-mono data-table-cell-primary">{{ order.orderNo }}</span></td>
+                  <td>
+                    <div class="data-table-cell-primary">{{ order.orderName }}</div>
+                    <div class="data-table-cell-secondary">{{ order.address }}</div>
                   </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-700 text-xs">{{ order.customerName || "—" }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ order.manager?.trim() || "—" }}</div>
+                  <td>
+                    <div class="data-table-cell-primary">{{ order.customerName || "—" }}</div>
+                    <div class="data-table-cell-secondary">{{ order.manager?.trim() || "—" }}</div>
                   </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-600 text-xs">{{ designTypeLabel(order.designType) }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ order.template || "—" }}</div>
+                  <td>
+                    <div class="data-table-cell-primary">{{ designTypeLabel(order.designType) }}</div>
+                    <div class="data-table-cell-secondary">{{ order.template || "—" }}</div>
                   </td>
-                  <td class="px-3 py-2">
-                    <div class="text-slate-600 text-xs">{{ order.createdDate }}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5">{{ order.creator }}</div>
+                  <td>
+                    <div class="data-table-cell-primary">{{ order.createdDate }}</div>
+                    <div class="data-table-cell-secondary">{{ order.creator }}</div>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>
+            <p v-if="!loading && items.length === 0" class="text-muted">データがありません</p>
           </div>
-          <!-- -- フッター -- -->
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end">
+          <!-- フッター（キャンセルボタン） -->
+          <div class="modal-footer modal-footer--end">
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              class="btn btn-secondary"
               @click="close"
             >
               キャンセル
@@ -109,3 +134,27 @@ function onSelect(order: OrderItem) {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.modal-body--scroll {
+  padding: 1.5rem 2rem;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.data-table th {
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table td {
+  padding: 0.5rem 0.75rem;
+}
+
+.data-table-cell-primary {
+  font-size: 0.75rem;
+}
+
+.data-table-cell-secondary {
+  margin-top: 0.125rem;
+}
+</style>

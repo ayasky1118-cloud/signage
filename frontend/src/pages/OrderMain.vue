@@ -1,10 +1,28 @@
 <script setup lang="ts">
+/**
+ * OrderMain - 注文（新規・変更）画面
+ *
+ * 【用途】
+ * ・注文の新規登録（createOrder API）
+ * ・既存注文の編集（getOrderByNo で取得し、テンプレート項目・枝番等を更新）
+ *
+ * 【モード】
+ * ・new: 新規登録。一覧から遷移時は注文番号選択不可（自動採番）
+ * ・change: 変更。注文番号で検索して取得し、テンプレート項目・order_item を更新
+ *
+ * 【主な機能】
+ * ・顧客選択 → テンプレート一覧取得（顧客に紐づく）
+ * ・テンプレート選択 → template_item 取得（動的入力項目）
+ * ・住所検証（MapTiler）、地図プレビュー
+ * ・納期・校正予定日（Flatpickr）
+ */
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
 import { RouterLink, useRouter, useRoute } from "vue-router"
 import flatpickr from "flatpickr"
 import { Japanese } from "flatpickr/dist/l10n/ja"
 import "flatpickr/dist/flatpickr.min.css"
 import "../assets/styles/flatpickr-theme.css"
+import "../assets/styles/order-main.css"
 import { validateAddress } from "../composables/useAddressApi"
 import { searchOrders, createOrder, getOrderByNo, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
@@ -17,14 +35,20 @@ import TemplateSelectModal from "../components/TemplateSelectModal.vue"
 const router = useRouter()
 const route = useRoute()
 
-/* モード: 新規 / 変更 */
+// -----------------------------------------------------------------------------
+// モード・遷移元フラグ
+// -----------------------------------------------------------------------------
+
 const mode = ref<"new" | "change">("new")
 /** 注文一覧画面から遷移してきた場合 true（注文番号をクリアできない等の制御に使用） */
 const cameFromList = ref(false)
 /** 変更モードで注文番号を検索してヒットした場合 true（他項目の編集可否に使用） */
 const hasSearchedInChangeMode = ref(false)
 
-/* フォーム */
+// -----------------------------------------------------------------------------
+// フォーム状態
+// -----------------------------------------------------------------------------
+
 const orderNo = ref("")
 const companyCd = ref("")
 const officeCd = ref("")
@@ -61,14 +85,17 @@ const PRODUCTION_TYPE_OPTIONS = ["注文品", "試作品", "サンプル品"] as
 const NOTE_DEFAULT = "営業担当者：\n制作担当者："
 const note = ref(NOTE_DEFAULT)
 
-/* テンプレート選択肢（ログイン会社でAPI取得） */
+// -----------------------------------------------------------------------------
+// テンプレート・テンプレート項目（API 取得）
+// -----------------------------------------------------------------------------
+
 const templateOptions = ref<TemplateOption[]>([])
 const isLoadingTemplates = ref(false)
-/* 選択されたテンプレートに紐づく template_item（項目名・必須・種別。表示は今回全てテキスト） */
+/** 選択されたテンプレートに紐づく template_item（項目名・必須・種別。表示は全てテキスト） */
 const templateItems = ref<TemplateItemItem[]>([])
 const isLoadingTemplateItems = ref(false)
 
-/* デザイン種別（ログイン会社に紐づく。マウント時にAPIで取得） */
+// デザイン種別（ログイン会社に紐づく。マウント時に API で取得）
 const designTypeOptions = ref<DesignTypeItem[]>([])
 const isLoadingDesignTypes = ref(false)
 
@@ -82,10 +109,14 @@ function getLoginCompanyId(): number {
   return 1
 }
 
-/** テンプレートに項目が紐づいている場合のみ「テンプレート項目」セクションを表示する */
+// -----------------------------------------------------------------------------
+// 計算プロパティ（UI 制御）
+// -----------------------------------------------------------------------------
+
+/** テンプレートに項目が紐づいている場合のみ「テンプレート項目」セクションを表示 */
 const showTemplateItemsSection = computed(() => templateItems.value.length > 0)
 
-/* 顧客設定時にテンプレート一覧をAPI取得してドロップダウンに反映する */
+/** 顧客設定時にテンプレート一覧を API 取得してドロップダウンに反映 */
 watch(customerId, async (val) => {
   templateOptions.value = []
   if (val == null) return
@@ -99,7 +130,7 @@ watch(customerId, async (val) => {
   }
 })
 
-/* テンプレート変更時に template_item を取得し、項目値を配列長に合わせる。pendingOrderItems があれば order_item の値を反映 */
+/** テンプレート変更時に template_item を取得。pendingOrderItems があれば order_item の値を反映 */
 watch(templateId, async (val) => {
   templateItems.value = []
   templateItemValues.value = []
@@ -136,12 +167,12 @@ watch(templateId, async (val) => {
   }
 })
 
-/* 変更モード時：注文番号・会社名以外は編集可能。他項目は未検索かつ一覧以外からの遷移でない場合のみ無効 */
+// 変更モード時: 注文番号・会社名以外は編集可能。他項目は未検索かつ一覧以外からの遷移でない場合のみ無効
 const otherFieldsDisabled = computed(
   () => mode.value === "change" && !hasSearchedInChangeMode.value && !cameFromList.value
 )
 
-/* 変更モードでは注文番号は常に読取専用（一覧から遷移時または検索済み時）。新規時は自動採番のため読取 */
+/** 変更モードでは注文番号は読取専用（一覧から遷移時または検索済み時）。新規時は自動採番のため読取 */
 const orderNoReadOnly = computed(
   () => mode.value !== "change" || cameFromList.value || hasSearchedInChangeMode.value
 )
@@ -185,7 +216,7 @@ const orderDetailLinkDisabled = computed(
   () => !(mode.value === "change" && hasSearchedInChangeMode.value)
 )
 
-/* 新規モードでラジオを無効化（一覧から遷移時） */
+/** 新規モードでラジオを無効化（一覧から遷移時） */
 const newModeRadioDisabled = computed(() => cameFromList.value)
 
 /** フォーム全体の値を1文字列にまとめ、未保存変更の有無判定に使う */
@@ -215,27 +246,27 @@ const initialNewState = ref("")
 /** 変更モード時のフォーム初期値（注文読込完了時点。未保存変更判定の基準） */
 const initialChangeState = ref("")
 
-/* 入力の可否ではなく、デフォルト値（初期状態）から値が変わった場合のみ true */
+/** デフォルト値（初期状態）から値が変わった場合のみ true。戻る・枝番切り替え時の確認に使用 */
 const hasUnsavedChanges = computed(() => {
   const current = getFormState()
   if (mode.value === "new") return current !== initialNewState.value
   return current !== initialChangeState.value
 })
 
-/* 注文番号選択モーダル用 */
+// -----------------------------------------------------------------------------
+// モーダル（注文番号選択・顧客選択・テンプレート選択・各種確認）
+// -----------------------------------------------------------------------------
+
 const orderListForSelect = ref<OrderItem[]>([])
 const orderNoSelectModalOpen = ref(false)
 const isLoadingOrders = ref(false)
 
-/* 顧客選択モーダル用 */
 const customerListForSelect = ref<CustomerItem[]>([])
 const customerSelectModalOpen = ref(false)
 const isLoadingCustomers = ref(false)
 
-/* テンプレート選択モーダル（グリッド） */
 const templateSelectModalOpen = ref(false)
 
-/* 各種確認モーダル */
 const unsavedConfirmOpen = ref(false)
 const unsavedConfirmMessage = ref("入力内容に変更があります。変更は破棄されます。よろしいですか")
 const unsavedConfirmOkText = ref("破棄する")
@@ -250,7 +281,7 @@ const requiredValidationMessage = ref("必須項目が未入力です")
 /** 必須エラー時にフォーカスする要素の ref 名 */
 const requiredValidationFocusRef = ref<string | null>(null)
 
-/* フォーカス用テンプレート ref */
+// フォーカス用 ref（バリデーション後のフォーカス移動に使用）
 const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const orderNoSearchBtnRef = ref<HTMLButtonElement | null>(null)
 const inputDeadlineRef = ref<HTMLInputElement | null>(null)
@@ -896,11 +927,14 @@ watch(orderNo, () => {
                   <button
                     ref="orderNoSearchBtnRef"
                     type="button"
-                    class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    title="検索"
+                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                     :disabled="searchAndListDisabled"
                     @click="doSearchByOrderNo"
                   >
-                    検索
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -1163,12 +1197,11 @@ watch(orderNo, () => {
               <div class="space-y-1.5">
                 <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
                 <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
-                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
-                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
-                  </svg>
+                  <img
+                    src="/samples/template/template-dummy.png?v=2"
+                    alt="テンプレートプレビュー"
+                    class="max-w-full max-h-full object-contain"
+                  />
                 </div>
               </div>
               <div class="space-y-4">

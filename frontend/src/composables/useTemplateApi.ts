@@ -1,8 +1,13 @@
 /**
- * テンプレート・テンプレート項目API用 composable
+ * useTemplateApi - テンプレート・テンプレート項目 API 用 composable
  *
- * バックエンド GET /templates, GET /template-items を呼び出す。
- * 開発時は Vite のプロキシ（/api → localhost:8000）を使用。
+ * 【用途】
+ * ・TemplateSelectModal: 注文フォームのテンプレート選択
+ * ・OrderMain: 選択したテンプレートに紐づく template_item（入力項目）を取得
+ *
+ * 【API】
+ * ・GET /templates?company_id=:id&customer_id=:id: テンプレート一覧。customer_id 指定時は当該顧客のテンプレートのみ
+ * ・GET /template-items?template_id=:id: テンプレート項目一覧（項目名・必須フラグ・項目種別）
  */
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
@@ -12,6 +17,7 @@ function getApiBase(): string {
 }
 const API_PREFIX = getApiBase() ? "" : "/api"
 
+/** テンプレート1件。TemplateSelectModal の選択肢用 */
 export interface TemplateOption {
   templateId: number
   companyId: number
@@ -19,6 +25,7 @@ export interface TemplateOption {
   displayOrder: number
 }
 
+/** テンプレート項目1件。注文フォームの入力項目（itemName, itemType, isRequired） */
 export interface TemplateItemItem {
   templateItemId: number
   templateId: number
@@ -28,7 +35,11 @@ export interface TemplateItemItem {
   displayOrder: number
 }
 
-/** ログイン会社（と顧客）に紐づくテンプレート一覧。customerId 指定時は当該顧客のテンプレートのみ返す */
+/**
+ * ログイン会社に紐づくテンプレート一覧を取得。
+ * customerId 指定時は当該顧客に紐づくテンプレートのみ返す（顧客別テンプレート対応）。
+ * エラー時は throw。
+ */
 export async function fetchTemplates(
   companyId: number,
   customerId?: number | null
@@ -50,7 +61,11 @@ export async function fetchTemplates(
   }))
 }
 
-/** 選択されたテンプレートに紐づく template_item 一覧（項目名・必須フラグ・項目種別を取得） */
+/**
+ * 選択されたテンプレートに紐づく template_item 一覧を取得。
+ * 注文フォームの動的入力項目（項目名・必須フラグ・項目種別）を表示するために使用。
+ * エラー時は throw。
+ */
 export async function fetchTemplateItems(
   templateId: number
 ): Promise<TemplateItemItem[]> {

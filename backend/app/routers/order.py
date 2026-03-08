@@ -30,6 +30,11 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 DEFAULT_USER_ID = 1
 
 
+# -----------------------------------------------------------------------------
+# 注文一覧検索
+# -----------------------------------------------------------------------------
+
+
 @router.get("")
 def search_orders(
     db: Session = Depends(get_db),
@@ -111,76 +116,95 @@ def _search_orders_impl(
     page: int,
     per_page: int,
 ):
+    """
+    注文一覧検索の実装。検索条件を動的に組み立て、order_main を中心に JOIN して一覧を返す。
+    """
+    # ページネーション用オフセット計算
     offset = (page - 1) * per_page
 
-    # 条件句の組み立て（プレースホルダは :name 形式）
+    # WHERE 条件の組み立て（指定された検索パラメータを AND で結合。プレースホルダは :name 形式）
     conditions = ["om.is_deleted = 0"]
     params = {"limit": per_page, "offset": offset}
 
+    # company_id: 会社ID（ログイン会社。完全一致）
     if company_id is not None:
         conditions.append("om.company_id = :company_id")
         params["company_id"] = company_id
 
+    # customer_id: 顧客ID（完全一致）
     if customer_id is not None:
         conditions.append("om.customer_id = :customer_id")
         params["customer_id"] = customer_id
 
+    # manager: 担当者名（部分一致）
     if manager and manager.strip():
         conditions.append("om.manager_name LIKE :manager")
-        params["manager"] = f"%{manager.strip()}%"  # 部分一致（担当者名）
+        params["manager"] = f"%{manager.strip()}%"
 
+    # order_name: 注文名（部分一致）
     if order_name and order_name.strip():
         conditions.append("om.order_name LIKE :order_name")
-        params["order_name"] = f"%{order_name.strip()}%"  # 部分一致
+        params["order_name"] = f"%{order_name.strip()}%"
 
+    # design_type_id: デザイン種別ID（完全一致）
     if design_type_id is not None:
         conditions.append("om.design_type_id = :design_type_id")
         params["design_type_id"] = design_type_id
 
+    # order_no: 注文番号（部分一致）
     if order_no and order_no.strip():
         conditions.append("om.order_no LIKE :order_no")
         params["order_no"] = f"%{order_no.strip()}%"
 
+    # address: 住所（部分一致。order_add を検索）
     if address and address.strip():
         conditions.append("om.order_add LIKE :address")
-        params["address"] = f"%{address.strip()}%"  # 部分一致
+        params["address"] = f"%{address.strip()}%"
 
+    # created_date_from: 登録日開始（YYYY-MM-DD、以上）
     if created_date_from and created_date_from.strip():
         conditions.append("DATE(om.created_dt) >= :created_date_from")
         params["created_date_from"] = created_date_from.strip()
 
+    # created_date_to: 登録日終了（YYYY-MM-DD、以下）
     if created_date_to and created_date_to.strip():
         conditions.append("DATE(om.created_dt) <= :created_date_to")
         params["created_date_to"] = created_date_to.strip()
 
+    # status: ステータス（attribute_05、完全一致）
     if status and status.strip():
         conditions.append("om.attribute_05 = :status")
         params["status"] = status.strip()
 
+    # production_type: 制作区分（attribute_04、完全一致）
     if production_type and production_type.strip():
         conditions.append("om.attribute_04 = :production_type")
         params["production_type"] = production_type.strip()
 
+    # deadline_dt: 納期（YYYY-MM-DD、完全一致）
     if deadline_dt and deadline_dt.strip():
         conditions.append("DATE(om.deadline_dt) = :deadline_dt")
         params["deadline_dt"] = deadline_dt.strip()
 
+    # proofreading_dt: 校正予定日（YYYY-MM-DD、完全一致）
     if proofreading_dt and proofreading_dt.strip():
         conditions.append("DATE(om.proofreading_dt) = :proofreading_dt")
         params["proofreading_dt"] = proofreading_dt.strip()
 
+    # note: 備考（部分一致）
     if note and note.strip():
         conditions.append("om.note LIKE :note")
-        params["note"] = f"%{note.strip()}%"  # 部分一致
+        params["note"] = f"%{note.strip()}%"
 
     where_clause = " AND ".join(conditions)
 
-    # ORDER BY（sort_by: order_no / created_date、sort_order: asc / desc）
+    # ソート条件の組み立て（sort_by: order_no=注文番号 / created_date=登録日、sort_order: asc / desc）
     order_col = "om.order_no" if (sort_by or "").strip().lower() == "order_no" else "om.created_dt"
     order_dir = "DESC" if (sort_order or "").strip().lower() == "desc" else "ASC"
     order_clause = f"ORDER BY {order_col} {order_dir}"
 
-    # 枝番はサブクエリで取得（order_detail が無い場合は NULL → 空文字に変換して split）
+    # 一覧取得用SQL（order_main を中心に customer, template, design_type, user を LEFT JOIN。
+    # 枝番一覧はサブクエリで GROUP_CONCAT。order_detail が無い場合は NULL → 空配列になる）
     sql = f"""
         SELECT
             om.order_id,
@@ -223,6 +247,7 @@ def _search_orders_impl(
         LIMIT :limit OFFSET :offset
     """
 
+    # 総件数取得用SQL（ページネーションの total 表示に使用）
     count_sql = f"""
         SELECT COUNT(*) AS total
         FROM order_main om
@@ -232,15 +257,15 @@ def _search_orders_impl(
         WHERE {where_clause}
     """
 
-    # 総件数取得（LIMIT/OFFSET 用の params から除外）
+    # 総件数取得（count_sql には LIMIT/OFFSET が不要なため params から除外）
     count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
     total_row = db.execute(text(count_sql), count_params).fetchone()
     total = total_row[0] if total_row else 0
 
-    # 一覧取得
+    # 一覧データ取得
     rows = db.execute(text(sql), params).mappings().all()
 
-    # 枝番ごとの design_data を取得（order_detail）
+    # 枝番ごとの design_data（デザイン編集データ）と note（備考）を order_detail から取得
     order_ids = [r.get("order_id") for r in rows if r.get("order_id")]
     design_by_order: dict[int, dict[str, object]] = {}
     if order_ids:
@@ -262,6 +287,7 @@ def _search_orders_impl(
             dd = d.get("design_data")
             note_val = d.get("note")
             if oid and bn is not None:
+                # design_data は JSON 文字列で格納されているためパース
                 if isinstance(dd, str):
                     try:
                         dd = json.loads(dd) if dd else None
@@ -270,13 +296,14 @@ def _search_orders_impl(
                 design_by_order[oid][str(bn)] = dd
                 note_by_order[oid][str(bn)] = (note_val or "").strip() if note_val else ""
 
-    # レスポンス形式に変換
+    # DB の snake_case を API の camelCase に変換し、日付を YYYY/MM/DD 形式に整形
     items = []
     for r in rows:
+        # 枝番一覧（サブクエリの GROUP_CONCAT 結果。カンマ区切り → 配列に分割）
         branches_str = r.get("branches_str")
         branches = branches_str.split(",") if branches_str else []
 
-        # created_dt を YYYY/MM/DD 形式に
+        # 日付を YYYY/MM/DD 形式に整形（created_dt, deadline_dt, proofreading_dt）
         created_dt = r.get("created_dt")
         created_date = ""
         if created_dt:
@@ -285,6 +312,7 @@ def _search_orders_impl(
             else:
                 created_date = str(created_dt)[:10].replace("-", "/")
 
+        # 納期・校正予定日を YYYY/MM/DD 形式に変換（DB が datetime の場合は strftime、文字列の場合は先頭10文字を置換）
         deadline_dt = r.get("deadline_dt")
         proofreading_dt = r.get("proofreading_dt")
         deadline_str = ""
@@ -308,7 +336,7 @@ def _search_orders_impl(
             "companyId": r.get("company_id"),
             "customerId": r.get("customer_id"),
             "customerName": r.get("customer_name") or "",
-            "manager": r.get("manager_name") or "",  # om.manager_name
+            "manager": r.get("manager_name") or "",
             "templateId": r.get("template_id"),
             "template": r.get("template_name") or "",
             "designTypeId": r.get("design_type_id"),
@@ -329,8 +357,8 @@ def _search_orders_impl(
             "createdDate": created_date,
             "creator": r.get("creator_name") or "",
             "branches": branches,
-            "designDataByBranch": design_by_order.get(r.get("order_id"), {}),
-            "noteByBranch": note_by_order.get(r.get("order_id"), {}),
+            "designDataByBranch": design_by_order.get(r.get("order_id"), {}),  # 枝番ごとのデザイン編集データ
+            "noteByBranch": note_by_order.get(r.get("order_id"), {}),  # 枝番ごとの備考
         })
 
     return {
@@ -341,9 +369,9 @@ def _search_orders_impl(
     }
 
 
-# -----------------------------
+# -----------------------------------------------------------------------------
 # 注文1件取得（order_no 完全一致。order_item 含む）
-# -----------------------------
+# -----------------------------------------------------------------------------
 
 
 @router.get("/by-no")
@@ -356,9 +384,12 @@ def get_order_by_no(
     テンプレート項目の値は orderItems に templateItemId と orderItemVal の配列で含まれる。
     """
     try:
+        # 入力チェック
         no = (order_no or "").strip()
         if not no:
             return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
+
+        # order_main を取得（customer, template, design_type を JOIN）
         row = db.execute(
             text("""
                 SELECT
@@ -393,6 +424,8 @@ def get_order_by_no(
         if not row:
             return JSONResponse(status_code=404, content={"detail": "該当する注文が見つかりませんでした。"})
         order_id = row["order_id"]
+
+        # テンプレート項目の入力値（order_item）を取得
         item_rows = db.execute(
             text("""
                 SELECT template_item_id, order_item_val
@@ -406,6 +439,8 @@ def get_order_by_no(
             {"templateItemId": r["template_item_id"], "orderItemVal": r["order_item_val"] or ""}
             for r in item_rows
         ]
+
+        # 日付を YYYY/MM/DD 形式に整形してレスポンスを組み立て
         deadline_dt = row.get("deadline_dt")
         proofreading_dt = row.get("proofreading_dt")
         deadline_str = ""
@@ -451,9 +486,9 @@ def get_order_by_no(
         )
 
 
-# -----------------------------
+# -----------------------------------------------------------------------------
 # 注文詳細（枝番）の登録・更新
-# -----------------------------
+# -----------------------------------------------------------------------------
 
 
 @router.patch("/by-no/details")
@@ -473,6 +508,7 @@ def update_order_details(
     既存の order_detail 行があれば UPDATE、なければ INSERT。
     """
     try:
+        # 入力チェック・注文の存在確認
         no = (order_no or "").strip()
         if not no:
             return JSONResponse(status_code=400, content={"detail": "注文番号を指定してください。"})
@@ -485,6 +521,7 @@ def update_order_details(
         order_id = row[0]
         user_id = DEFAULT_USER_ID
 
+        # 枝番ごとに order_detail を INSERT または UPDATE（branchNo が空または3文字超はスキップ）
         for b in branches:
             bn = (b.get("branchNo") or "").strip()
             if not bn or len(bn) > 2:
@@ -493,6 +530,7 @@ def update_order_details(
             dd = b.get("designData")
             dd_json = json.dumps(dd) if dd is not None else None
 
+            # 既存レコードの有無を確認
             existing = db.execute(
                 text("""
                     SELECT order_detail_id FROM order_detail
@@ -502,6 +540,7 @@ def update_order_details(
             ).fetchone()
 
             if existing:
+                # 既存あり → UPDATE
                 db.execute(
                     text("""
                         UPDATE order_detail
@@ -517,6 +556,7 @@ def update_order_details(
                     },
                 )
             else:
+                # 既存なし → INSERT
                 db.execute(
                     text("""
                         INSERT INTO order_detail
@@ -543,9 +583,9 @@ def update_order_details(
         )
 
 
-# -----------------------------
+# -----------------------------------------------------------------------------
 # order_item（テンプレート項目）の登録・更新
-# -----------------------------
+# -----------------------------------------------------------------------------
 
 
 @router.patch("/by-no/items")
@@ -576,6 +616,7 @@ def update_order_items(
         order_id = row[0]
         user_id = DEFAULT_USER_ID
 
+        # テンプレート項目ごとに order_item を INSERT または UPDATE
         for item in template_items:
             tid = item.get("templateItemId")
             if tid is None:
@@ -584,9 +625,11 @@ def update_order_items(
                 tid_int = int(tid)
             except (TypeError, ValueError):
                 continue
+            # orderItemVal は最大200文字
             val = item.get("orderItemVal")
             val_str = (val or "").strip()[:200] if val is not None else ""
 
+            # 既存レコードの有無を確認
             existing = db.execute(
                 text("""
                     SELECT order_item_id FROM order_item
@@ -596,6 +639,7 @@ def update_order_items(
             ).fetchone()
 
             if existing:
+                # 既存あり → UPDATE
                 db.execute(
                     text("""
                         UPDATE order_item
@@ -610,6 +654,7 @@ def update_order_items(
                     },
                 )
             else:
+                # 既存なし → INSERT
                 db.execute(
                     text("""
                         INSERT INTO order_item (order_id, template_item_id, order_item_val, is_deleted, created_by, updated_by)
@@ -634,9 +679,9 @@ def update_order_items(
         )
 
 
-# -----------------------------
+# -----------------------------------------------------------------------------
 # 注文登録
-# -----------------------------
+# -----------------------------------------------------------------------------
 
 
 def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
@@ -658,7 +703,7 @@ def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
     """
     now = datetime.now()
     year = now.year
-    # INSERT ... ON DUPLICATE KEY UPDATE で採番（競合安全）
+    # INSERT ... ON DUPLICATE KEY UPDATE で採番（同一 company_id + year の競合を安全に処理）
     db.execute(
         text("""
             INSERT INTO order_no_seq (company_id, `year`, last_number, is_deleted, created_by, updated_by)
@@ -670,7 +715,7 @@ def _next_order_no(db: Session, company_id: int, user_id: int) -> str:
         {"company_id": company_id, "year": year, "created_by": user_id, "updated_by": user_id},
     )
     db.flush()
-    # 採番後の last_number を取得
+    # 採番後の last_number を取得し、年4桁+連番6桁の文字列を生成（例: 2025000001）
     r = db.execute(
         text("""
             SELECT last_number FROM order_no_seq
@@ -729,7 +774,8 @@ def create_order(
     """
     try:
         user_id = DEFAULT_USER_ID
-        # 社内CD・事業所CD・現場CDは必須
+
+        # 必須項目チェック（社内CD・事業所CD・現場CDは attribute_01/02/03 に格納）
         a01 = (attribute_01 or "").strip()
         a02 = (attribute_02 or "").strip()
         a03 = (attribute_03 or "").strip()
@@ -751,12 +797,13 @@ def create_order(
                 status_code=400,
                 content={"detail": "指定された顧客が存在しません。"},
             )
+        # 顧客に紐づく会社IDを order_main.company_id に使用（顧客の所属会社＝注文の会社）
         company_id = cust[1]
 
-        # 受注番号を採番（ログイン会社・当年。order_no_seq に基づく）
+        # 受注番号を採番（ログイン会社・当年。形式: 年4桁+連番6桁、例: 2025000001）
         order_no = _next_order_no(db, login_company_id, user_id)
 
-        # 日付は YYYY-MM-DD 形式で受け取り、DATETIME に格納（時刻は 00:00:00）
+        # 日付パラメータを DATETIME に変換（YYYY-MM-DD 形式。時刻は 00:00:00）
         deadline_val = None
         if deadline_dt and deadline_dt.strip():
             try:
@@ -770,7 +817,7 @@ def create_order(
             except ValueError:
                 pass
 
-        # order_main に登録（テンプレート項目以外。company_id＝顧客の会社、customer_id＝選択した顧客）
+        # order_main に登録（基本情報のみ。テンプレート項目は後続で order_item に登録）
         db.execute(
             text("""
                 INSERT INTO order_main
@@ -799,14 +846,14 @@ def create_order(
             },
         )
         db.flush()
-        # 挿入した order_main の order_id を取得（AUTO_INCREMENT。order_item の FK に必要）
+        # 挿入した order_main の order_id を取得（order_item の外部キーに必要）
         order_id_row = db.execute(text("SELECT LAST_INSERT_ID()")).fetchone()
         order_id = order_id_row[0] if order_id_row else None
         if not order_id:
             db.rollback()
             return JSONResponse(status_code=500, content={"detail": "order_main の登録に失敗しました。"})
 
-        # テンプレート項目を order_item に登録（1項目1行。入力値は order_item_val、最大200文字）
+        # テンプレート項目ごとに order_item を登録（1項目1行。order_item_val に最大200文字で格納）
         for item in template_items:
             tid = item.get("templateItemId")
             val = item.get("orderItemVal")

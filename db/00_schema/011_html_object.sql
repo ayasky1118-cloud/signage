@@ -1,4 +1,9 @@
-CREATE TABLE IF NOT EXISTS html_object
+SET NAMES utf8mb4;
+
+DROP TABLE IF EXISTS html_object_value;
+DROP TABLE IF EXISTS html_object;
+
+CREATE TABLE html_object
 (
 	html_object_id		BIGINT AUTO_INCREMENT							COMMENT 'HTMLオブジェクトID'
 ,	category_code		VARCHAR(50)		NOT NULL UNIQUE				COMMENT '区分コード'

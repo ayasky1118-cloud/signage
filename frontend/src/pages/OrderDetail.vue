@@ -1,23 +1,37 @@
 <script setup lang="ts">
 /**
- * 看板編集ページ（order_detail.html モックの実装）
- * - 注文情報の表示・検索・選択
- * - 枝番タブ・追加・削除・備考・地図出力/読込（JSON形式）
- * - 全画面編集オーバーレイ・登録/更新・各種モーダル
+ * OrderDetail - 看板編集画面
+ *
+ * 【用途】
+ * ・地図上でルート・テキスト・画像・吹き出し等を配置・編集
+ * ・枝番ごとにデザイン編集データ（design_data）を保持・更新
+ *
+ * 【主な機能】
+ * ・注文番号で検索・選択（OrderList から遷移時は orderNo, itemCode をクエリで受け取る）
+ * ・枝番タブ: 追加・削除・切り替え。備考（note）を枝番ごとに保持
+ * ・全画面編集オーバーレイ: サイドバーで HTML オブジェクトを選択し、地図上に配置
+ * ・地図出力/読込: design_data を JSON 形式でエクスポート・インポート
+ * ・updateOrderDetails / updateOrderItems API で枝番・テンプレート項目を登録・更新
  */
-import { ref, computed, watch, onMounted, nextTick } from "vue"
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
 import { geocodeAddress } from "../composables/useAddressApi"
+import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import MapPreview from "../components/MapPreview.vue"
+import HtmlObjectValueSelectModal from "../components/HtmlObjectValueSelectModal.vue"
 
 const router = useRouter()
 const route = useRoute()
 
-/** 枝番タブを横に並べて表示する最大個数（これを超えるとスライドで表示） */
+// -----------------------------------------------------------------------------
+// 定数・ユーティリティ
+// -----------------------------------------------------------------------------
+
+/** 枝番タブを横に並べて表示する最大個数（超えるとスライドで表示） */
 const MAX_BRANCH_DISPLAY = 10
 /** 1注文あたりの枝番の上限数 */
 const MAX_BRANCH_COUNT = 99
@@ -58,7 +72,10 @@ function fieldDisplay(val: string | undefined): string {
   return s || "—"
 }
 
-/* ルートクエリ: 一覧から遷移時は orderNo, itemCode, mode=edit */
+// -----------------------------------------------------------------------------
+// ルートクエリ（一覧から遷移時: orderNo, itemCode, mode=edit）
+// -----------------------------------------------------------------------------
+
 /** 注文一覧から「看板編集」で遷移してきた場合 true（注文番号を編集不可にする等） */
 const cameFromList = computed(() => route.query.mode === "edit" && !!route.query.orderNo)
 /** URL の orderNo クエリ。一覧から遷移時はここから初期検索する */
@@ -66,7 +83,10 @@ const initialOrderNo = computed(() => (route.query.orderNo as string) ?? "")
 /** URL の itemCode（枝番）。一覧から遷移時はこの枝番を初期表示する */
 const initialItemCode = computed(() => (route.query.itemCode as string) ?? "")
 
-/* 注文情報の開閉 */
+// -----------------------------------------------------------------------------
+// 注文情報エリアの開閉
+// -----------------------------------------------------------------------------
+
 const orderInfoExpanded = ref(true)
 
 /** 注文情報エリアの開閉をトグルする */
@@ -74,7 +94,10 @@ function toggleOrderInfo() {
   orderInfoExpanded.value = !orderInfoExpanded.value
 }
 
-/* 注文番号・検索済み・表示用データ */
+// -----------------------------------------------------------------------------
+// 注文番号・検索済み・表示用データ
+// -----------------------------------------------------------------------------
+
 const inputOrderNo = ref("")
 const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const branchNoInputRef = ref<HTMLInputElement | null>(null)
@@ -102,11 +125,14 @@ const orderDisplay = ref<{
   updater: "",
 })
 
-/* 注文番号は一覧から来た場合は読取専用 */
+// 注文番号は一覧から来た場合は読取専用
 const orderNoReadOnly = computed(() => cameFromList.value)
 const selectSearchDisabled = computed(() => cameFromList.value)
 
-/* 枝番 */
+// -----------------------------------------------------------------------------
+// 枝番（タブ・スライド・備考・未保存変更判定）
+// -----------------------------------------------------------------------------
+
 /** この注文に紐づく枝番一覧（2桁ゼロ埋めで保持） */
 const allBranches = ref<string[]>([])
 /** 枝番タブのスライドで、表示開始位置のインデックス */
@@ -135,7 +161,7 @@ const canSlideNext = computed(
     visibleStartIndex.value < allBranches.value.length - MAX_BRANCH_DISPLAY
 )
 
-/** 注文番号・枝番・備考のいずれかが「元の値」から変更されているか（戻る／枝番切り替え時の確認に使用） */
+/** 注文番号・枝番・備考のいずれかが「元の値」から変更されているか。戻る・枝番切り替え時の確認に使用 */
 const isDirty = computed(() => {
   const curNo = normalizeBranchNo(activeBranch.value)
   const origNo = normalizeBranchNo(originalBranchNo.value)
@@ -169,7 +195,10 @@ function ensureVisible(branchNo: string) {
     visibleStartIndex.value = Math.min(maxStart, idx - MAX_BRANCH_DISPLAY + 1)
 }
 
-/* 注文一覧（選択モーダル用） */
+// -----------------------------------------------------------------------------
+// 注文一覧（選択モーダル用）
+// -----------------------------------------------------------------------------
+
 const orderListForSelect = ref<OrderItem[]>([])
 const isLoadingOrders = ref(false)
 
@@ -682,6 +711,12 @@ function confirmBranchAdd() {
   if (!exists) {
     // 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
+    // ルート・画像のドロップダウンを「選択してください」に初期化
+    htmlObjects.value.forEach((obj) => {
+      if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
+        selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
+      }
+    })
     // mapDataByBranch を初期化（design_data 送信時に undefined にならないよう）
     if (!mapDataByBranch.value[branchNo]) {
       mapDataByBranch.value = {
@@ -932,6 +967,34 @@ async function fetchMapCenter() {
 /* 全画面編集 */
 const fullscreenEditVisible = ref(false)
 
+/** HTMLオブジェクトマスタ（ルート描画・テキスト配置・画像配置・吹き出し配置等） */
+const htmlObjects = ref<HtmlObjectItem[]>([])
+/** 各オブジェクトで選択中の値ID（has_child_table のとき使用） */
+const selectedValueIdByObjectId = ref<Record<number, number>>({})
+/** 吹き出し等の入力テキスト（has_child_table でないとき使用） */
+const inputTextByObjectId = ref<Record<number, string>>({})
+/** 選択モーダルを開いている html_object_id（null のとき閉じている） */
+const openSelectModalObjectId = ref<number | null>(null)
+
+/** 区分コード別のツールチップ文言 */
+const TOOLTIP_BY_CATEGORY: Record<string, string> = {
+  ROUTE_DRAWING: "地図上に経路を描画します",
+  TEXT_PLACEMENT: "地図上にテキストを配置します",
+  IMAGE_PLACEMENT: "地図上に画像を配置します",
+  BALLOON_PLACEMENT: "地図上に吹き出しを配置します",
+}
+
+/** 区分コード別のアクションボタンラベル（ルート描画→描画、画像/テキスト配置→配置） */
+const ACTION_LABEL_BY_CATEGORY: Record<string, string> = {
+  ROUTE_DRAWING: "描画",
+  TEXT_PLACEMENT: "配置",
+  IMAGE_PLACEMENT: "配置",
+  BALLOON_PLACEMENT: "配置",
+}
+
+/** ドロップダウンの「選択してください」プレースホルダー用の値（DB値とは別） */
+const SELECT_PLACEHOLDER_VALUE = 0
+
 /** 全画面編集オーバーレイを表示し、背景のスクロールを無効にする */
 function openFullscreenEdit() {
   fullscreenEditVisible.value = true
@@ -944,7 +1007,19 @@ function openFullscreenEdit() {
 /** 全画面編集オーバーレイを閉じ、背景のスクロールを復元する */
 function closeFullscreenEdit() {
   fullscreenEditVisible.value = false
+  openSelectModalObjectId.value = null
   document.body.style.overflow = ""
+}
+
+/** コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元） */
+onBeforeUnmount(() => {
+  document.body.style.overflow = ""
+})
+
+/** オブジェクトで選択中の値（ドロップダウン・選択モーダルで選択したもの） */
+function getSelectedValue(obj: HtmlObjectItem): HtmlObjectValueItem | undefined {
+  const id = selectedValueIdByObjectId.value[obj.htmlObjectId] ?? obj.values[0]?.htmlObjectValueId
+  return obj.values.find((v) => v.htmlObjectValueId === id)
 }
 
 /** プレビュー/出力で使うフォーマット（jpeg または svg） */
@@ -1134,8 +1209,22 @@ watch(orderDetailModalOpen, (open) => {
   if (!open) orderDetailForModal.value = null
 })
 
-watch(fullscreenEditVisible, (visible) => {
+watch(fullscreenEditVisible, async (visible) => {
   if (visible) {
+    try {
+      htmlObjects.value = await fetchHtmlObjects()
+      selectedValueIdByObjectId.value = {}
+      inputTextByObjectId.value = {}
+      htmlObjects.value.forEach((obj) => {
+        if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
+          selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
+        } else if (obj.values.length > 0) {
+          selectedValueIdByObjectId.value[obj.htmlObjectId] = obj.values[0].htmlObjectValueId
+        }
+      })
+    } catch {
+      htmlObjects.value = []
+    }
     nextTick(() => {
       setTimeout(() => {
         fullscreenMapRef.value?.fitMapToContainer()
@@ -1222,10 +1311,13 @@ watch(fullscreenEditVisible, (visible) => {
               </button>
               <button
                 type="button"
-                class="h-[2.25rem] px-6 py-2 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                title="検索"
+                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                 @click="confirmSearch"
               >
-                検索
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
               </button>
             </div>
           </div>
@@ -1270,32 +1362,7 @@ watch(fullscreenEditVisible, (visible) => {
 
       <div class="px-6 pt-5 pb-6 space-y-6">
         <!-- -- 枝番タブ（スライド・タブ一覧・削除／追加ボタン） -- -->
-        <div>
-          <div class="flex justify-end mb-3">
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="!hasBranches"
-                @click="clickDeleteBranch"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                </svg>
-                削除
-              </button>
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
-                @click="clickAddBranch"
-              >
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                追加
-              </button>
-            </div>
-          </div>
+        <div class="flex flex-wrap items-center gap-2 justify-between">
           <div class="flex flex-wrap items-center gap-2">
             <button
               v-show="hasBranches"
@@ -1347,6 +1414,29 @@ watch(fullscreenEditVisible, (visible) => {
               </svg>
             </button>
           </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="!hasBranches"
+              @click="clickDeleteBranch"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+              </svg>
+              削除
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-normal text-slate-600 hover:text-slate-800 hover:bg-slate-100 border border-slate-200/60 hover:border-slate-300 transition-all duration-200"
+              @click="clickAddBranch"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              追加
+            </button>
+          </div>
         </div>
 
         <!-- -- 枝番詳細（2カラム：左＝枝番・地図・備考／右＝レイアウトプレビュー） -- -->
@@ -1388,12 +1478,11 @@ watch(fullscreenEditVisible, (visible) => {
             <div class="space-y-1.5">
               <label class="text-xs font-normal text-slate-500">テンプレートプレビュー</label>
               <div class="w-full h-[400px] bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden">
-                <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                  <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
-                  <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
-                  <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
-                </svg>
+                <img
+                  src="/samples/template/template-dummy.png?v=2"
+                  alt="テンプレートプレビュー"
+                  class="max-w-full max-h-full object-contain"
+                />
               </div>
             </div>
             <div class="space-y-1.5">
@@ -1475,12 +1564,14 @@ watch(fullscreenEditVisible, (visible) => {
                   <div v-else-if="mapCenterError" class="absolute inset-0 z-20 flex items-center justify-center bg-slate-100/90 rounded-xl p-4">
                     <p class="text-sm text-slate-600 text-center">{{ mapCenterError }}</p>
                   </div>
+                  <!-- レイアウト/マッププレビュー：表示のみ。編集操作は全画面で編集・操作で実施 -->
                   <MapPreview
                     v-else
                     ref="mapPreviewRef"
                     :center="mapCenter"
                     :zoom="15"
                     :api-key="mapTilerApiKey"
+                    :interactive="false"
                     class="flex-1 min-h-0 w-full"
                   />
                 </div>
@@ -1535,63 +1626,129 @@ watch(fullscreenEditVisible, (visible) => {
                 閉じる
               </button>
             </div>
-            <div class="space-y-2">
+            <!-- DB取得のHTMLオブジェクト（ルート描画・テキスト配置・画像配置・吹き出し配置等） -->
+            <div
+              v-for="obj in htmlObjects"
+              :key="obj.htmlObjectId"
+              class="space-y-2"
+            >
               <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">ルート描画</span>
-                <span class="text-slate-400 cursor-help" title="地図上に経路を描画します">ⓘ</span>
+                <span class="text-xs font-normal text-slate-500">{{ obj.categoryName }}</span>
+                <span
+                  v-if="TOOLTIP_BY_CATEGORY[obj.categoryCode]"
+                  class="group relative inline-flex"
+                >
+                  <span class="text-slate-400 cursor-help">ⓘ</span>
+                  <span
+                    class="pointer-events-none absolute left-0 top-full z-10 mt-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
+                    role="tooltip"
+                  >
+                    {{ TOOLTIP_BY_CATEGORY[obj.categoryCode] }}
+                  </span>
+                </span>
               </div>
-              <input
-                type="text"
-                class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
-                placeholder="赤・実線"
-                value="赤・実線"
-              />
-              <button type="button" class="w-full px-4 py-2 rounded-xl text-xs font-normal text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
-                ルート描画
-              </button>
-            </div>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">テキスト配置</span>
-                <span class="text-slate-400 cursor-help" title="地図上にテキストを配置します">ⓘ</span>
-              </div>
-              <input
-                type="text"
-                class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
-                placeholder="テキストを入力してください"
-              />
-              <button type="button" class="w-full px-4 py-2 rounded-xl text-xs font-normal text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
-                テキスト追加モード
-              </button>
-            </div>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">画像配置</span>
-                <span class="text-slate-400 cursor-help" title="地図上に画像を配置します">ⓘ</span>
-              </div>
-              <input
-                type="text"
-                class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
-                placeholder="信号機"
-                value="信号機"
-              />
-              <button type="button" class="w-full px-4 py-2 rounded-xl text-xs font-normal text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
-                画像追加モード
-              </button>
-            </div>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-normal text-slate-500">吹き出し配置</span>
-                <span class="text-slate-400 cursor-help" title="地図上に吹き出しを配置します">ⓘ</span>
-              </div>
-              <input
-                type="text"
-                class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
-                placeholder="吹き出しテキストを入力してください"
-              />
-              <button type="button" class="w-full px-4 py-2 rounded-xl text-xs font-normal text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all duration-200">
-                吹き出し追加モード
-              </button>
+              <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素 -->
+              <template v-if="obj.hasChildTable && obj.values.length > 0">
+                <div class="flex gap-2 items-center">
+                  <select
+                    :value="selectedValueIdByObjectId[obj.htmlObjectId] ?? ((obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT') ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)"
+                    class="flex-1 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none bg-white"
+                    @change="(e) => { selectedValueIdByObjectId[obj.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
+                  >
+                    <option
+                      v-if="obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT'"
+                      :value="SELECT_PLACEHOLDER_VALUE"
+                    >
+                      選択してください
+                    </option>
+                    <option
+                      v-for="v in obj.values"
+                      :key="v.htmlObjectValueId"
+                      :value="v.htmlObjectValueId"
+                    >
+                      {{ v.valueName }}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    title="選択"
+                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                    @click="openSelectModalObjectId = obj.htmlObjectId"
+                  >
+                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
+                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                  >
+                    <!-- ルート描画: 鉛筆アイコン、画像/テキスト配置: マップピンアイコン -->
+                    <svg
+                      v-if="obj.categoryCode === 'ROUTE_DRAWING'"
+                      class="w-5 h-5 text-slate-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <!-- 画像/テキスト/吹き出し配置: マップピン（配置の標準記号） -->
+                    <svg
+                      v-else
+                      class="w-5 h-5 text-slate-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                    </svg>
+                  </button>
+                </div>
+                <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
+                <div
+                  v-if="getSelectedValue(obj)?.sampleImagePath"
+                  class="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2 py-1.5"
+                >
+                  <img
+                    :src="getSelectedValue(obj)!.sampleImagePath!"
+                    :alt="getSelectedValue(obj)!.valueName"
+                    class="h-8 w-8 flex-shrink-0 object-contain"
+                  />
+                  <span class="min-w-0 flex-1 truncate text-[10px] text-slate-600">{{ getSelectedValue(obj)?.valueName }}</span>
+                </div>
+                <HtmlObjectValueSelectModal
+                  :key="`modal-${obj.htmlObjectId}`"
+                  :model-value="openSelectModalObjectId === obj.htmlObjectId"
+                  :title="obj.categoryName"
+                  :items="obj.values"
+                  @update:model-value="(v) => { if (!v) openSelectModalObjectId = null }"
+                  @select="(v) => { selectedValueIdByObjectId[obj.htmlObjectId] = v.htmlObjectValueId; openSelectModalObjectId = null }"
+                />
+              </template>
+              <!-- 子テーブルなし：テキスト入力＋配置ボタン -->
+              <template v-else>
+                <div class="flex gap-2 items-center">
+                  <input
+                    :value="inputTextByObjectId[obj.htmlObjectId] ?? ''"
+                    type="text"
+                    class="flex-1 min-w-0 px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-offset-2 focus:ring-lightBlue outline-none"
+                    :placeholder="obj.categoryCode === 'BALLOON_PLACEMENT' ? '吹き出しテキストを入力してください' : 'テキストを入力してください'"
+                    @input="(e) => { inputTextByObjectId[obj.htmlObjectId] = (e.target as HTMLInputElement).value }"
+                  />
+                  <button
+                    type="button"
+                    :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
+                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                  >
+                    <svg class="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                    </svg>
+                  </button>
+                </div>
+              </template>
             </div>
             <div class="space-y-2">
               <div class="flex items-center gap-2">
@@ -1609,6 +1766,7 @@ watch(fullscreenEditVisible, (visible) => {
             </div>
           </div>
         </aside>
+        <!-- 全画面編集用マップ：パン・ズーム・編集操作可能（interactive はデフォルト true） -->
         <div class="flex-1 min-w-0 relative bg-slate-200">
           <MapPreview
             ref="fullscreenMapRef"

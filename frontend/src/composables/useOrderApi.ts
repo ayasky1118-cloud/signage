@@ -1,17 +1,35 @@
 /**
- * 注文一覧API用 composable
+ * useOrderApi - 注文 API 用 composable
  *
- * バックエンド GET /orders を呼び出し、検索結果を返す。
- * 開発時は Vite のプロキシ（/api → localhost:8000）を使用。VITE_API_BASE を指定すれば直指定も可。
+ * 【用途】
+ * ・OrderList: 注文一覧検索（searchOrders）、注文詳細表示（OrderDetailModal）
+ * ・OrderMain: 注文新規登録（createOrder）、テンプレート項目取得
+ * ・OrderDetail: 注文1件取得（getOrderByNo）、枝番・テンプレート項目の更新（updateOrderDetails, updateOrderItems）
+ *
+ * 【API 一覧】
+ * ・GET /orders: 一覧検索（ページネーション・複数条件対応）
+ * ・GET /orders/by-no: 注文1件取得（order_item 含む）
+ * ・POST /orders: 注文新規登録
+ * ・PATCH /orders/by-no/details: 枝番毎の備考・design_data 更新
+ * ・PATCH /orders/by-no/items: テンプレート項目（order_item）更新
+ *
+ * 【共通】
+ * ・全リクエスト 15 秒タイムアウト。AbortController 使用
+ * ・VITE_API_BASE 未設定時: 同一オリジン → Vite プロキシ /api を使用
  */
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
-  if (typeof window !== "undefined") return "" // 同一オリジン → Vite プロキシ /api を使用
+  if (typeof window !== "undefined") return ""
   return "http://localhost:8000"
 }
 const API_PREFIX = getApiBase() ? "" : "/api"
 
+// -----------------------------------------------------------------------------
+// 型定義（検索・一覧）
+// -----------------------------------------------------------------------------
+
+/** 注文一覧検索のクエリパラメータ。camelCase → API の snake_case に変換して送信 */
 export interface OrderSearchParams {
   /** 会社ID（ログイン会社。指定時は当該会社の注文のみ返す） */
   companyId?: number
@@ -36,6 +54,7 @@ export interface OrderSearchParams {
   perPage?: number
 }
 
+/** 注文一覧の1件。searchOrders の items の要素。枝番・designDataByBranch・noteByBranch 含む */
 export interface OrderItem {
   orderId?: number
   orderNo: string
@@ -79,6 +98,7 @@ export interface OrderItem {
   noteByBranch?: Record<string, string>
 }
 
+/** 注文一覧検索のレスポンス。ページネーション情報含む */
 export interface OrderSearchResult {
   items: OrderItem[]
   total: number
@@ -86,13 +106,17 @@ export interface OrderSearchResult {
   perPage: number
 }
 
-/** 注文1件取得（by-no）の order_item 1行 */
+// -----------------------------------------------------------------------------
+// 型定義（注文1件取得・登録）
+// -----------------------------------------------------------------------------
+
+/** 注文1件取得（by-no）の order_item 1行。テンプレート項目の入力値 */
 export interface OrderDetailItem {
   templateItemId: number
   orderItemVal: string
 }
 
-/** 注文1件取得（GET /orders/by-no）のレスポンス。order_item を orderItems で返す */
+/** 注文1件取得（GET /orders/by-no）のレスポンス。order_main + order_item（orderItems） */
 export interface OrderDetail {
   orderId: number
   orderNo: string
@@ -122,9 +146,14 @@ export interface OrderDetail {
   orderItems: OrderDetailItem[]
 }
 
+// -----------------------------------------------------------------------------
+// 注文1件取得
+// -----------------------------------------------------------------------------
+
 /**
- * 注文番号で1件取得（GET /orders/by-no）。order_item を含む。
- * 該当なしは 404 で throw。その他エラーも throw。
+ * 注文番号で1件取得（GET /orders/by-no）。order_main と order_item を返す。
+ * 404: 該当なし、その他: API エラー。いずれも Error を throw。
+ * 15 秒タイムアウト。
  */
 export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
   const no = orderNo?.trim()
@@ -144,6 +173,7 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
     throw e
   }
   clearTimeout(timeoutId)
+  // 404: 該当する注文が存在しない
   if (res.status === 404) {
     const body = await res.json().catch(() => ({})) as { detail?: string }
     throw new Error(body?.detail ?? "該当データがありません")
@@ -160,6 +190,7 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
     throw new Error(`API error: ${detail}`)
   }
   const data = (await res.json()) as Record<string, unknown>
+  // API の camelCase レスポンスを型安全にマッピング。orderItems は OrderDetailItem 配列に変換
   return {
     orderId: Number(data.orderId),
     orderNo: String(data.orderNo ?? ""),
@@ -233,18 +264,27 @@ export interface CreateOrderParams {
   templateItems: CreateOrderTemplateItem[]
 }
 
-/** 注文新規登録 API のレスポンス */
+/** 注文新規登録 API のレスポンス。採番された orderNo と orderId */
 export interface CreateOrderResult {
   /** 採番された受注番号（年4桁+連番6桁） */
   orderNo: string
   orderId: number
 }
 
+// -----------------------------------------------------------------------------
+// 注文一覧検索
+// -----------------------------------------------------------------------------
+
+/**
+ * 注文一覧を検索。OrderSearchParams をクエリパラメータに変換して GET /orders を呼ぶ。
+ * ページネーション・複数条件（会社・顧客・担当者・注文名・住所・日付等）に対応。
+ * エラー時は throw。15 秒タイムアウト。
+ */
 export async function searchOrders(
   params: OrderSearchParams
 ): Promise<OrderSearchResult> {
+  // camelCase の params を API の snake_case クエリに変換
   const searchParams = new URLSearchParams()
-
   if (params.companyId != null) searchParams.set("company_id", String(params.companyId))
   if (params.customerId != null) searchParams.set("customer_id", String(params.customerId))
   if (params.manager?.trim()) searchParams.set("manager", params.manager.trim())
@@ -269,7 +309,7 @@ export async function searchOrders(
   const url = `${base}${API_PREFIX}/orders?${searchParams.toString()}`
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15秒でタイムアウト
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
   let res: Response
   try {
     res = await fetch(url, { signal: controller.signal })
@@ -297,7 +337,11 @@ export async function searchOrders(
   return res.json()
 }
 
-/** 枝番毎の登録・更新用 */
+// -----------------------------------------------------------------------------
+// 枝番・テンプレート項目の更新
+// -----------------------------------------------------------------------------
+
+/** 枝番毎の登録・更新用。branchNo: 枝番、note: 備考、designData: デザイン編集データ（JSON） */
 export interface OrderDetailBranch {
   branchNo: string
   note?: string
@@ -305,8 +349,9 @@ export interface OrderDetailBranch {
 }
 
 /**
- * 注文詳細（枝番毎の備考・design_data）を登録・更新する（PATCH /orders/by-no/details）。
- * 失敗時は Error を throw。
+ * 注文詳細（枝番毎の備考・design_data）を登録・更新（PATCH /orders/by-no/details）。
+ * 既存の order_detail があれば UPDATE、なければ INSERT。
+ * 404: 注文なし、その他: API エラー。いずれも Error を throw。15 秒タイムアウト。
  */
 export async function updateOrderDetails(
   orderNo: string,
@@ -352,15 +397,16 @@ export async function updateOrderDetails(
   return res.json()
 }
 
-/** order_item 更新用（CreateOrderTemplateItem と同形式） */
+/** order_item 更新用。CreateOrderTemplateItem と同形式（templateItemId, orderItemVal） */
 export interface UpdateOrderItemEntry {
   templateItemId: number
   orderItemVal: string
 }
 
 /**
- * 注文の order_item（テンプレート項目の値）を登録・更新する（PATCH /orders/by-no/items）。
- * 失敗時は Error を throw。
+ * 注文の order_item（テンプレート項目の値）を登録・更新（PATCH /orders/by-no/items）。
+ * 既存の order_item があれば UPDATE、なければ INSERT。
+ * 404: 注文なし、その他: API エラー。いずれも Error を throw。15 秒タイムアウト。
  */
 export async function updateOrderItems(
   orderNo: string,
@@ -406,17 +452,20 @@ export async function updateOrderItems(
   return res.json()
 }
 
+// -----------------------------------------------------------------------------
+// 注文新規登録
+// -----------------------------------------------------------------------------
+
 /**
- * 注文を新規登録する（POST /orders）。
- *
- * - 受注番号（order_no）はバックエンドで order_no_seq に基づき採番される
- *   （ログイン会社・当年、形式: 年4桁+連番6桁）。
- * - テンプレート項目は order_item に、その他は order_main に登録される。
- * - 失敗時は Error を throw（400: 顧客不在、500: サーバーエラー等）。
+ * 注文を新規登録（POST /orders）。
+ * 受注番号はバックエンドで order_no_seq に基づき採番（ログイン会社・当年、年4桁+連番6桁）。
+ * order_main に基本情報、order_item にテンプレート項目の値を登録。
+ * 400: 顧客不在・必須項目未入力、500: サーバーエラー。いずれも Error を throw。15 秒タイムアウト。
  */
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
   const base = getApiBase()
   const url = `${base}${API_PREFIX}/orders`
+  // 必須項目は常に含め、任意項目は値がある場合のみ body に追加
   const body: Record<string, unknown> = {
     loginCompanyId: params.loginCompanyId,
     orderName: params.orderName,

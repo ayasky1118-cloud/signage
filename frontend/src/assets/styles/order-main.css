@@ -1,0 +1,279 @@
+/* ========================================
+   order_main（注文新規・変更）専用スタイル
+   Tailwind 削除に伴い、フォーム・レイアウトを従来の CSS で定義
+   ======================================== */
+
+#order-main-page {
+  max-width: 64rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 3rem 2rem;
+}
+
+#order-main-page .order-main-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  overflow: hidden;
+}
+
+#order-main-page .order-main-header {
+  padding: 1rem 2rem;
+  background-color: var(--color-main);
+}
+
+#order-main-page .order-main-header h2 {
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  letter-spacing: -0.025em;
+}
+
+#order-main-page .order-main-form {
+  padding: 1.25rem 2.5rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+#order-main-page .order-main-form .form-section {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgb(241 245 249);
+}
+
+#order-main-page .order-main-form .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+}
+
+#order-main-page .order-main-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  flex-shrink: 0;
+}
+
+#order-main-page .order-main-form .form-field--flex1 {
+  flex: 1;
+  min-width: 0;
+}
+
+#order-main-page .order-main-form .form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgb(100 116 139);
+}
+
+#order-main-page .order-main-form .form-input,
+#order-main-page .order-main-form .form-select,
+#order-main-page .order-main-form textarea {
+  height: 2.25rem;
+  box-sizing: border-box;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(203 213 225);
+  outline: none;
+  transition: all 0.2s;
+}
+
+#order-main-page .order-main-form .form-input:focus,
+#order-main-page .order-main-form .form-select:focus,
+#order-main-page .order-main-form textarea:focus {
+  box-shadow: 0 0 0 2px var(--color-light-blue);
+}
+
+#order-main-page .order-main-form .form-input:disabled,
+#order-main-page .order-main-form .form-select:disabled,
+#order-main-page .order-main-form textarea:disabled {
+  opacity: 0.5;
+  background-color: rgb(248 250 252);
+  border-color: rgb(226 232 240);
+  cursor: not-allowed;
+}
+
+#order-main-page .order-main-form .form-input--readonly {
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
+}
+
+#order-main-page .order-main-form textarea {
+  min-height: 4.5rem;
+  resize: vertical;
+  height: auto;
+}
+
+#order-main-page .order-main-form .form-input--w7 { min-width: 7rem; width: 7rem; max-width: 100%; }
+#order-main-page .order-main-form .form-input--w8 { min-width: 8rem; width: 8rem; max-width: 100%; }
+#order-main-page .order-main-form .form-input--w24 { width: 6rem; min-width: 0; }
+
+#order-main-page .order-main-form .form-input--date {
+  background: white;
+  cursor: pointer;
+}
+
+#order-main-page .order-main-form .form-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#order-main-page .order-main-form .form-field-row .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+#order-main-page .order-main-form .btn-select {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background-color: rgb(241 245 249);
+  border: 1px solid rgb(203 213 225);
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
+  transition: all 0.2s;
+}
+
+#order-main-page .order-main-form .btn-select:hover:not(:disabled) {
+  background-color: rgb(226 232 240);
+}
+
+#order-main-page .order-main-form .btn-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+#order-main-page .order-main-form .btn-search {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.75rem;
+  background-color: var(--color-main);
+  color: white;
+  font-size: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
+  transition: all 0.2s;
+}
+
+#order-main-page .order-main-form .btn-search:hover:not(:disabled) {
+  background-color: var(--color-sub-blue);
+}
+
+#order-main-page .order-main-form .btn-search:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+#order-main-page .order-main-form .btn-select svg,
+#order-main-page .order-main-form .btn-search svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: inherit;
+}
+
+#order-main-page .order-main-form .btn-select svg {
+  color: rgb(71 85 105);
+}
+
+#order-main-page .order-main-form .form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+#order-main-page .order-main-form .form-block-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  #order-main-page .order-main-form .form-block-row {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 1.5rem;
+  }
+}
+
+#order-main-page .order-main-form .form-block-row .form-field--flex2 {
+  flex: 2;
+}
+
+#order-main-page .order-main-form .form-block-row .form-field--flex1 {
+  flex: 1;
+}
+
+#order-main-page .order-main-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+#order-main-page .order-main-form .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+#order-main-page .order-main-form .form-actions .btn-register {
+  padding: 0.625rem 2rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-main);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 400;
+  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
+  transition: all 0.2s;
+}
+
+#order-main-page .order-main-form .form-actions .btn-register:hover:not(:disabled) {
+  background-color: var(--color-sub-blue);
+}
+
+#order-main-page .order-main-form .form-actions .btn-register:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#order-main-page .order-main-form .form-actions .btn-back {
+  padding: 0.625rem 2rem;
+}
+
+#order-main-page .order-main-form .form-actions .order-detail-link {
+  color: var(--color-main);
+  font-size: 0.75rem;
+}
+
+#order-main-page .order-main-form .form-actions .order-detail-link:hover:not([aria-disabled="true"]) {
+  text-decoration: underline;
+}
+
+#order-main-page .order-main-form .form-actions .order-detail-link[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 画面タイトル（bfcache復元時も色を維持） */
+#order-main-page .card-header-full > div:first-child {
+  background-color: #003b82 !important;
+}
+#order-main-page .card-header-full > div:first-child h2 {
+  color: #fff !important;
+}

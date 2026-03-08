@@ -1,31 +1,56 @@
 <script setup lang="ts">
 /**
- * テンプレート選択モーダル（共通）
- * ログイン会社IDと顧客IDを条件にテンプレート一覧を取得して表示する。
- * 現状 OrderMain で利用。他画面でも利用可能。
+ * TemplateSelectModal - テンプレート選択モーダル
+ *
+ * 【用途】
+ * ・OrderMain: 注文登録フォームの「テンプレート」選択時に表示
+ * ・companyId と customerId を条件に API でテンプレート一覧を取得し、カードグリッドで表示
+ *
+ * 【表示内容】
+ * ・各テンプレート: サンプル画像（256px 高さ）＋ templateName
+ * ・2〜5列のグリッド（レスポンシブ）
+ *
+ * 【データ取得】
+ * ・モーダルが開いたとき（modelValue が true になったとき）に loadTemplates を実行
+ * ・companyId または customerId が変更されたときも再取得
  */
 import { ref, watch } from "vue"
 import { fetchTemplates, type TemplateOption } from "../composables/useTemplateApi"
 
+// -----------------------------------------------------------------------------
+// Props 定義
+// -----------------------------------------------------------------------------
+
 const props = defineProps<{
+  /** モーダルの表示/非表示。v-model で双方向バインディング */
   modelValue: boolean
-  /** ログイン会社ID（必須） */
+  /** ログイン会社ID（必須）。この会社に紐づくテンプレートを取得 */
   companyId: number
-  /** 顧客ID（指定時は当該顧客に紐づくテンプレートのみ取得） */
+  /** 顧客ID。指定時は当該顧客に紐づくテンプレートのみ取得（未指定時は会社の全テンプレート） */
   customerId?: number | null
 }>()
 
+// -----------------------------------------------------------------------------
+// Emits 定義
+// -----------------------------------------------------------------------------
+
 const emit = defineEmits<{
+  /** モーダルを閉じる際に false を発火 */
   "update:modelValue": [value: boolean]
+  /** ユーザーがカードをクリックした際に、選択した TemplateOption を発火 */
   select: [option: TemplateOption]
 }>()
 
-/** モーダルに表示するテンプレート一覧（companyId / customerId で API 取得） */
+// -----------------------------------------------------------------------------
+// 状態・データ取得
+// -----------------------------------------------------------------------------
+
+/** モーダルに表示するテンプレート一覧。loadTemplates で API から取得 */
 const items = ref<TemplateOption[]>([])
-/** テンプレート一覧の取得中フラグ */
+/** テンプレート一覧取得中のローディング状態 */
 const loading = ref(false)
 
-/** ログイン会社ID・顧客IDを条件にテンプレート一覧をAPI取得する */
+/** companyId と customerId を条件にテンプレート一覧を API 取得。エラー時は空配列 */
 async function loadTemplates() {
   loading.value = true
   try {
@@ -37,6 +62,7 @@ async function loadTemplates() {
   }
 }
 
+/** モーダルが開いたとき、または companyId / customerId が変更されたときに再取得 */
 watch(
   () => [props.modelValue, props.companyId, props.customerId] as const,
   ([open]) => {
@@ -44,12 +70,16 @@ watch(
   }
 )
 
-/** モーダルを閉じる（v-model を false に更新） */
+// -----------------------------------------------------------------------------
+// モーダル操作
+// -----------------------------------------------------------------------------
+
+/** モーダルを閉じる（オーバーレイクリック・キャンセルボタン・選択時で呼ばれる） */
 function close() {
   emit("update:modelValue", false)
 }
 
-/** テンプレートを選択し select イベントを発火してからモーダルを閉じる */
+/** テンプレートカードをクリックしたときの処理。親に選択値を渡し、モーダルを閉じる */
 function onSelect(opt: TemplateOption) {
   emit("select", opt)
   close()
@@ -57,53 +87,53 @@ function onSelect(opt: TemplateOption) {
 </script>
 
 <template>
+  <!-- body 直下にマウント（z-index の影響を避けるため Teleport 使用） -->
   <Teleport to="body">
-    <!-- === テンプレート選択モーダル === -->
     <div
       v-show="modelValue"
-      class="fixed inset-0 z-50"
+      class="modal"
       aria-hidden="false"
       role="dialog"
       aria-modal="true"
       aria-labelledby="templateSelectModalTitle"
     >
-      <!-- -- オーバーレイ -- -->
-      <div class="fixed inset-0 bg-black/40" @click="close"></div>
-      <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
-          <!-- -- ヘッダー -- -->
-          <div class="px-6 py-3 bg-main flex-shrink-0">
-            <h3 id="templateSelectModalTitle" class="text-base font-normal text-white tracking-tight">テンプレートを選択</h3>
+      <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
+      <div class="modal-overlay" @click="close"></div>
+      <div class="modal-dialog">
+        <div class="modal-content modal-content--wide template-select-modal-content">
+          <!-- ヘッダー（メインカラー背景） -->
+          <div class="modal-header template-select-modal-header">
+            <h3 id="templateSelectModalTitle" class="modal-header-title">テンプレートを選択</h3>
           </div>
-          <!-- -- 本文：テンプレートカードグリッド（カードクリックで select） -- -->
-          <div class="px-8 py-6 flex-1 min-h-0 overflow-auto">
-            <p v-if="loading" class="text-sm text-slate-500">読み込み中...</p>
-            <div v-else class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <!-- 本文: テンプレートカードグリッド（カードクリックで select 発火。2〜5列、最大高さでスクロール） -->
+          <div class="modal-body template-select-modal-body">
+            <p v-if="loading" class="text-muted">読み込み中...</p>
+            <div v-else class="template-select-grid">
+              <!-- 各テンプレートをカード表示（サンプル画像 + テンプレート名） -->
               <button
                 v-for="opt in items"
                 :key="opt.templateId"
                 type="button"
-                class="template-select-item flex flex-col rounded-xl border-2 border-slate-200 bg-white overflow-hidden hover:ring-2 hover:ring-main hover:ring-offset-2 focus:ring-2 focus:ring-main focus:ring-offset-2 focus:outline-none transition-all duration-200 text-left"
+                class="template-select-item"
                 @click="onSelect(opt)"
               >
-                <div class="h-64 w-full bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M3 21L21 3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.5" />
-                    <path stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M21 15l-5-5L5 21" />
-                  </svg>
+                <div class="template-select-item-image">
+                  <img
+                    src="/samples/template/template-dummy.png?v=2"
+                    :alt="opt.templateName"
+                    class="template-select-item-img"
+                  />
                 </div>
-                <div class="px-3 py-2 text-xs font-normal text-slate-700">{{ opt.templateName }}</div>
+                <div class="template-select-item-label">{{ opt.templateName }}</div>
               </button>
             </div>
-            <p v-if="!loading && items.length === 0" class="text-sm text-slate-500">データがありません</p>
+            <p v-if="!loading && items.length === 0" class="text-muted">データがありません</p>
           </div>
-          <!-- -- フッター -- -->
-          <div class="px-8 py-5 border-t border-slate-200 flex flex-nowrap justify-end flex-shrink-0">
+          <!-- フッター（キャンセルボタン） -->
+          <div class="modal-footer modal-footer--end template-select-modal-footer">
             <button
               type="button"
-              class="px-6 py-2 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200 whitespace-nowrap"
+              class="btn btn-secondary"
               @click="close"
             >
               キャンセル
@@ -114,3 +144,79 @@ function onSelect(opt: TemplateOption) {
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.template-select-modal-content {
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.template-select-modal-header {
+  flex-shrink: 0;
+}
+
+.template-select-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1.5rem 2rem;
+}
+
+.template-select-modal-footer {
+  flex-shrink: 0;
+}
+
+.template-select-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .template-select-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.template-select-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.75rem;
+  border: 2px solid rgb(226 232 240);
+  background: white;
+  overflow: hidden;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.template-select-item:hover,
+.template-select-item:focus {
+  box-shadow: 0 0 0 2px var(--color-main);
+  outline: none;
+}
+
+.template-select-item-image {
+  height: 16rem;
+  width: 100%;
+  background-color: rgb(241 245 249);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.template-select-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.template-select-item-label {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgb(51 65 85);
+}
+</style>
