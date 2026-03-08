@@ -1,22 +1,20 @@
-/**
- * useOrderApi - 注文 API 用 composable
- *
- * 【用途】
- * ・OrderList: 注文一覧検索（searchOrders）、注文詳細表示（OrderDetailModal）
- * ・OrderMain: 注文新規登録（createOrder）、テンプレート項目取得
- * ・OrderDetail: 注文1件取得（getOrderByNo）、枝番・テンプレート項目の更新（updateOrderDetails, updateOrderItems）
- *
- * 【API 一覧】
- * ・GET /orders: 一覧検索（ページネーション・複数条件対応）
- * ・GET /orders/by-no: 注文1件取得（order_item 含む）
- * ・POST /orders: 注文新規登録
- * ・PATCH /orders/by-no/details: 枝番毎の備考・design_data 更新
- * ・PATCH /orders/by-no/items: テンプレート項目（order_item）更新
- *
- * 【共通】
- * ・全リクエスト 15 秒タイムアウト。AbortController 使用
- * ・VITE_API_BASE 未設定時: 同一オリジン → Vite プロキシ /api を使用
- */
+//-- useOrderApi - 注文 API 用 composable
+//--
+//-- 【用途】
+//-- ・OrderList: 注文一覧検索（searchOrders）、注文詳細表示（OrderDetailModal）
+//-- ・OrderMain: 注文新規登録（createOrder）、テンプレート項目取得
+//-- ・OrderDetail: 注文1件取得（getOrderByNo）、枝番・テンプレート項目の更新（updateOrderDetails, updateOrderItems）
+//--
+//-- 【API 一覧】
+//-- ・GET /orders: 一覧検索（ページネーション・複数条件対応）
+//-- ・GET /orders/by-no: 注文1件取得（order_item 含む）
+//-- ・POST /orders: 注文新規登録
+//-- ・PATCH /orders/by-no/details: 枝番毎の備考・design_data 更新
+//-- ・PATCH /orders/by-no/items: テンプレート項目（order_item）更新
+//--
+//-- 【共通】
+//-- ・全リクエスト 15 秒タイムアウト。AbortController 使用
+//-- ・VITE_API_BASE 未設定時: 同一オリジン → Vite プロキシ /api を使用
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
   if (env?.trim()) return env.trim().replace(/\/$/, "")
@@ -25,13 +23,13 @@ function getApiBase(): string {
 }
 const API_PREFIX = getApiBase() ? "" : "/api"
 
-// -----------------------------------------------------------------------------
-// 型定義（検索・一覧）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 型定義（検索・一覧）
+//-------------------------------------------------------------------------------
 
-/** 注文一覧検索のクエリパラメータ。camelCase → API の snake_case に変換して送信 */
+//-- 注文一覧検索のクエリパラメータ。camelCase → API の snake_case に変換して送信
 export interface OrderSearchParams {
-  /** 会社ID（ログイン会社。指定時は当該会社の注文のみ返す） */
+  //-- 会社ID（ログイン会社。指定時は当該会社の注文のみ返す）
   companyId?: number
   customerId?: number
   manager?: string
@@ -46,15 +44,15 @@ export interface OrderSearchParams {
   deadlineDt?: string
   proofreadingDt?: string
   note?: string
-  /** ソート項目（orderNo / createdDate）。未指定時は createdDate 昇順 */
+  //-- ソート項目（orderNo / createdDate）。未指定時は createdDate 昇順
   sortBy?: "orderNo" | "createdDate"
-  /** ソート順（asc / desc）。未指定時は asc */
+  //-- ソート順（asc / desc）。未指定時は asc
   sortOrder?: "asc" | "desc"
   page?: number
   perPage?: number
 }
 
-/** 注文一覧の1件。searchOrders の items の要素。枝番・designDataByBranch・noteByBranch 含む */
+//-- 注文一覧の1件。searchOrders の items の要素。枝番・designDataByBranch・noteByBranch 含む
 export interface OrderItem {
   orderId?: number
   orderNo: string
@@ -68,37 +66,37 @@ export interface OrderItem {
   template: string
   designTypeId?: number
   designType: string
-  /** 納期（Y/m/d） */
+  //-- 納期（Y/m/d）
   deadlineDt?: string
-  /** 校正予定日（Y/m/d） */
+  //-- 校正予定日（Y/m/d）
   proofreadingDt?: string
-  /** 社内CD (attribute_01) */
+  //-- 社内CD (attribute_01)
   attribute_01?: string
-  /** 事業所CD (attribute_02) */
+  //-- 事業所CD (attribute_02)
   attribute_02?: string
-  /** 現場CD (attribute_03) */
+  //-- 現場CD (attribute_03)
   attribute_03?: string
-  /** 制作区分 (attribute_04) */
+  //-- 制作区分 (attribute_04)
   attribute_04?: string
-  /** ステータス (attribute_05) */
+  //-- ステータス (attribute_05)
   attribute_05?: string
   attribute_06?: string
   attribute_07?: string
   attribute_08?: string
   attribute_09?: string
   attribute_10?: string
-  /** 備考 */
+  //-- 備考
   note?: string
   createdDate: string
   creator: string
   branches: string[]
-  /** 枝番ごとのデザイン編集データ（order_detail.design_data）。地図のルート・テキスト・画像等 */
+  //-- 枝番ごとのデザイン編集データ（order_detail.design_data）。地図のルート・テキスト・画像等
   designDataByBranch?: Record<string, unknown>
-  /** 枝番ごとの備考（order_detail.note） */
+  //-- 枝番ごとの備考（order_detail.note）
   noteByBranch?: Record<string, string>
 }
 
-/** 注文一覧検索のレスポンス。ページネーション情報含む */
+//-- 注文一覧検索のレスポンス。ページネーション情報含む
 export interface OrderSearchResult {
   items: OrderItem[]
   total: number
@@ -106,17 +104,17 @@ export interface OrderSearchResult {
   perPage: number
 }
 
-// -----------------------------------------------------------------------------
-// 型定義（注文1件取得・登録）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 型定義（注文1件取得・登録）
+//-------------------------------------------------------------------------------
 
-/** 注文1件取得（by-no）の order_item 1行。テンプレート項目の入力値 */
+//-- 注文1件取得（by-no）の order_item 1行。テンプレート項目の入力値
 export interface OrderDetailItem {
   templateItemId: number
   orderItemVal: string
 }
 
-/** 注文1件取得（GET /orders/by-no）のレスポンス。order_main + order_item（orderItems） */
+//-- 注文1件取得（GET /orders/by-no）のレスポンス。order_main + order_item（orderItems）
 export interface OrderDetail {
   orderId: number
   orderNo: string
@@ -130,31 +128,23 @@ export interface OrderDetail {
   templateName: string
   designTypeId: number
   designTypeName: string
-  /** 納期（Y/m/d）。未設定時は空文字 */
-  deadlineDt?: string
-  /** 校正予定日（Y/m/d）。未設定時は空文字 */
-  proofreadingDt?: string
+  deadlineDt?: string  //-- 納期（Y/m/d）。未設定時は空文字
+  proofreadingDt?: string  //-- 校正予定日（Y/m/d）。未設定時は空文字
   attribute_01: string
   attribute_02: string
   attribute_03: string
-  /** 制作区分 (attribute_04) */
-  attribute_04?: string
-  /** ステータス (attribute_05) */
-  attribute_05?: string
-  /** 備考 */
+  attribute_04?: string  //-- 制作区分 (attribute_04)
+  attribute_05?: string  //-- ステータス (attribute_05)
+  //-- 備考
   note?: string
   orderItems: OrderDetailItem[]
 }
 
-// -----------------------------------------------------------------------------
-// 注文1件取得
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文1件取得
+//-------------------------------------------------------------------------------
 
-/**
- * 注文番号で1件取得（GET /orders/by-no）。order_main と order_item を返す。
- * 404: 該当なし、その他: API エラー。いずれも Error を throw。
- * 15 秒タイムアウト。
- */
+//-- 注文番号で1件取得（GET /orders/by-no）。order_main と order_item を返す。404: 該当なし、その他: API エラー。15 秒タイムアウト。
 export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
   const no = orderNo?.trim()
   if (!no) throw new Error("注文番号を指定してください。")
@@ -173,7 +163,7 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
     throw e
   }
   clearTimeout(timeoutId)
-  // 404: 該当する注文が存在しない
+  //-- 404: 該当する注文が存在しない
   if (res.status === 404) {
     const body = await res.json().catch(() => ({})) as { detail?: string }
     throw new Error(body?.detail ?? "該当データがありません")
@@ -185,12 +175,12 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
       if (body?.detail && typeof body.detail === "string") detail = body.detail
       else if (body?.error) detail = body.error
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(`API error: ${detail}`)
   }
   const data = (await res.json()) as Record<string, unknown>
-  // API の camelCase レスポンスを型安全にマッピング。orderItems は OrderDetailItem 配列に変換
+  //-- API の camelCase レスポンスを型安全にマッピング。orderItems は OrderDetailItem 配列に変換
   return {
     orderId: Number(data.orderId),
     orderNo: String(data.orderNo ?? ""),
@@ -221,69 +211,47 @@ export async function getOrderByNo(orderNo: string): Promise<OrderDetail> {
   }
 }
 
-/**
- * 注文登録時のテンプレート項目。
- * テンプレート項目は可変のため、ID と入力値のペアで渡す。
- */
+//-- 注文登録時のテンプレート項目。テンプレート項目は可変のため、ID と入力値のペアで渡す。
 export interface CreateOrderTemplateItem {
-  /** テンプレート項目ID（order_item.template_item_id） */
-  templateItemId: number
-  /** 入力値（order_item.order_item_val、最大200文字） */
-  orderItemVal: string
+  templateItemId: number  //-- テンプレート項目ID（order_item.template_item_id）
+  orderItemVal: string  //-- 入力値（order_item.order_item_val、最大200文字）
 }
 
-/** 注文新規登録 API のリクエスト Body */
+//-- 注文新規登録 API のリクエスト Body
 export interface CreateOrderParams {
-  /** ログイン会社ID（受注番号採番に使用。order_no_seq の company_id） */
-  loginCompanyId: number
+  loginCompanyId: number  //-- ログイン会社ID（受注番号採番に使用。order_no_seq の company_id）
   orderName: string
   orderAdd: string
-  /** 顧客ID（order_main.customer_id。顧客の company_id が order_main.company_id に使われる） */
-  customerId: number
+  customerId: number  //-- 顧客ID（order_main.customer_id。顧客の company_id が order_main.company_id に使われる）
   templateId: number
   designTypeId: number
-  /** 社内CD（必須） */
-  attribute01: string
-  /** 事業所CD（必須） */
-  attribute02: string
-  /** 現場CD（必須） */
-  attribute03: string
-  /** 制作区分（attribute_04）。任意 */
-  attribute04?: string
-  /** ステータス（attribute_05）。任意 */
-  attribute05?: string
-  /** 担当者名。任意 */
-  managerName?: string
-  /** 納期（YYYY-MM-DD）。任意 */
-  deadlineDt?: string
-  /** 校正予定日（YYYY-MM-DD）。任意 */
-  proofreadingDt?: string
-  /** 備考。任意 */
-  note?: string
-  /** テンプレート項目ごとの ID と入力値。可変長。 */
-  templateItems: CreateOrderTemplateItem[]
+  attribute01: string  //-- 社内CD（必須）
+  attribute02: string  //-- 事業所CD（必須）
+  attribute03: string  //-- 現場CD（必須）
+  attribute04?: string  //-- 制作区分（attribute_04）。任意
+  attribute05?: string  //-- ステータス（attribute_05）。任意
+  managerName?: string  //-- 担当者名。任意
+  deadlineDt?: string  //-- 納期（YYYY-MM-DD）。任意
+  proofreadingDt?: string  //-- 校正予定日（YYYY-MM-DD）。任意
+  note?: string  //-- 備考。任意
+  templateItems: CreateOrderTemplateItem[]  //-- テンプレート項目ごとの ID と入力値。可変長。
 }
 
-/** 注文新規登録 API のレスポンス。採番された orderNo と orderId */
+//-- 注文新規登録 API のレスポンス。採番された orderNo と orderId
 export interface CreateOrderResult {
-  /** 採番された受注番号（年4桁+連番6桁） */
-  orderNo: string
+  orderNo: string  //-- 採番された受注番号（年4桁+連番6桁）
   orderId: number
 }
 
-// -----------------------------------------------------------------------------
-// 注文一覧検索
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文一覧検索
+//-------------------------------------------------------------------------------
 
-/**
- * 注文一覧を検索。OrderSearchParams をクエリパラメータに変換して GET /orders を呼ぶ。
- * ページネーション・複数条件（会社・顧客・担当者・注文名・住所・日付等）に対応。
- * エラー時は throw。15 秒タイムアウト。
- */
+//-- 注文一覧を検索。OrderSearchParams をクエリパラメータに変換して GET /orders を呼ぶ。ページネーション・複数条件対応。エラー時は throw。15 秒タイムアウト。
 export async function searchOrders(
   params: OrderSearchParams
 ): Promise<OrderSearchResult> {
-  // camelCase の params を API の snake_case クエリに変換
+  //-- camelCase の params を API の snake_case クエリに変換
   const searchParams = new URLSearchParams()
   if (params.companyId != null) searchParams.set("company_id", String(params.companyId))
   if (params.customerId != null) searchParams.set("customer_id", String(params.customerId))
@@ -329,7 +297,7 @@ export async function searchOrders(
       if (body?.error) detail = body.error
       else if (body?.detail && typeof body.detail === "string") detail = body.detail
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(`API error: ${detail}`)
   }
@@ -337,22 +305,18 @@ export async function searchOrders(
   return res.json()
 }
 
-// -----------------------------------------------------------------------------
-// 枝番・テンプレート項目の更新
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 枝番・テンプレート項目の更新
+//-------------------------------------------------------------------------------
 
-/** 枝番毎の登録・更新用。branchNo: 枝番、note: 備考、designData: デザイン編集データ（JSON） */
+//-- 枝番毎の登録・更新用。branchNo: 枝番、note: 備考、designData: デザイン編集データ（JSON）
 export interface OrderDetailBranch {
   branchNo: string
   note?: string
   designData?: unknown
 }
 
-/**
- * 注文詳細（枝番毎の備考・design_data）を登録・更新（PATCH /orders/by-no/details）。
- * 既存の order_detail があれば UPDATE、なければ INSERT。
- * 404: 注文なし、その他: API エラー。いずれも Error を throw。15 秒タイムアウト。
- */
+//-- 注文詳細（枝番毎の備考・design_data）を登録・更新（PATCH /orders/by-no/details）。既存の order_detail があれば UPDATE、なければ INSERT。404: 注文なし、その他: API エラー。15 秒タイムアウト。
 export async function updateOrderDetails(
   orderNo: string,
   branches: OrderDetailBranch[]
@@ -390,20 +354,20 @@ export async function updateOrderDetails(
       if (data?.detail && typeof data.detail === "string") detail = data.detail
       else if (data?.error && typeof data.error === "string") detail = data.error
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(detail)
   }
   return res.json()
 }
 
-/** order_item 更新用。CreateOrderTemplateItem と同形式（templateItemId, orderItemVal） */
+//-- order_item 更新用。CreateOrderTemplateItem と同形式（templateItemId, orderItemVal）
 export interface UpdateOrderItemEntry {
   templateItemId: number
   orderItemVal: string
 }
 
-/** order_main 更新用パラメータ */
+//-- order_main 更新用パラメータ
 export interface UpdateOrderMainParams {
   orderName: string
   orderAdd: string
@@ -421,10 +385,7 @@ export interface UpdateOrderMainParams {
   note?: string
 }
 
-/**
- * 注文の order_main を更新（PATCH /orders/by-no）。
- * 404: 注文なし、400: バリデーションエラー、その他: API エラー。15 秒タイムアウト。
- */
+//-- 注文の order_main を更新（PATCH /orders/by-no）。404: 注文なし、400: バリデーションエラー、その他: API エラー。15 秒タイムアウト。
 export async function updateOrderMain(
   orderNo: string,
   params: UpdateOrderMainParams
@@ -482,18 +443,14 @@ export async function updateOrderMain(
       if (data?.detail && typeof data.detail === "string") detail = data.detail
       else if (data?.error && typeof data.error === "string") detail = data.error
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(detail)
   }
   return res.json()
 }
 
-/**
- * 注文の order_item（テンプレート項目の値）を登録・更新（PATCH /orders/by-no/items）。
- * 既存の order_item があれば UPDATE、なければ INSERT。
- * 404: 注文なし、その他: API エラー。いずれも Error を throw。15 秒タイムアウト。
- */
+//-- 注文の order_item（テンプレート項目の値）を登録・更新（PATCH /orders/by-no/items）。既存の order_item があれば UPDATE、なければ INSERT。404: 注文なし、その他: API エラー。15 秒タイムアウト。
 export async function updateOrderItems(
   orderNo: string,
   templateItems: UpdateOrderItemEntry[]
@@ -531,27 +488,22 @@ export async function updateOrderItems(
       if (data?.detail && typeof data.detail === "string") detail = data.detail
       else if (data?.error && typeof data.error === "string") detail = data.error
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(detail)
   }
   return res.json()
 }
 
-// -----------------------------------------------------------------------------
-// 注文新規登録
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文新規登録
+//-------------------------------------------------------------------------------
 
-/**
- * 注文を新規登録（POST /orders）。
- * 受注番号はバックエンドで order_no_seq に基づき採番（ログイン会社・当年、年4桁+連番6桁）。
- * order_main に基本情報、order_item にテンプレート項目の値を登録。
- * 400: 顧客不在・必須項目未入力、500: サーバーエラー。いずれも Error を throw。15 秒タイムアウト。
- */
+//-- 注文を新規登録（POST /orders）。受注番号はバックエンドで order_no_seq に基づき採番。order_main に基本情報、order_item にテンプレート項目の値を登録。400: 顧客不在・必須項目未入力、500: サーバーエラー。15 秒タイムアウト。
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
   const base = getApiBase()
   const url = `${base}${API_PREFIX}/orders`
-  // 必須項目は常に含め、任意項目は値がある場合のみ body に追加
+  //-- 必須項目は常に含め、任意項目は値がある場合のみ body に追加
   const body: Record<string, unknown> = {
     loginCompanyId: params.loginCompanyId,
     orderName: params.orderName,
@@ -595,7 +547,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
       if (data?.detail && typeof data.detail === "string") detail = data.detail
       else if (data?.error && typeof data.error === "string") detail = data.error
     } catch {
-      /* ignore */
+      //-- ignore
     }
     throw new Error(detail)
   }

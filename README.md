@@ -11,7 +11,7 @@
 
 | 領域 | 技術 |
 |------|------|
-| **フロントエンド** | Vue 3, Vite, Vue Router, Tailwind CSS v4, TypeScript |
+| **フロントエンド** | Vue 3, Vite, Vue Router, TypeScript, CSS（shared.css / common.css / 画面別） |
 | **バックエンド** | Python 3.12, FastAPI, SQLAlchemy 2.x |
 | **データベース** | MySQL 8.0（Docker） |
 | **インフラ** | AWS SAM（ローカル開発 / 本番デプロイ） |
@@ -22,7 +22,7 @@
 
 ```
 signage/
-├── frontend/           # Vue 3 + Vite + Vue Router + Tailwind
+├── frontend/           # Vue 3 + Vite + Vue Router
 │   ├── src/
 │   │   ├── pages/      # ページコンポーネント（Menu, OrderList など）
 │   │   ├── components/
@@ -114,4 +114,3 @@ API は `http://localhost:8000` で動作します。
 | 内容 | 参照先 |
 |------|--------|
 | 環境構築・開発手順の一覧 | [docs/README.md](docs/README.md) |
-| 機能制御仕様 | [docs/mock/docs/機能制御仕様.md](docs/mock/docs/機能制御仕様.md) |

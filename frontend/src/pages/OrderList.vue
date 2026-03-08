@@ -1,17 +1,15 @@
 <script setup lang="ts">
-/**
- * OrderList - 注文一覧画面
- *
- * 【用途】
- * ・注文の検索・一覧表示・ページネーション
- * ・行ダブルクリックで注文詳細モーダル表示
- * ・「看板編集」ボタンで OrderDetail へ遷移（orderNo, itemCode をクエリで渡す）
- *
- * 【主な機能】
- * ・検索条件: 顧客・担当者・注文名・デザイン種別（主項目）、詳細検索で日付・ステータス等
- * ・ソート: 注文番号・登録日で昇順/降順切り替え
- * ・ページネーション: サーバー側（10件/ページ）
- */
+//-- OrderList - 注文一覧画面
+//--
+//-- 【用途】
+//-- ・注文の検索・一覧表示・ページネーション
+//-- ・行ダブルクリックで注文詳細モーダル表示
+//-- ・「看板編集」ボタンで OrderDetail へ遷移（orderNo, itemCode をクエリで渡す）
+//--
+//-- 【主な機能】
+//-- ・検索条件: 顧客・担当者・注文名・デザイン種別（主項目）、詳細検索で日付・ステータス等
+//-- ・ソート: 注文番号・登録日で昇順/降順切り替え
+//-- ・ページネーション: サーバー側（10件/ページ）
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue"
 import { RouterLink, useRouter, useRoute } from "vue-router"
 import flatpickr from "flatpickr"
@@ -24,6 +22,7 @@ import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { STATUS_OPTIONS, PRODUCTION_TYPE_OPTIONS } from "../constants/order"
+import { FORM_IDS } from "../constants/form-ids"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import CustomerSelectModal from "../components/CustomerSelectModal.vue"
@@ -31,11 +30,11 @@ import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 const router = useRouter()
 const route = useRoute()
 
-// -----------------------------------------------------------------------------
-// ユーティリティ
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- ユーティリティ
+//-------------------------------------------------------------------------------
 
-/** ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得） */
+//-- ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1（将来は認証ストアから取得）
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -45,9 +44,9 @@ function getLoginCompanyId(): number {
   return 1
 }
 
-// -----------------------------------------------------------------------------
-// 検索条件（主項目: 常時表示）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 検索条件（主項目: 常時表示）
+//-------------------------------------------------------------------------------
 
 const searchCustomerId = ref<number | null>(null)
 const searchCustomerName = ref("")
@@ -55,22 +54,22 @@ const searchManager = ref("")
 const searchOrderName = ref("")
 const searchDesignTypeId = ref<string>("")
 
-// 検索条件（詳細: 展開時のみ表示）
+//-- 検索条件（詳細: 展開時のみ表示）
 const searchOrderNo = ref("")
 const searchAddress = ref("")
 const searchStatus = ref("")
 const searchProductionType = ref("")
 const searchNote = ref("")
 
-/* デザイン種別マスタ（検索条件のセレクト用） */
+//-- デザイン種別マスタ（検索条件のセレクト用）
 const designTypeOptions = ref<DesignTypeItem[]>([])
 
-// 詳細検索の開閉（初期は非表示）
+//-- 詳細検索の開閉（初期は非表示）
 const detailSearchExpanded = ref(false)
 
-// -----------------------------------------------------------------------------
-// API 検索結果・ローディング・エラー
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- API 検索結果・ローディング・エラー
+//-------------------------------------------------------------------------------
 
 const orderItems = ref<OrderItem[]>([])
 const totalCount = ref(0)
@@ -81,22 +80,22 @@ const showNoDataDialog = ref(false)
 const showApiErrorDialog = ref(false)
 const showDateRangeErrorDialog = ref(false)
 
-// -----------------------------------------------------------------------------
-// ソート（各カラムごとに昇順/降順を保持）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- ソート（各カラムごとに昇順/降順を保持）
+//-------------------------------------------------------------------------------
 
 const sortBy = ref<"orderNo" | "createdDate" | null>(null)
 const sortOrderByOrderNo = ref<"asc" | "desc">("asc")
 const sortOrderByCreatedDate = ref<"asc" | "desc">("asc")
 
-/** 指定カラムの現在のソート順（昇順/降順）を返す */
+//-- 指定カラムの現在のソート順（昇順/降順）を返す
 function getSortOrder(column: "orderNo" | "createdDate"): "asc" | "desc" {
   return column === "orderNo" ? sortOrderByOrderNo.value : sortOrderByCreatedDate.value
 }
 
-/** 指定カラムのソート順をトグルし、1ページ目から再検索する */
+//-- 指定カラムのソート順をトグルし、1ページ目から再検索する
 function toggleSortOrder(column: "orderNo" | "createdDate") {
-  // 初期検索時は createdDate 昇順なので、登録日クリックはトグル扱い
+  //-- 初期検索時は createdDate 昇順なので、登録日クリックはトグル扱い
   const isSameColumn = sortBy.value === column || (sortBy.value === null && column === "createdDate")
   if (isSameColumn) {
     const ref = column === "orderNo" ? sortOrderByOrderNo : sortOrderByCreatedDate
@@ -105,27 +104,27 @@ function toggleSortOrder(column: "orderNo" | "createdDate") {
   } else {
     const wasNull = sortBy.value === null
     sortBy.value = column
-    // 初回（sortBy が null）で注文番号をクリックした場合、↓押下＝降順へ切り替え
+    //-- 初回（sortBy が null）で注文番号をクリックした場合、↓押下＝降順へ切り替え
     if (wasNull) {
       const ref = column === "orderNo" ? sortOrderByOrderNo : sortOrderByCreatedDate
       ref.value = "desc"
     }
   }
-  currentPage.value = 1  // ソート変更時は1ページ目へ
+  currentPage.value = 1  //-- ソート変更時は1ページ目へ
   fetchOrders()
 }
 
-// -----------------------------------------------------------------------------
-// ページネーション（サーバー側。10件/ページ）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- ページネーション（サーバー側。10件/ページ）
+//-------------------------------------------------------------------------------
 
-/** 1ページあたりの表示件数。API の perPage にそのまま渡す */
+//-- 1ページあたりの表示件数。API の perPage にそのまま渡す
 const PER_PAGE = 10
 const currentPage = ref(1)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PER_PAGE)))
 
 const paginationStartPage = ref(1)
-/** ページネーションで表示するページ番号の配列（最大5件表示） */
+//-- ページネーションで表示するページ番号の配列（最大5件表示）
 const visiblePageNumbers = computed(() => {
   const maxVisible = 5
   let start = Math.max(1, Math.min(currentPage.value - Math.floor((maxVisible - 1) / 2), totalPages.value - maxVisible + 1))
@@ -137,14 +136,14 @@ const visiblePageNumbers = computed(() => {
   return pages
 })
 
-/** 指定ページへ移動し、そのページの検索結果を取得する */
+//-- 指定ページへ移動し、そのページの検索結果を取得する
 function goToPage(page: number) {
   if (page === currentPage.value) return
   currentPage.value = page
   fetchOrders()
 }
 
-/** 前のページへ移動し、検索を再実行する */
+//-- 前のページへ移動し、検索を再実行する
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value--
@@ -152,7 +151,7 @@ function prevPage() {
   }
 }
 
-/** 次のページへ移動し、検索を再実行する */
+//-- 次のページへ移動し、検索を再実行する
 function nextPage() {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
@@ -160,7 +159,7 @@ function nextPage() {
   }
 }
 
-/** API・ネットワークエラーを日本語メッセージに変換する */
+//-- API・ネットワークエラーを日本語メッセージに変換する
 function toJapaneseError(e: unknown): string {
   const msg = e instanceof Error ? e.message : ""
   if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
@@ -174,28 +173,28 @@ function toJapaneseError(e: unknown): string {
   return msg || "検索に失敗しました。"
 }
 
-/** 画面上の日付（Y/m/d）を API 用の YYYY-MM-DD 形式に変換 */
+//-- 画面上の日付（Y/m/d）を API 用の YYYY-MM-DD 形式に変換
 function toApiDate(val: string): string {
   if (!val?.trim()) return ""
   return val.trim().replace(/\//g, "-")
 }
 
-/** 検索条件で注文一覧 API を呼び出し、結果を orderItems に反映。日付は Flatpickr の DOM から取得 */
+//-- 検索条件で注文一覧 API を呼び出し、結果を orderItems に反映。日付は Flatpickr の DOM から取得
 async function fetchOrders() {
   isLoading.value = true
   apiError.value = ""
   try {
-    // 日付系は DOM から取得（Flatpickr が値を保持）
-    const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
-    const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
-    const inputDeadline = document.getElementById("inputDeadline") as HTMLInputElement
-    const inputProofreading = document.getElementById("inputProofreading") as HTMLInputElement
+    //-- 日付系は DOM から取得（Flatpickr が値を保持）
+    const inputFrom = document.getElementById(FORM_IDS.search.createdDateFrom) as HTMLInputElement
+    const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
+    const inputDeadline = document.getElementById(FORM_IDS.search.deadline) as HTMLInputElement
+    const inputProofreading = document.getElementById(FORM_IDS.search.proofreading) as HTMLInputElement
     const createdDateFrom = inputFrom?.value ? toApiDate(inputFrom.value) : ""
     const createdDateTo = inputTo?.value ? toApiDate(inputTo.value) : ""
     const deadlineDt = inputDeadline?.value ? toApiDate(inputDeadline.value) : ""
     const proofreadingDt = inputProofreading?.value ? toApiDate(inputProofreading.value) : ""
 
-    // searchOrders API 呼び出し
+    //-- searchOrders API 呼び出し
     const result = await searchOrders({
       companyId: getLoginCompanyId(),
       customerId: searchCustomerId.value ?? undefined,
@@ -216,7 +215,7 @@ async function fetchOrders() {
       page: currentPage.value,
       perPage: PER_PAGE,
     })
-    // 成功時：結果を反映。0件のときは該当データなしダイアログを表示
+    //-- 成功時：結果を反映。0件のときは該当データなしダイアログを表示
     orderItems.value = result.items
     totalCount.value = result.total
     showNoDataDialog.value = result.total === 0
@@ -231,10 +230,10 @@ async function fetchOrders() {
   }
 }
 
-/** 登録日の開始日が終了日より後でないかチェックする */
+//-- 登録日の開始日が終了日より後でないかチェックする
 function isDateRangeInvalid(): boolean {
-  const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
-  const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
+  const inputFrom = document.getElementById(FORM_IDS.search.createdDateFrom) as HTMLInputElement
+  const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
   const fromVal = inputFrom?.value?.trim() ?? ""
   const toVal = inputTo?.value?.trim() ?? ""
   if (!fromVal || !toVal) return false
@@ -245,7 +244,7 @@ function isDateRangeInvalid(): boolean {
 
 const searchBtnRef = ref<HTMLButtonElement | null>(null)
 
-/** 検索ボタン押下時。日付範囲チェックののち検索を実行する */
+//-- 検索ボタン押下時。日付範囲チェックののち検索を実行する
 function performSearch() {
   if (isLoading.value) return
   if (isDateRangeInvalid()) {
@@ -259,51 +258,51 @@ function performSearch() {
   fetchOrders()
 }
 
-/** 検索完了時に検索ボタンのフォーカスを外し、色を元に戻す */
+//-- 検索完了時に検索ボタンのフォーカスを外し、色を元に戻す
 watch(isLoading, (loading, prev) => {
   if (prev === true && loading === false) {
     nextTick(() => searchBtnRef.value?.blur())
   }
 })
 
-/** 戻るボタン押下。履歴を1つ戻す */
+//-- 戻るボタン押下。履歴を1つ戻す
 function goBack() {
   router.back()
 }
 
-/** APIエラーダイアログを閉じ、エラーメッセージをクリアする */
+//-- APIエラーダイアログを閉じ、エラーメッセージをクリアする
 function closeApiErrorDialog() {
   showApiErrorDialog.value = false
   apiError.value = ""
 }
 
-/** 日付範囲エラーダイアログを閉じ、終了日入力欄にフォーカスする */
+//-- 日付範囲エラーダイアログを閉じ、終了日入力欄にフォーカスする
 function closeDateRangeErrorDialog() {
   showDateRangeErrorDialog.value = false
   nextTick(() => {
-    const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
+    const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
     inputTo?.focus()
   })
 }
 
-/** 注文（新規・変更）画面へのルートパラメータを生成する */
+//-- 注文（新規・変更）画面へのルートパラメータを生成する
 function orderMainParams(order: OrderItem) {
   return { path: "/order/main", query: { orderNo: order.orderNo } }
 }
 
-/** 看板編集画面へのルートパラメータ（注文番号・枝番・編集モード）を生成する */
+//-- 看板編集画面へのルートパラメータ（注文番号・枝番・編集モード）を生成する
 function orderDetailParams(order: OrderItem, branch: string) {
   return { path: "/order/detail", query: { orderNo: order.orderNo, itemCode: branch, mode: "edit" } }
 }
 
-// -----------------------------------------------------------------------------
-// 注文詳細モーダル
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文詳細モーダル
+//-------------------------------------------------------------------------------
 
 const orderDetailModalOpen = ref(false)
 const orderDetailSelected = ref<OrderItem | null>(null)
 
-/** 一覧行のダブルクリックで注文詳細モーダルを開く */
+//-- 一覧行のダブルクリックで注文詳細モーダルを開く
 function openOrderView(order: OrderItem) {
   orderDetailSelected.value = order
   orderDetailModalOpen.value = true
@@ -313,28 +312,28 @@ watch(orderDetailModalOpen, (open) => {
   if (!open) orderDetailSelected.value = null
 })
 
-/** デザイン種別の表示用。空の場合は — を返す */
+//-- デザイン種別の表示用。空の場合は — を返す
 function designTypeLabel(value: string): string {
   return value || "—"
 }
 
-// -----------------------------------------------------------------------------
-// Flatpickr（日付ピッカー）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- Flatpickr（日付ピッカー）
+//-------------------------------------------------------------------------------
 
 let fpFrom: flatpickr.Instance | null = null
 let fpTo: flatpickr.Instance | null = null
 let fpDeadline: flatpickr.Instance | null = null
 let fpProofreading: flatpickr.Instance | null = null
 
-/** 日付ピッカー（登録日・納期・校正予定日）を初期化。詳細検索展開時に呼ぶ */
+//-- 日付ピッカー（登録日・納期・校正予定日）を初期化。詳細検索展開時に呼ぶ
 function initDatePickers() {
-  if (fpFrom && fpTo) return /* 既に初期化済み */
+  if (fpFrom && fpTo) return  //-- 既に初期化済み
   const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
-  const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
-  const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
-  const inputDeadline = document.getElementById("inputDeadline") as HTMLInputElement
-  const inputProofreading = document.getElementById("inputProofreading") as HTMLInputElement
+  const inputFrom = document.getElementById(FORM_IDS.search.createdDateFrom) as HTMLInputElement
+  const inputTo = document.getElementById(FORM_IDS.search.createdDateTo) as HTMLInputElement
+  const inputDeadline = document.getElementById(FORM_IDS.search.deadline) as HTMLInputElement
+  const inputProofreading = document.getElementById(FORM_IDS.search.proofreading) as HTMLInputElement
   if (inputFrom && inputTo) {
     fpFrom = flatpickr(inputFrom, opts)
     fpTo = flatpickr(inputTo, opts)
@@ -343,9 +342,9 @@ function initDatePickers() {
   if (inputProofreading && !fpProofreading) fpProofreading = flatpickr(inputProofreading, opts)
 }
 
-// -----------------------------------------------------------------------------
-// 顧客選択モーダル・注文番号選択モーダル
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 顧客選択モーダル・注文番号選択モーダル
+//-------------------------------------------------------------------------------
 
 const customerListForSelect = ref<CustomerItem[]>([])
 const customerSelectModalOpen = ref(false)
@@ -359,7 +358,7 @@ const {
   openOrderNoSelectModal,
 } = useOrderNoSelectModal(getLoginCompanyId)
 
-/** 顧客選択モーダルを開く。未取得の場合はAPIで顧客一覧を取得する */
+//-- 顧客選択モーダルを開く。未取得の場合はAPIで顧客一覧を取得する
 function openCustomerSelectModal() {
   customerSelectModalOpen.value = true
   if (customerListForSelect.value.length === 0) {
@@ -371,19 +370,19 @@ function openCustomerSelectModal() {
   }
 }
 
-/** 顧客選択モーダルで選択した顧客を検索条件（顧客ID・顧客名）に反映する（担当者名は反映しない） */
+//-- 顧客選択モーダルで選択した顧客を検索条件（顧客ID・顧客名）に反映する（担当者名は反映しない）
 function selectCustomer(c: CustomerItem) {
   searchCustomerId.value = c.customerId
   searchCustomerName.value = c.customerName
 }
 
-/** 顧客選択をクリアし、検索条件の顧客ID・顧客名を空にする */
+//-- 顧客選択をクリアし、検索条件の顧客ID・顧客名を空にする
 function clearCustomer() {
   searchCustomerId.value = null
   searchCustomerName.value = ""
 }
 
-/** 注文番号選択モーダルで選択した注文番号を検索条件に反映する */
+//-- 注文番号選択モーダルで選択した注文番号を検索条件に反映する
 function selectOrderNo(order: OrderItem) {
   searchOrderNo.value = order.orderNo ?? ""
 }
@@ -395,7 +394,7 @@ onMounted(async () => {
     designTypeOptions.value = []
   }
 
-  /* order/main から遷移時: パラメータの注文番号を検索条件に設定し、初期検索を実施 */
+  //-- order/main から遷移時: パラメータの注文番号を検索条件に設定し、初期検索を実施
   const orderNoFromQuery = (route.query.orderNo as string)?.trim()
   if (orderNoFromQuery) {
     searchOrderNo.value = orderNoFromQuery
@@ -409,7 +408,7 @@ onMounted(async () => {
   if (detailSearchExpanded.value) initDatePickers()
 })
 
-/* 詳細検索を展開したときに日付ピッカーを初期化（登録日・納期・校正予定日が納期と同様に日付ダイアログを出す） */
+//-- 詳細検索を展開したときに日付ピッカーを初期化（登録日・納期・校正予定日が納期と同様に日付ダイアログを出す）
 watch(detailSearchExpanded, (expanded) => {
   if (expanded) nextTick(() => initDatePickers())
 })
@@ -437,9 +436,10 @@ onUnmounted(() => {
           <div class="order-list-search-form">
             <div class="order-list-search-row">
               <div class="order-list-search-field">
-                <label class="form-label">顧客</label>
+                <label class="form-label" :for="FORM_IDS.search.customer">顧客</label>
                 <div class="order-list-field-row">
                   <input
+                    :id="FORM_IDS.search.customer"
                     v-model="searchCustomerName"
                     type="text"
                     readonly
@@ -459,8 +459,9 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="order-list-search-field order-list-search-field--narrow">
-                <label class="form-label">担当者名</label>
+                <label class="form-label" :for="FORM_IDS.search.manager">担当者名</label>
                 <input
+                  :id="FORM_IDS.search.manager"
                   v-model="searchManager"
                   type="text"
                   class="form-input"
@@ -468,8 +469,9 @@ onUnmounted(() => {
                 />
               </div>
               <div class="order-list-search-field">
-                <label class="form-label">注文名</label>
+                <label class="form-label" :for="FORM_IDS.search.orderName">注文名</label>
                 <input
+                  :id="FORM_IDS.search.orderName"
                   v-model="searchOrderName"
                   type="text"
                   class="form-input"
@@ -477,8 +479,13 @@ onUnmounted(() => {
                 />
               </div>
               <div class="order-list-search-field order-list-search-field--design">
-                <label class="form-label">デザイン種別</label>
-                <select v-model="searchDesignTypeId" class="form-select" :class="{ 'form-select--placeholder': !searchDesignTypeId }">
+                <label class="form-label" :for="FORM_IDS.search.designType">デザイン種別</label>
+                <select
+                  :id="FORM_IDS.search.designType"
+                  v-model="searchDesignTypeId"
+                  class="form-select"
+                  :class="{ 'form-select--placeholder': !searchDesignTypeId }"
+                >
                   <option value="">デザイン種別を選択してください</option>
                   <option
                     v-for="opt in designTypeOptions"
@@ -525,12 +532,12 @@ onUnmounted(() => {
                 <!-- 注文番号・住所・登録日・ステータス（同一行） -->
                 <div class="order-list-search-detail-row order-list-search-detail-row--single">
                   <div class="order-list-search-field order-list-search-field--order-no">
-                    <label class="form-label">注文番号</label>
+                    <label class="form-label" :for="FORM_IDS.search.orderNo">注文番号</label>
                     <div class="order-list-field-row">
                       <input
+                        :id="FORM_IDS.search.orderNo"
                         v-model="searchOrderNo"
                         type="text"
-                        id="inputOrderNo"
                         class="form-input order-list-input--order-no"
                         placeholder="注文番号を入力してください"
                       />
@@ -547,8 +554,9 @@ onUnmounted(() => {
                     </div>
                   </div>
                   <div class="order-list-search-field order-list-search-field--address">
-                    <label class="form-label">住所</label>
+                    <label class="form-label" :for="FORM_IDS.search.address">住所</label>
                     <input
+                      :id="FORM_IDS.search.address"
                       v-model="searchAddress"
                       type="text"
                       class="form-input"
@@ -556,11 +564,11 @@ onUnmounted(() => {
                     />
                   </div>
                   <div class="order-list-search-field order-list-search-field--date order-list-search-field--date-range">
-                    <label class="form-label">登録日</label>
+                    <label class="form-label" :for="FORM_IDS.search.createdDateFrom">登録日</label>
                     <div class="order-list-date-range">
                       <input
                         type="text"
-                        id="inputCreatedDateFrom"
+                        :id="FORM_IDS.search.createdDateFrom"
                         readonly
                         placeholder="開始日を選択してください"
                         class="form-input order-list-date-input"
@@ -568,7 +576,7 @@ onUnmounted(() => {
                       <span class="order-list-date-separator">～</span>
                       <input
                         type="text"
-                        id="inputCreatedDateTo"
+                        :id="FORM_IDS.search.createdDateTo"
                         readonly
                         placeholder="終了日を選択してください"
                         class="form-input order-list-date-input"
@@ -576,8 +584,13 @@ onUnmounted(() => {
                     </div>
                   </div>
                   <div class="order-list-search-field order-list-search-field--status">
-                    <label class="form-label">ステータス</label>
-                    <select v-model="searchStatus" class="form-select" :class="{ 'form-select--placeholder': !searchStatus }">
+                    <label class="form-label" :for="FORM_IDS.search.status">ステータス</label>
+                    <select
+                      :id="FORM_IDS.search.status"
+                      v-model="searchStatus"
+                      class="form-select"
+                      :class="{ 'form-select--placeholder': !searchStatus }"
+                    >
                       <option value="">ステータスを選択してください</option>
                       <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
@@ -586,35 +599,41 @@ onUnmounted(() => {
                 <!-- 制作区分・納期・校正予定日・備考（同一行） -->
                 <div class="order-list-search-detail-row">
                   <div class="order-list-search-field order-list-search-field--production">
-                    <label class="form-label">制作区分</label>
-                    <select v-model="searchProductionType" class="form-select" :class="{ 'form-select--placeholder': !searchProductionType }">
+                    <label class="form-label" :for="FORM_IDS.search.productionType">制作区分</label>
+                    <select
+                      :id="FORM_IDS.search.productionType"
+                      v-model="searchProductionType"
+                      class="form-select"
+                      :class="{ 'form-select--placeholder': !searchProductionType }"
+                    >
                       <option value="">制作区分を選択してください</option>
                       <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
                   </div>
                   <div class="order-list-search-field order-list-search-field--date">
-                    <label class="form-label">納期</label>
+                    <label class="form-label" :for="FORM_IDS.search.deadline">納期</label>
                     <input
                       type="text"
-                      id="inputDeadline"
+                      :id="FORM_IDS.search.deadline"
                       readonly
                       placeholder="納期を選択してください"
                       class="form-input order-list-date-input"
                     />
                   </div>
                   <div class="order-list-search-field order-list-search-field--date">
-                    <label class="form-label">校正予定日</label>
+                    <label class="form-label" :for="FORM_IDS.search.proofreading">校正予定日</label>
                     <input
                       type="text"
-                      id="inputProofreading"
+                      :id="FORM_IDS.search.proofreading"
                       readonly
                       placeholder="校正予定日を選択してください"
                       class="form-input order-list-date-input"
                     />
                   </div>
                   <div class="order-list-search-field">
-                    <label class="form-label">備考</label>
+                    <label class="form-label" :for="FORM_IDS.search.note">備考</label>
                     <input
+                      :id="FORM_IDS.search.note"
                       v-model="searchNote"
                       type="text"
                       class="form-input"
@@ -718,11 +737,8 @@ onUnmounted(() => {
       <div v-show="hasSearched && !isLoading && orderItems.length > 0">
         <!-- -- インフォメーション＋該当件数（同一ブロック。前者は左寄せ、後者は右寄せ） -- -->
         <div class="order-list-result-header">
-          <span class="order-list-info-tip">
-            <span class="order-list-info-tip-icon">
-              ⓘ
-              <span class="order-list-info-tip-tooltip" role="tooltip"></span>
-            </span>
+          <span class="order-list-info-tip" role="status" aria-live="polite">
+            <span class="order-list-info-tip-icon" aria-hidden="true">ⓘ</span>
             対象行をダブルクリックすると、注文詳細画面が表示されます
           </span>
           <span class="order-list-count-badge">

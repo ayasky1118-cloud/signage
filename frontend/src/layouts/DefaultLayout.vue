@@ -11,11 +11,11 @@
 </template>
 
 <script setup lang="ts">
-/**
- * DefaultLayout
- * 共通レイアウト（ヘッダー・フッター等）
- * ログアウトボタン等を含むヘッダーと、ページコンテンツ領域を提供する。
- */
+//-- DefaultLayout - 共通レイアウト
+//--
+//-- 【役割】
+//-- ・ヘッダー（AppHeader: メインメニューリンク・ログイン表示・ログアウト）とページコンテンツ領域を提供
+//-- ・ルートに応じたページ（RouterView）を page-content 内に表示
 import AppHeader from "../components/AppHeader.vue"
 </script>
 

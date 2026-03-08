@@ -477,6 +477,18 @@ a.btn-back {
 .btn-small.btn-secondary--slate:hover {
   background-color: rgb(226 232 240);
 }
+.btn-small.btn-primary {
+  background-color: var(--color-main);
+  color: white;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
+}
+.btn-small.btn-primary:hover {
+  background-color: var(--color-sub-blue);
+}
+.btn-small.btn-primary svg {
+  color: white;
+}
 .btn-small:disabled {
   opacity: 0.5;
   cursor: not-allowed;

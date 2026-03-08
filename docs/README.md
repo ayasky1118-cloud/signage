@@ -1,6 +1,6 @@
 # 手順書一覧
 
-プロジェクト全体の環境構築から、Vite + Vue3 + Vue Router + Tailwind v4 構成のセットアップ手順。
+プロジェクト全体の環境構築から、Vite + Vue3 + Vue Router 構成のセットアップ手順。スタイルは plain CSS（shared.css / common.css / 画面別）を使用。
 
 ---
 
@@ -12,7 +12,7 @@
 | 102 | 102.Node・npm 環境確認.md | Node.js / npm の事前確認 |
 | 103 | 103.Vite プロジェクト確認手順.md | Vite の基本動作確認 |
 | 104 | 104.Vue SFC（.vue）が動くことを確認（plugin-vue確認）.md | @vitejs/plugin-vue の確認 |
-| 105 | 105.Tailwind導入.md | Tailwind v4（@tailwindcss/vite）導入 |
+| 105 | 105.Tailwind導入.md | Tailwind v4 導入（任意。現状は plain CSS を使用） |
 | 106 | 106.Vue Router導入.md | Vue Router 導入 |
 | 107 | 107.動作確認手順.md | 総合動作確認 |
 | 108 | 108.フロントエンド構成整理手順.md | フロントエンド構成の整理 |

@@ -63,6 +63,7 @@
 |--------|------|
 | `.btn` | ベース（flex、padding、角丸） |
 | `.btn-primary` | メイン色ボタン |
+| `.btn-small.btn-primary` | 小さいメイン色ボタン（影付き。全画面編集・出力等で使用） |
 | `.btn-action` | メインアクション（登録・更新等。OrderMain・OrderDetail で共用） |
 | `.btn-back` | 戻るボタン（グレー背景。看板編集リンクも同スタイル） |
 | `.btn-secondary` | 白背景・グレーボーダー |

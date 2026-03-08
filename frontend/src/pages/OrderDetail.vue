@@ -1,22 +1,21 @@
 <script setup lang="ts">
-/**
- * OrderDetail - 看板編集画面
- *
- * 【用途】
- * ・地図上でルート・テキスト・画像・吹き出し等を配置・編集
- * ・枝番ごとにデザイン編集データ（design_data）を保持・更新
- *
- * 【主な機能】
- * ・注文番号で検索・選択（OrderList から遷移時は orderNo, itemCode をクエリで受け取る）
- * ・枝番タブ: 追加・削除・切り替え。備考（note）を枝番ごとに保持
- * ・全画面編集オーバーレイ: サイドバーで HTML オブジェクトを選択し、地図上に配置
- * ・地図出力/読込: design_data を JSON 形式でエクスポート・インポート
- * ・updateOrderDetails / updateOrderItems API で枝番・テンプレート項目を登録・更新
- */
+//-- OrderDetail - 看板編集画面
+//--
+//-- 【用途】
+//-- ・地図上でルート・テキスト・画像・吹き出し等を配置・編集
+//-- ・枝番ごとにデザイン編集データ（design_data）を保持・更新
+//--
+//-- 【主な機能】
+//-- ・注文番号で検索・選択（OrderList から遷移時は orderNo, itemCode をクエリで受け取る）
+//-- ・枝番タブ: 追加・削除・切り替え。備考（note）を枝番ごとに保持
+//-- ・全画面編集オーバーレイ: サイドバーで HTML オブジェクトを選択し、地図上に配置
+//-- ・地図出力/読込: design_data を JSON 形式でエクスポート・インポート
+//-- ・updateOrderDetails / updateOrderItems API で枝番・テンプレート項目を登録・更新
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue"
 import { useRouter, useRoute } from "vue-router"
 import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
+import { FORM_IDS } from "../constants/form-ids"
 import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
@@ -28,16 +27,16 @@ import HtmlObjectValueSelectModal from "../components/HtmlObjectValueSelectModal
 const router = useRouter()
 const route = useRoute()
 
-// -----------------------------------------------------------------------------
-// 定数・ユーティリティ
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 定数・ユーティリティ
+//-------------------------------------------------------------------------------
 
-/** 枝番タブを横に並べて表示する最大個数（超えるとスライドで表示） */
+//-- 枝番タブを横に並べて表示する最大個数（超えるとスライドで表示）
 const MAX_BRANCH_DISPLAY = 10
-/** 1注文あたりの枝番の上限数 */
+//-- 1注文あたりの枝番の上限数
 const MAX_BRANCH_COUNT = 99
 
-/** ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1 */
+//-- ログイン会社IDを返す。環境変数 VITE_LOGIN_COMPANY_ID がなければ 1
 function getLoginCompanyId(): number {
   const v = import.meta.env.VITE_LOGIN_COMPANY_ID as string | undefined
   if (v != null && v !== "") {
@@ -47,65 +46,63 @@ function getLoginCompanyId(): number {
   return 1
 }
 
-/** 枝番を2桁ゼロ埋めの文字列に正規化する（例: "1" → "01"） */
+//-- 枝番を2桁ゼロ埋めの文字列に正規化する（例: "1" → "01"）
 function normalizeBranchNo(val: string): string {
   const s = (val ?? "").trim()
   if (!s) return ""
   return String(parseInt(s, 10) || s).padStart(2, "0")
 }
 
-/** デザイン種別の表示用。空の場合は — を返す */
+//-- デザイン種別の表示用。空の場合は — を返す
 function designTypeLabel(designType: string): string {
   return designType || "—"
 }
 
-/** 空白時は em dash で表示（注文詳細モーダルと合わせる） */
+//-- 空白時は em dash で表示（注文詳細モーダルと合わせる）
 function orDash(val: string | undefined): string {
   return (val ?? "").trim() || "—"
 }
 
-/**
- * 詳細エリアのフィールド表示: 初期表示・クリア時は空白、データ取得済みで null の場合は —
- */
+//-- 詳細エリアのフィールド表示: 初期表示・クリア時は空白、データ取得済みで null の場合は —
 function fieldDisplay(val: string | undefined): string {
   if (!hasSearched.value) return ""
   const s = (val ?? "").trim()
   return s || "—"
 }
 
-// -----------------------------------------------------------------------------
-// ルートクエリ（一覧から遷移時: orderNo, itemCode, mode=edit）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- ルートクエリ（一覧から遷移時: orderNo, itemCode, mode=edit）
+//-------------------------------------------------------------------------------
 
-/** 注文一覧から「看板編集」で遷移してきた場合 true（注文番号を編集不可にする等） */
+//-- 注文一覧から「看板編集」で遷移してきた場合 true（注文番号を編集不可にする等）
 const cameFromList = computed(() => route.query.mode === "edit" && !!route.query.orderNo)
-/** URL の orderNo クエリ。一覧から遷移時はここから初期検索する */
+//-- URL の orderNo クエリ。一覧から遷移時はここから初期検索する
 const initialOrderNo = computed(() => (route.query.orderNo as string) ?? "")
-/** URL の itemCode（枝番）。一覧から遷移時はこの枝番を初期表示する */
+//-- URL の itemCode（枝番）。一覧から遷移時はこの枝番を初期表示する
 const initialItemCode = computed(() => (route.query.itemCode as string) ?? "")
 
-// -----------------------------------------------------------------------------
-// 注文情報エリアの開閉
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文情報エリアの開閉
+//-------------------------------------------------------------------------------
 
 const orderInfoExpanded = ref(true)
 
-/** 注文情報エリアの開閉をトグルする */
+//-- 注文情報エリアの開閉をトグルする
 function toggleOrderInfo() {
   orderInfoExpanded.value = !orderInfoExpanded.value
 }
 
-// -----------------------------------------------------------------------------
-// 注文番号・検索済み・表示用データ
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文番号・検索済み・表示用データ
+//-------------------------------------------------------------------------------
 
 const inputOrderNo = ref("")
 const orderNoInputRef = ref<HTMLInputElement | null>(null)
 const branchNoInputRef = ref<HTMLInputElement | null>(null)
 const hasSearched = ref(false)
-/** 最後に検索でヒットした注文番号（注文番号リセット確認や切り替え時の基準） */
+//-- 最後に検索でヒットした注文番号（注文番号リセット確認や切り替え時の基準）
 const lastConfirmedOrderNo = ref("")
-/** 注文情報エリアに表示する項目（注文名・住所・顧客名・担当者・テンプレート等） */
+//-- 注文情報エリアに表示する項目（注文名・住所・顧客名・担当者・テンプレート等）
 const orderDisplay = ref<{
   orderName: string
   address: string
@@ -126,30 +123,30 @@ const orderDisplay = ref<{
   updater: "",
 })
 
-// 注文番号は一覧から来た場合は読取専用
+//-- 注文番号は一覧から来た場合は読取専用
 const orderNoReadOnly = computed(() => cameFromList.value)
 const selectSearchDisabled = computed(() => cameFromList.value)
 
-// -----------------------------------------------------------------------------
-// 枝番（タブ・スライド・備考・未保存変更判定）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 枝番（タブ・スライド・備考・未保存変更判定）
+//-------------------------------------------------------------------------------
 
-/** この注文に紐づく枝番一覧（2桁ゼロ埋めで保持） */
+//-- この注文に紐づく枝番一覧（2桁ゼロ埋めで保持）
 const allBranches = ref<string[]>([])
-/** 枝番タブのスライドで、表示開始位置のインデックス */
+//-- 枝番タブのスライドで、表示開始位置のインデックス
 const visibleStartIndex = ref(0)
 const activeBranch = ref("")
-/** 未保存変更判定用。現在表示中の枝番の「元の値」 */
+//-- 未保存変更判定用。現在表示中の枝番の「元の値」
 const originalBranchNo = ref("")
 const branchMemo = ref("")
-/** 未保存変更判定用。現在表示中の備考の「元の値」 */
+//-- 未保存変更判定用。現在表示中の備考の「元の値」
 const originalBranchMemo = ref("")
-/** 枝番追加モーダルで直前に追加した枝番（確認モーダルで「破棄して追加」したときに削除する対象） */
+//-- 枝番追加モーダルで直前に追加した枝番（確認モーダルで「破棄して追加」したときに削除する対象）
 const lastAddedBranchNo = ref<string | null>(null)
-/** 枝番ごとの備考を保持。枝番切り替え時に復元する */
+//-- 枝番ごとの備考を保持。枝番切り替え時に復元する
 const branchMemoByBranch = ref<Record<string, string>>({})
 
-/** 現在スライド範囲で表示している枝番の配列 */
+//-- 現在スライド範囲で表示している枝番の配列
 const visibleBranches = computed(() =>
   allBranches.value.slice(visibleStartIndex.value, visibleStartIndex.value + MAX_BRANCH_DISPLAY)
 )
@@ -162,7 +159,7 @@ const canSlideNext = computed(
     visibleStartIndex.value < allBranches.value.length - MAX_BRANCH_DISPLAY
 )
 
-/** 注文番号・枝番・備考のいずれかが「元の値」から変更されているか。戻る・枝番切り替え時の確認に使用 */
+//-- 注文番号・枝番・備考のいずれかが「元の値」から変更されているか。戻る・枝番切り替え時の確認に使用
 const isDirty = computed(() => {
   const curNo = normalizeBranchNo(activeBranch.value)
   const origNo = normalizeBranchNo(originalBranchNo.value)
@@ -173,19 +170,19 @@ const isDirty = computed(() => {
   )
 })
 
-/** 現在の枝番・備考を「元の値」として記録し、未保存変更判定に使う */
+//-- 現在の枝番・備考を「元の値」として記録し、未保存変更判定に使う
 function setOriginalBranchValues(no: string, memo: string) {
   originalBranchNo.value = no
   originalBranchMemo.value = memo
 }
 
-/** 指定した枝番がこの注文の枝番一覧に含まれるかどうかを返す */
+//-- 指定した枝番がこの注文の枝番一覧に含まれるかどうかを返す
 function branchExistsInOrder(branchNo: string): boolean {
   const n = normalizeBranchNo(branchNo)
   return allBranches.value.indexOf(n) >= 0
 }
 
-/** 枝番タブの表示範囲をスライドし、指定枝番が表示されるようにする */
+//-- 枝番タブの表示範囲をスライドし、指定枝番が表示されるようにする
 function ensureVisible(branchNo: string) {
   const n = normalizeBranchNo(branchNo)
   const idx = allBranches.value.indexOf(n)
@@ -196,9 +193,9 @@ function ensureVisible(branchNo: string) {
     visibleStartIndex.value = Math.min(maxStart, idx - MAX_BRANCH_DISPLAY + 1)
 }
 
-// -----------------------------------------------------------------------------
-// 注文一覧（選択モーダル用）
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 注文一覧（選択モーダル用）
+//-------------------------------------------------------------------------------
 
 const {
   orderListForSelect,
@@ -208,12 +205,12 @@ const {
   openOrderNoSelectModal,
 } = useOrderNoSelectModal(getLoginCompanyId)
 
-/** 注文番号で検索し、取得した注文の表示項目・枝番一覧を反映する。見つからない場合は該当なしモーダルを表示 */
-/** preferBranchNo: 取得後にこの枝番をカレント選択する（登録後の再取得時など） */
+//-- 注文番号で検索し、取得した注文の表示項目・枝番一覧を反映する。見つからない場合は該当なしモーダルを表示
+//-- preferBranchNo: 取得後にこの枝番をカレント選択する（登録後の再取得時など）
 async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
   const no = orderNo.trim()
   if (!no) return
-  // 1) まず searchOrders で一覧APIから取得（枝番 branches が取れる）
+  //-- 1) まず searchOrders で一覧APIから取得（枝番 branches が取れる）
   try {
     const result = await searchOrders({
       companyId: getLoginCompanyId(),
@@ -222,7 +219,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
       perPage: 1,
     })
     if (result.items.length > 0) {
-      lastAddedBranchNo.value = null // 検索で再取得した時点で「枝番追加」状態を解除
+      lastAddedBranchNo.value = null  //-- 検索で再取得した時点で「枝番追加」状態を解除
       const o = result.items[0]
       orderDisplay.value = {
         orderName: o.orderName ?? "",
@@ -239,7 +236,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
       const branches = o.branches && o.branches.length > 0 ? [...o.branches] : []
       allBranches.value = branches
       visibleStartIndex.value = 0
-      // 枝番ごとの design_data を mapDataByBranch に初期化（地図出力・読込・編集のベース）
+      //-- 枝番ごとの design_data を mapDataByBranch に初期化（地図出力・読込・編集のベース）
       const ddb = o.designDataByBranch
       if (ddb && typeof ddb === "object") {
         const next: Record<string, MapDataJson> = {}
@@ -250,14 +247,14 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
       } else {
         mapDataByBranch.value = {}
       }
-      // 枝番ごとの備考を branchMemoByBranch に初期化
+      //-- 枝番ごとの備考を branchMemoByBranch に初期化
       const nbb = o.noteByBranch
       if (nbb && typeof nbb === "object") {
         branchMemoByBranch.value = { ...nbb }
       } else {
         branchMemoByBranch.value = {}
       }
-      // 枝番あり：初期表示する枝番を決定（preferBranchNo > URL の itemCode > 先頭）
+      //-- 枝番あり：初期表示する枝番を決定（preferBranchNo > URL の itemCode > 先頭）
       if (branches.length > 0) {
         const prefer = preferBranchNo ? normalizeBranchNo(preferBranchNo) : ""
         let initial =
@@ -277,14 +274,14 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
         setOriginalBranchValues("", "")
       }
       hasSearched.value = true
-      // 枝番がある場合：注文住所を中心に地図を取得
+      //-- 枝番がある場合：注文住所を中心に地図を取得
       if (branches.length > 0) fetchMapCenter()
       return
     }
   } catch {
-    /* ignore */
+    //-- ignore
   }
-  // 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空）
+  //-- 2) 一覧に無ければ getOrderByNo で詳細APIから取得（枝番は空）
   try {
     lastAddedBranchNo.value = null
     const detail = await getOrderByNo(no)
@@ -308,7 +305,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
     setOriginalBranchValues("", "")
     hasSearched.value = true
   } catch {
-    // 3) どちらも失敗：該当なしモーダルを表示
+    //-- 3) どちらも失敗：該当なしモーダルを表示
     lastAddedBranchNo.value = null
     orderDisplay.value = {
       orderName: "",
@@ -332,12 +329,12 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
   }
 }
 
-/** 注文検索「該当なし」モーダルを閉じる */
+//-- 注文検索「該当なし」モーダルを閉じる
 function closeOrderSearchNoResultModal() {
   showOrderSearchNoResultModal.value = false
 }
 
-/** 現在の注文の詳細を取得し、注文詳細モーダルを開く */
+//-- 現在の注文の詳細を取得し、注文詳細モーダルを開く
 async function openOrderDetailModal() {
   const no = lastConfirmedOrderNo.value?.trim()
   if (!no || !hasSearched.value) return
@@ -357,7 +354,7 @@ async function openOrderDetailModal() {
   }
 }
 
-/** 注文番号以外の表示項目・枝番・備考をクリアする（一覧から来た場合以外は検索済みフラグもリセット） */
+//-- 注文番号以外の表示項目・枝番・備考をクリアする（一覧から来た場合以外は検索済みフラグもリセット）
 function clearOrderInfoExceptOrderNo() {
   orderDisplay.value = {
     orderName: "",
@@ -377,7 +374,7 @@ function clearOrderInfoExceptOrderNo() {
   setOriginalBranchValues("", "")
 }
 
-/** 枝番を切り替え、備考を枝番ごとのキャッシュに保存してから新しい枝番の備考を表示する */
+//-- 枝番を切り替え、備考を枝番ごとのキャッシュに保存してから新しい枝番の備考を表示する
 function performBranchSwitch(branchNo: string) {
   branchMemoByBranch.value[activeBranch.value] = branchMemo.value
   const next = normalizeBranchNo(branchNo)
@@ -386,7 +383,7 @@ function performBranchSwitch(branchNo: string) {
   setOriginalBranchValues(next, branchMemo.value)
 }
 
-/** 枝番タブクリック時。未保存変更があれば確認モーダルを出し、OK で枝番を切り替える */
+//-- 枝番タブクリック時。未保存変更があれば確認モーダルを出し、OK で枝番を切り替える
 function switchToBranch(branchNo: string) {
   const target = normalizeBranchNo(branchNo)
   if (normalizeBranchNo(activeBranch.value) === target) return
@@ -398,13 +395,13 @@ function switchToBranch(branchNo: string) {
   performBranchSwitch(target)
 }
 
-/** 枝番タブの表示範囲を左に1つスライドする */
+//-- 枝番タブの表示範囲を左に1つスライドする
 function slidePrevBranch() {
   if (visibleStartIndex.value <= 0) return
   visibleStartIndex.value = Math.max(0, visibleStartIndex.value - 1)
 }
 
-/** 枝番タブの表示範囲を右に1つスライドする */
+//-- 枝番タブの表示範囲を右に1つスライドする
 function slideNextBranch() {
   if (allBranches.value.length <= MAX_BRANCH_DISPLAY) return
   const maxStart = allBranches.value.length - MAX_BRANCH_DISPLAY
@@ -412,7 +409,7 @@ function slideNextBranch() {
   visibleStartIndex.value = Math.min(maxStart, visibleStartIndex.value + 1)
 }
 
-/** 枝番入力欄の値から、既存枝番へ切り替えまたは新規枝番追加を行う。未保存変更があれば確認モーダルを表示 */
+//-- 枝番入力欄の値から、既存枝番へ切り替えまたは新規枝番追加を行う。未保存変更があれば確認モーダルを表示
 function applyActiveBranchDisplayValue() {
   const value = (activeBranch.value ?? "").trim()
   if (!value) return
@@ -432,7 +429,7 @@ function applyActiveBranchDisplayValue() {
   doApplyActiveBranchDisplayValue(branchNo, false)
 }
 
-/** 枝番の切り替えのみ行う、または新規枝番を追加してその枝番に切り替える（switchOnly: true のときは切り替えのみ） */
+//-- 枝番の切り替えのみ行う、または新規枝番を追加してその枝番に切り替える（switchOnly: true のときは切り替えのみ）
 function doApplyActiveBranchDisplayValue(branchNo: string, switchOnly: boolean) {
   if (switchOnly) {
     ensureVisible(branchNo)
@@ -449,7 +446,7 @@ function doApplyActiveBranchDisplayValue(branchNo: string, switchOnly: boolean) 
   lastAddedBranchNo.value = branchNo
 }
 
-/* モーダル: 検索バリデーション・登録確認・登録結果・注文選択・枝番追加・枝番切り替え確認・枝番存在・枝番削除・注文詳細 */
+//-- モーダル: 検索バリデーション・登録確認・登録結果・注文選択・枝番追加・枝番切り替え確認・枝番存在・枝番削除・注文詳細
 const showOrderSearchValidationModal = ref(false)
 const orderDetailModalOpen = ref(false)
 const orderDetailForModal = ref<OrderItem | null>(null)
@@ -469,7 +466,7 @@ const branchDeleteTargetNo = ref("")
 const showOrderNoResetConfirmModal = ref(false)
 const showOrderSearchNoResultModal = ref(false)
 
-/** 枝番切り替え確認モーダルで保留するアクションの種類（枝番切替・注文変更・枝番追加・戻る・遷移など） */
+//-- 枝番切り替え確認モーダルで保留するアクションの種類（枝番切替・注文変更・枝番追加・戻る・遷移など）
 type PendingAction =
   | { type: "branch"; branchNo: string }
   | { type: "applyBranchInput"; branchNo: string }
@@ -477,52 +474,52 @@ type PendingAction =
   | { type: "addBranch" }
   | { type: "navigate"; url: string; labels: { message: string; discard: string; register: string } }
   | { type: "back"; labels: { message: string; discard: string; register: string } }
-/** 枝番切り替え確認・戻る確認等で「登録/更新してから」を選んだあと、結果モーダルで OK を押したときに実行するアクション */
+//-- 枝番切り替え確認・戻る確認等で「登録/更新してから」を選んだあと、結果モーダルで OK を押したときに実行するアクション
 const pendingAction = ref<PendingAction | null>(null)
 
-/** 一覧から来た場合、または検索済みで枝番がある場合は edit（登録ボタンラベル等に使用） */
+//-- 一覧から来た場合、または検索済みで枝番がある場合は edit（登録ボタンラベル等に使用）
 const pageMode = computed(() => (cameFromList.value || (hasSearched.value && hasBranches.value) ? "edit" : "register"))
 const registerButtonLabel = computed(() => (pageMode.value === "edit" ? "更新" : "登録"))
-/** 一覧から来ていないかつ未検索、または検索済みだが枝番が0件のときは登録ボタンを無効にする */
+//-- 一覧から来ていないかつ未検索、または検索済みだが枝番が0件のときは登録ボタンを無効にする
 const registerButtonDisabled = computed(
   () => (!cameFromList.value && !hasSearched.value) || (hasSearched.value && !hasBranches.value)
 )
 
-/** 注文番号未入力の検索バリデーションエラーモーダルを開く */
+//-- 注文番号未入力の検索バリデーションエラーモーダルを開く
 function openOrderSearchValidationModal() {
   showOrderSearchValidationModal.value = true
 }
 
-/** 登録/更新確認モーダルを開く */
+//-- 登録/更新確認モーダルを開く
 function openRegisterConfirmModal() {
   showRegisterConfirmModal.value = true
 }
 
-/** 登録/更新結果モーダルを指定メッセージで開く */
+//-- 登録/更新結果モーダルを指定メッセージで開く
 function openRegisterResultModal(message: string) {
   registerResultMessage.value = message
   showRegisterResultModal.value = true
 }
 
 
-/** 枝番追加モーダルを開き、入力欄にフォーカスする */
+//-- 枝番追加モーダルを開き、入力欄にフォーカスする
 function openBranchAddModal() {
   branchAddInput.value = ""
   showBranchAddModal.value = true
   nextTick(() => branchNoInputRef.value?.focus())
 }
 
-/** 枝番切り替え確認モーダルを開く。保留アクションに応じてメッセージ・ボタンラベルを変える */
+//-- 枝番切り替え確認モーダルを開く。保留アクションに応じてメッセージ・ボタンラベルを変える
 function openBranchSwitchConfirmModal(action?: PendingAction | null) {
   if (action) pendingAction.value = action
   const pa = pendingAction.value
   const verb = pageMode.value === "edit" ? "更新して" : "登録して"
-  // デフォルトメッセージ
+  //-- デフォルトメッセージ
   let message = `変更が保存されていません。${verb}から枝番を切り替えますか`
   let discard = "破棄して切り替え"
   let register = `${verb}切り替え`
   hideBranchSwitchRegisterButton.value = false
-  // 保留アクション種別ごとにメッセージ・ラベルを上書き
+  //-- 保留アクション種別ごとにメッセージ・ラベルを上書き
   if (pa?.type === "navigate" && pa.labels) {
     message = pa.labels.message
     discard = pa.labels.discard
@@ -548,74 +545,74 @@ function openBranchSwitchConfirmModal(action?: PendingAction | null) {
   showBranchSwitchConfirmModal.value = true
 }
 
-/** 枝番が既に存在する旨のモーダルを開く */
+//-- 枝番が既に存在する旨のモーダルを開く
 function openBranchExistsModal() {
   showBranchExistsModal.value = true
 }
 
-/** 枝番削除確認モーダルを開く（削除対象の枝番を指定） */
+//-- 枝番削除確認モーダルを開く（削除対象の枝番を指定）
 function openBranchDeleteModal(branchNo: string) {
   branchDeleteTargetNo.value = branchNo
   showBranchDeleteModal.value = true
 }
 
-/** 検索バリデーションモーダルを閉じ、注文番号入力欄にフォーカスする */
+//-- 検索バリデーションモーダルを閉じ、注文番号入力欄にフォーカスする
 function closeOrderSearchValidationModal() {
   showOrderSearchValidationModal.value = false
   nextTick(() => orderNoInputRef.value?.focus())
 }
 
-/** 登録確認モーダルを閉じる */
+//-- 登録確認モーダルを閉じる
 function closeRegisterConfirmModal() {
   showRegisterConfirmModal.value = false
 }
 
-/** 登録結果モーダルを閉じ、更新モードに切り替える */
+//-- 登録結果モーダルを閉じ、更新モードに切り替える
 function closeRegisterResultModal() {
   showRegisterResultModal.value = false
   switchToUpdateMode()
 }
 
-/** 検索済み状態にし、保留アクションをクリアする（登録結果モーダル閉じた後など） */
+//-- 検索済み状態にし、保留アクションをクリアする（登録結果モーダル閉じた後など）
 function switchToUpdateMode() {
   hasSearched.value = true
   pendingAction.value = null
 }
 
-/** 枝番追加モーダルを閉じ、入力値をクリアする */
+//-- 枝番追加モーダルを閉じ、入力値をクリアする
 function closeBranchAddModal() {
   branchAddInput.value = ""
   showBranchAddModal.value = false
 }
 
-/** 枝番切り替え確認モーダルを閉じる。clearPending が true のとき保留アクションもクリアする */
+//-- 枝番切り替え確認モーダルを閉じる。clearPending が true のとき保留アクションもクリアする
 function closeBranchSwitchConfirmModal(clearPending = true) {
   showBranchSwitchConfirmModal.value = false
   if (clearPending) pendingAction.value = null
 }
 
-/** 枝番存在モーダルを閉じる */
+//-- 枝番存在モーダルを閉じる
 function closeBranchExistsModal() {
   showBranchExistsModal.value = false
 }
 
-/** 枝番削除モーダルを閉じ、削除対象をクリアする */
+//-- 枝番削除モーダルを閉じ、削除対象をクリアする
 function closeBranchDeleteModal() {
   showBranchDeleteModal.value = false
   branchDeleteTargetNo.value = ""
 }
 
-/** 注文番号を検索値に戻す確認モーダルを開く（誤編集と思われるとき） */
+//-- 注文番号を検索値に戻す確認モーダルを開く（誤編集と思われるとき）
 function openOrderNoResetConfirmModal() {
   showOrderNoResetConfirmModal.value = true
 }
 
-/** 注文番号リセット確認モーダルを閉じる */
+//-- 注文番号リセット確認モーダルを閉じる
 function closeOrderNoResetConfirmModal() {
   showOrderNoResetConfirmModal.value = false
 }
 
-/** 注文番号を最後に検索した値に戻し、その注文を再取得して表示する */
+//-- 注文番号を最後に検索した値に戻し、その注文を再取得して表示する
 function confirmOrderNoReset() {
   const no = lastConfirmedOrderNo.value
   inputOrderNo.value = no
@@ -623,7 +620,7 @@ function confirmOrderNoReset() {
   if (no) applyOrderBySearch(no)
 }
 
-/** 注文番号選択モーダルで選択した注文に切り替える。未保存変更があれば確認モーダルを表示 */
+//-- 注文番号選択モーダルで選択した注文に切り替える。未保存変更があれば確認モーダルを表示
 function selectOrderFromList(order: OrderItem) {
   if (order.orderNo === lastConfirmedOrderNo.value) return
   if (isDirty.value) {
@@ -637,7 +634,7 @@ function selectOrderFromList(order: OrderItem) {
   applyOrderBySearch(order.orderNo)
 }
 
-/** 検索ボタン押下。注文番号が空ならバリデーションモーダルを出し、なければ注文を取得して表示する */
+//-- 検索ボタン押下。注文番号が空ならバリデーションモーダルを出し、なければ注文を取得して表示する
 function confirmSearch() {
   const no = inputOrderNo.value.trim()
   if (!no) {
@@ -647,7 +644,7 @@ function confirmSearch() {
   applyOrderBySearch(no)
 }
 
-/** 登録/更新確認で OK を押したとき。order_detail を API で保存し、結果モーダルを表示する */
+//-- 登録/更新確認で OK を押したとき。order_detail を API で保存し、結果モーダルを表示する
 async function confirmRegister() {
   closeRegisterConfirmModal()
   const orderNo = lastConfirmedOrderNo.value?.trim()
@@ -655,7 +652,7 @@ async function confirmRegister() {
     openRegisterResultModal("注文番号がありません")
     return
   }
-  // 現在の枝番の備考を branchMemoByBranch に反映してから送信
+  //-- 現在の枝番の備考を branchMemoByBranch に反映してから送信
   const bn = normalizeBranchNo(activeBranch.value)
   if (bn) branchMemoByBranch.value[bn] = branchMemo.value
 
@@ -667,7 +664,7 @@ async function confirmRegister() {
 
   try {
     await updateOrderDetails(orderNo, branches)
-    // 登録後：order_detail を再取得し、処理した枝番をカレント選択にする
+    //-- 登録後：order_detail を再取得し、処理した枝番をカレント選択にする
     const branchToSelect = normalizeBranchNo(activeBranch.value)
     await applyOrderBySearch(orderNo, branchToSelect)
     openRegisterResultModal(pageMode.value === "edit" ? "更新が完了しました" : "登録が完了しました")
@@ -676,7 +673,7 @@ async function confirmRegister() {
   }
 }
 
-/** 枝番追加モーダルで OK を押したとき。入力値を正規化し、新規追加または既存枝番へ切り替える */
+//-- 枝番追加モーダルで OK を押したとき。入力値を正規化し、新規追加または既存枝番へ切り替える
 function confirmBranchAdd() {
   const value = branchAddInput.value.trim()
   if (!value) {
@@ -685,21 +682,21 @@ function confirmBranchAdd() {
   }
   const branchNo = normalizeBranchNo(value)
   const exists = branchExistsInOrder(branchNo)
-  // 上限チェック（新規追加時のみ）
+  //-- 上限チェック（新規追加時のみ）
   if (!exists && allBranches.value.length >= MAX_BRANCH_COUNT) {
     closeBranchAddModal()
     return
   }
   if (!exists) {
-    // 新規追加：枝番一覧に追加し、その枝番に切り替え
+    //-- 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
-    // ルート・画像のドロップダウンを「選択してください」に初期化
+    //-- ルート・画像のドロップダウンを「選択してください」に初期化
     htmlObjects.value.forEach((obj) => {
       if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
         selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
       }
     })
-    // mapDataByBranch を初期化（design_data 送信時に undefined にならないよう）
+    //-- mapDataByBranch を初期化（design_data 送信時に undefined にならないよう）
     if (!mapDataByBranch.value[branchNo]) {
       mapDataByBranch.value = {
         ...mapDataByBranch.value,
@@ -724,45 +721,45 @@ function confirmBranchAdd() {
     branchMemo.value = branchMemoByBranch.value[branchNo] ?? ""
     setOriginalBranchValues(branchNo, branchMemo.value)
     lastAddedBranchNo.value = branchNo
-    // 枝番追加時：注文住所を中心に地図を取得
+    //-- 枝番追加時：注文住所を中心に地図を取得
     fetchMapCenter()
   } else {
-    // 既存枝番：その枝番へ切り替え（未保存変更があれば confirmBranchSwitchDiscard 側で処理済みの想定ではないが、ここに来る場合は直接追加）
+    //-- 既存枝番：その枝番へ切り替え（未保存変更があれば confirmBranchSwitchDiscard 側で処理済みの想定ではないが、ここに来る場合は直接追加）
     ensureVisible(branchNo)
     switchToBranch(branchNo)
   }
   closeBranchAddModal()
 }
 
-/** 枝番切り替え確認で「破棄して〜」を押したとき。保留アクションに応じて枝番切り替え・遷移・注文変更・枝番追加モーダルなどを実行する */
+//-- 枝番切り替え確認で「破棄して〜」を押したとき。保留アクションに応じて枝番切り替え・遷移・注文変更・枝番追加モーダルなどを実行する
 function confirmBranchSwitchDiscard() {
   const pa = pendingAction.value
   if (!pa) {
     closeBranchSwitchConfirmModal()
     return
   }
-  // 枝番タブ切り替え
+  //-- 枝番タブ切り替え
   if (pa.type === "branch" && pa.branchNo) {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     performBranchSwitch(pa.branchNo)
     return
   }
-  // リンク遷移（看板編集等）
+  //-- リンク遷移（看板編集等）
   if (pa.type === "navigate" && pa.url) {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     router.push(pa.url)
     return
   }
-  // 戻る
+  //-- 戻る
   if (pa.type === "back") {
     closeBranchSwitchConfirmModal()
     pendingAction.value = null
     router.back()
     return
   }
-  // 注文番号変更（選択モーダルから別注文を選んだ）
+  //-- 注文番号変更（選択モーダルから別注文を選んだ）
   if (pa.type === "changeOrderNo" && pa.orderNo !== undefined) {
     closeBranchSwitchConfirmModal()
     inputOrderNo.value = pa.orderNo
@@ -772,14 +769,14 @@ function confirmBranchSwitchDiscard() {
     pendingAction.value = null
     return
   }
-  // 枝番入力欄で既存枝番へ切り替え（switchOnly）
+  //-- 枝番入力欄で既存枝番へ切り替え（switchOnly）
   if (pa.type === "applyBranchInput" && pa.branchNo) {
     closeBranchSwitchConfirmModal()
     doApplyActiveBranchDisplayValue(pa.branchNo, true)
     pendingAction.value = null
     return
   }
-  // 枝番追加：直前追加分を破棄してから追加モーダルを開く
+  //-- 枝番追加：直前追加分を破棄してから追加モーダルを開く
   if (pa.type === "addBranch") {
     if (lastAddedBranchNo.value) {
       const idx = allBranches.value.indexOf(lastAddedBranchNo.value)
@@ -805,7 +802,7 @@ function confirmBranchSwitchDiscard() {
   closeBranchSwitchConfirmModal()
 }
 
-/** 枝番切り替え確認で「登録/更新して〜」を押したとき。order_detail を保存してから結果モーダルを開く */
+//-- 枝番切り替え確認で「登録/更新して〜」を押したとき。order_detail を保存してから結果モーダルを開く
 async function confirmBranchSwitchRegister() {
   closeBranchSwitchConfirmModal(false)
   const orderNo = lastConfirmedOrderNo.value?.trim()
@@ -830,7 +827,7 @@ async function confirmBranchSwitchRegister() {
   }
 }
 
-/** 登録結果モーダルで OK を押したとき。保留アクション（枝番切り替え・遷移など）を実行してからモーダルを閉じる */
+//-- 登録結果モーダルで OK を押したとき。保留アクション（枝番切り替え・遷移など）を実行してからモーダルを閉じる
 function onRegisterResultModalOk() {
   const pa = pendingAction.value
   if (pa) {
@@ -844,7 +841,7 @@ function onRegisterResultModalOk() {
   pendingAction.value = null
 }
 
-/** 枝番削除確認で OK を押したとき。枝番一覧から対象を削除し、表示中の枝番を適切に切り替える */
+//-- 枝番削除確認で OK を押したとき。枝番一覧から対象を削除し、表示中の枝番を適切に切り替える
 function executeBranchDelete() {
   const target = branchDeleteTargetNo.value
   if (!target) {
@@ -853,11 +850,11 @@ function executeBranchDelete() {
   }
   const idx = allBranches.value.indexOf(target)
   if (idx >= 0) {
-    // 枝番一覧から削除
+    //-- 枝番一覧から削除
     allBranches.value = allBranches.value.filter((_, i) => i !== idx)
     if (target === lastAddedBranchNo.value) lastAddedBranchNo.value = null
   }
-  // 削除後のアクティブ枝番を決定（削除した枝番がアクティブだった場合は隣へ）
+  //-- 削除後のアクティブ枝番を決定（削除した枝番がアクティブだった場合は隣へ）
   if (allBranches.value.length > 0) {
     const wasActive = normalizeBranchNo(activeBranch.value) === target
     const nextIdx = Math.min(idx, allBranches.value.length - 1)
@@ -877,8 +874,8 @@ function executeBranchDelete() {
   closeBranchDeleteModal()
 }
 
-/** 枝番追加ボタン押下。未保存変更があれば確認モーダルを出し、なければ枝番追加モーダルを開く */
-/** 直前で新規追加した枝番（lastAddedBranchNo）も変更対象とみなす */
+//-- 枝番追加ボタン押下。未保存変更があれば確認モーダルを出し、なければ枝番追加モーダルを開く
+//-- 直前で新規追加した枝番（lastAddedBranchNo）も変更対象とみなす
 function clickAddBranch() {
   const hasChanges = isDirty.value || lastAddedBranchNo.value != null
   if (allBranches.value.length > 0 && hasChanges) {
@@ -889,14 +886,14 @@ function clickAddBranch() {
   openBranchAddModal()
 }
 
-/** 枝番削除ボタン押下。現在の枝番を削除対象として枝番削除確認モーダルを開く */
+//-- 枝番削除ボタン押下。現在の枝番を削除対象として枝番削除確認モーダルを開く
 function clickDeleteBranch() {
   const cur = normalizeBranchNo(activeBranch.value)
   if (!cur || !branchExistsInOrder(cur)) return
   openBranchDeleteModal(cur)
 }
 
-/** 戻るボタン/リンク押下時。未保存変更があれば確認モーダルを出し、OK で履歴を戻す */
+//-- 戻るボタン/リンク押下時。未保存変更があれば確認モーダルを出し、OK で履歴を戻す
 function handleBackClick(e: Event) {
   if (!isDirty.value) {
     router.back()
@@ -915,17 +912,17 @@ function handleBackClick(e: Event) {
   openBranchSwitchConfirmModal()
 }
 
-/* 地図表示（注文住所を中心に MapTiler で表示） */
+//-- 地図表示（注文住所を中心に MapTiler で表示）
 const mapCenter = ref<[number, number] | null>(null)
 const mapCenterLoading = ref(false)
 const mapCenterError = ref<string | null>(null)
 const mapPreviewRef = ref<InstanceType<typeof MapPreview> | null>(null)
 const fullscreenMapRef = ref<InstanceType<typeof MapPreview> | null>(null)
 
-/** MapTiler API キー（VITE_MAPTILER_API_KEY） */
+//-- MapTiler API キー（VITE_MAPTILER_API_KEY）
 const mapTilerApiKey = (import.meta.env.VITE_MAPTILER_API_KEY as string) ?? ""
 
-/** 注文住所をジオコーディングし、地図の中心座標を取得 */
+//-- 注文住所をジオコーディングし、地図の中心座標を取得
 async function fetchMapCenter() {
   const address = orderDisplay.value.address?.trim()
   if (!address || !hasBranches.value) {
@@ -946,19 +943,19 @@ async function fetchMapCenter() {
   }
 }
 
-/* 全画面編集 */
+//-- 全画面編集
 const fullscreenEditVisible = ref(false)
 
-/** HTMLオブジェクトマスタ（ルート描画・テキスト配置・画像配置・吹き出し配置等） */
+//-- HTMLオブジェクトマスタ（ルート描画・テキスト配置・画像配置・吹き出し配置等）
 const htmlObjects = ref<HtmlObjectItem[]>([])
-/** 各オブジェクトで選択中の値ID（has_child_table のとき使用） */
+//-- 各オブジェクトで選択中の値ID（has_child_table のとき使用）
 const selectedValueIdByObjectId = ref<Record<number, number>>({})
-/** 吹き出し等の入力テキスト（has_child_table でないとき使用） */
+//-- 吹き出し等の入力テキスト（has_child_table でないとき使用）
 const inputTextByObjectId = ref<Record<number, string>>({})
-/** 選択モーダルを開いている html_object_id（null のとき閉じている） */
+//-- 選択モーダルを開いている html_object_id（null のとき閉じている）
 const openSelectModalObjectId = ref<number | null>(null)
 
-/** 区分コード別のツールチップ文言 */
+//-- 区分コード別のツールチップ文言
 const TOOLTIP_BY_CATEGORY: Record<string, string> = {
   ROUTE_DRAWING: "地図上に経路を描画します",
   TEXT_PLACEMENT: "地図上にテキストを配置します",
@@ -966,7 +963,7 @@ const TOOLTIP_BY_CATEGORY: Record<string, string> = {
   BALLOON_PLACEMENT: "地図上に吹き出しを配置します",
 }
 
-/** 区分コード別のアクションボタンラベル（ルート描画→描画、画像/テキスト配置→配置） */
+//-- 区分コード別のアクションボタンラベル（ルート描画→描画、画像/テキスト配置→配置）
 const ACTION_LABEL_BY_CATEGORY: Record<string, string> = {
   ROUTE_DRAWING: "描画",
   TEXT_PLACEMENT: "配置",
@@ -974,10 +971,10 @@ const ACTION_LABEL_BY_CATEGORY: Record<string, string> = {
   BALLOON_PLACEMENT: "配置",
 }
 
-/** ドロップダウンの「選択してください」プレースホルダー用の値（DB値とは別） */
+//-- ドロップダウンの「選択してください」プレースホルダー用の値（DB値とは別）
 const SELECT_PLACEHOLDER_VALUE = 0
 
-/** 全画面編集オーバーレイを表示し、背景のスクロールを無効にする */
+//-- 全画面編集オーバーレイを表示し、背景のスクロールを無効にする
 function openFullscreenEdit() {
   fullscreenEditVisible.value = true
   document.body.style.overflow = "hidden"
@@ -986,43 +983,43 @@ function openFullscreenEdit() {
   })
 }
 
-/** 全画面編集オーバーレイを閉じ、背景のスクロールを復元する */
+//-- 全画面編集オーバーレイを閉じ、背景のスクロールを復元する
 function closeFullscreenEdit() {
   fullscreenEditVisible.value = false
   openSelectModalObjectId.value = null
   document.body.style.overflow = ""
 }
 
-/** コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元） */
+//-- コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元）
 onBeforeUnmount(() => {
   document.body.style.overflow = ""
 })
 
-/** オブジェクトで選択中の値（ドロップダウン・選択モーダルで選択したもの） */
+//-- オブジェクトで選択中の値（ドロップダウン・選択モーダルで選択したもの）
 function getSelectedValue(obj: HtmlObjectItem): HtmlObjectValueItem | undefined {
   const id = selectedValueIdByObjectId.value[obj.htmlObjectId] ?? obj.values[0]?.htmlObjectValueId
   return obj.values.find((v) => v.htmlObjectValueId === id)
 }
 
-/** プレビュー/出力で使うフォーマット（jpeg または svg） */
+//-- プレビュー/出力で使うフォーマット（jpeg または svg）
 const outputFormat = ref<"jpeg" | "svg">("jpeg")
 
-/** プレビューボタン押下（枝番のプレビュー表示・未実装） */
+//-- プレビューボタン押下（枝番のプレビュー表示・未実装）
 function onPreview() {
-  // TODO: 枝番のプレビュー表示
+  //-- TODO: 枝番のプレビュー表示
 }
 
-/** 出力ボタン押下（表示中の枝番を選択フォーマットで出力・未実装） */
+//-- 出力ボタン押下（表示中の枝番を選択フォーマットで出力・未実装）
 function onOutput() {
-  // TODO: 表示中の枝番を選択フォーマットで出力
+  //-- TODO: 表示中の枝番を選択フォーマットで出力
 }
 
-/** 全枝番出力ボタン押下（全枝番をまとめて選択フォーマットで出力・未実装） */
+//-- 全枝番出力ボタン押下（全枝番をまとめて選択フォーマットで出力・未実装）
 function onOutputAllBranches() {
-  // TODO: 全枝番を選択フォーマットでまとめて出力
+  //-- TODO: 全枝番を選択フォーマットでまとめて出力
 }
 
-/** 地図データのJSON形式（枝番ごとのルート・テキスト・画像・吹き出し等） */
+//-- 地図データのJSON形式（枝番ごとのルート・テキスト・画像・吹き出し等）
 interface MapDataJson {
   version: number
   branchNo: string
@@ -1033,7 +1030,7 @@ interface MapDataJson {
   callouts?: unknown[]
 }
 
-/** routes/texts/images/callouts のいずれかに要素があるか（地図情報が設定されているか） */
+//-- routes/texts/images/callouts のいずれかに要素があるか（地図情報が設定されているか）
 function hasMapContent(data: MapDataJson | undefined): boolean {
   if (!data) return false
   return (
@@ -1044,7 +1041,7 @@ function hasMapContent(data: MapDataJson | undefined): boolean {
   )
 }
 
-/** API 登録用に design_data を整形。version/branchNo/orderNo は不要。地図情報が未設定の場合は undefined */
+//-- API 登録用に design_data を整形。version/branchNo/orderNo は不要。地図情報が未設定の場合は undefined
 function designDataForApi(data: MapDataJson | undefined): unknown {
   if (!data || !hasMapContent(data)) return undefined
   return {
@@ -1055,21 +1052,21 @@ function designDataForApi(data: MapDataJson | undefined): unknown {
   }
 }
 
-/** 枝番ごとの地図データを保持（design_data のフロントエンド表現。編集・出力・読込で使用） */
+//-- 枝番ごとの地図データを保持（design_data のフロントエンド表現。編集・出力・読込で使用）
 const mapDataByBranch = ref<Record<string, MapDataJson>>({})
 
-/** 表示中の枝番の design_data（プレビューエリアで表示） */
+//-- 表示中の枝番の design_data（プレビューエリアで表示）
 const activeBranchDesignData = computed(() => {
   const bn = normalizeBranchNo(activeBranch.value)
   if (!bn) return null
   return mapDataByBranch.value[bn] ?? null
 })
 
-/** 現在の枝番に地図情報が設定されているか（地図出力ボタンの有効/無効に使用） */
+//-- 現在の枝番に地図情報が設定されているか（地図出力ボタンの有効/無効に使用）
 const canExportMap = computed(() => hasMapContent(mapDataByBranch.value[normalizeBranchNo(activeBranch.value)]))
 
 
-/** API の design_data を MapDataJson 形式に正規化する */
+//-- API の design_data を MapDataJson 形式に正規化する
 function normalizeDesignDataToMapData(
   raw: unknown,
   branchNo: string,
@@ -1098,7 +1095,7 @@ function normalizeDesignDataToMapData(
   }
 }
 
-/** 地図出力ボタン押下（現在の枝番の地図データをJSONファイルでダウンロード） */
+//-- 地図出力ボタン押下（現在の枝番の地図データをJSONファイルでダウンロード）
 function onMapOutput() {
   const branchNo = normalizeBranchNo(activeBranch.value)
   if (!branchNo) return
@@ -1121,7 +1118,7 @@ function onMapOutput() {
   URL.revokeObjectURL(url)
 }
 
-/** JSONファイルを選択したとき。別枝番で保存した design_data を読込み、現在の枝番に適用する（読込後に編集可能） */
+//-- JSONファイルを選択したとき。別枝番で保存した design_data を読込み、現在の枝番に適用する（読込後に編集可能）
 function onMapLoad(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input?.files?.[0]
@@ -1144,22 +1141,19 @@ function onMapLoad(e: Event) {
         callouts: Array.isArray(data.callouts) ? data.callouts : [],
       }
       mapDataByBranch.value = { ...mapDataByBranch.value, [branchNo]: normalized }
-      // TODO: 地図編集コンポーネントに反映（MapLibre等実装時に連携）
+      //-- TODO: 地図編集コンポーネントに反映（MapLibre等実装時に連携）
     } catch {
-      // JSONパースエラー時は何もしない
+      //-- JSONパースエラー時は何もしない
     }
   }
   reader.readAsText(file)
   input.value = ""
 }
 
-/**
- * 注文番号フォーカス移動時: 検索値の「誤編集」と思われるときだけ画面初期化の確認を表示。
- * - 注文番号を消した場合（空）→ 出さない（検索で未入力チェックされる）
- * - 別の注文番号を入力した場合（検索値と無関係）→ 出さない
- * - 検索値の先頭から一部削った／末尾に足しただけ（いずれかがもう一方の接頭辞）→ 出す
- */
-/** 注文番号入力欄のフォーカスが外れたとき、誤編集と思われる場合にのみ「検索値に戻す」確認モーダルを表示する */
+//-- 注文番号フォーカス移動時: 検索値の「誤編集」と思われるときだけ画面初期化の確認を表示。
+//-- - 注文番号を消した場合（空）→ 出さない（検索で未入力チェックされる）
+//-- - 別の注文番号を入力した場合（検索値と無関係）→ 出さない
+//-- - 検索値の先頭から一部削った／末尾に足しただけ（いずれかがもう一方の接頭辞）→ 出す
 function onOrderNoBlur() {
   if (orderNoReadOnly.value) return
   if (!hasSearched.value) return
@@ -1251,12 +1245,13 @@ watch(fullscreenEditVisible, async (visible) => {
             <!-- 注文番号＋顧客名/担当者＋更新日/更新者（同一行）・検索／選択ボタン・検索実行 -->
             <div class="order-detail-order-no-row">
               <div class="order-detail-form-field order-detail-form-field--order-no">
-              <label class="form-label form-label--with-badge">
+              <label class="form-label form-label--with-badge" :for="FORM_IDS.detail.orderNo">
                 <span class="form-required-badge">必須</span>
                 注文番号
               </label>
               <div class="order-detail-form-field-row">
                 <input
+                  :id="FORM_IDS.detail.orderNo"
                   ref="orderNoInputRef"
                   v-model="inputOrderNo"
                   type="text"
@@ -1391,7 +1386,7 @@ watch(fullscreenEditVisible, async (visible) => {
           <div class="order-detail-branch-tabs-right">
             <button
               type="button"
-              class="btn btn-small btn-secondary btn-secondary--slate"
+              class="btn btn-small btn-secondary"
               :disabled="!hasBranches"
               @click="clickDeleteBranch"
             >
@@ -1402,7 +1397,7 @@ watch(fullscreenEditVisible, async (visible) => {
             </button>
             <button
               type="button"
-              class="btn btn-small btn-secondary btn-secondary--slate"
+              class="btn btn-small btn-secondary"
               @click="clickAddBranch"
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1418,12 +1413,13 @@ watch(fullscreenEditVisible, async (visible) => {
           <!-- 左カラム -->
           <div class="order-detail-branch-left">
             <div class="order-detail-form-block">
-              <label class="form-label form-label--with-badge">
+              <label class="form-label form-label--with-badge" :for="FORM_IDS.detail.branchNo">
                 <span class="form-required-badge">必須</span>
                 枝番
               </label>
               <div class="order-detail-form-block-row">
                 <input
+                  :id="FORM_IDS.detail.branchNo"
                   v-model="activeBranch"
                   type="text"
                   maxlength="2"
@@ -1456,8 +1452,9 @@ watch(fullscreenEditVisible, async (visible) => {
               </div>
             </div>
             <div class="order-detail-form-block">
-              <label class="form-label">備考</label>
+              <label class="form-label" :for="FORM_IDS.detail.note">備考</label>
               <textarea
+                :id="FORM_IDS.detail.note"
                 v-model="branchMemo"
                 class="order-detail-textarea-note"
                 placeholder="その他、看板に関する補足事項を入力してください"
@@ -1473,7 +1470,7 @@ watch(fullscreenEditVisible, async (visible) => {
               <div class="order-detail-layout-actions">
                 <button
                   type="button"
-                  class="order-detail-btn-primary-small"
+                  class="order-detail-layout-btn order-detail-layout-btn--fullscreen-edit btn btn-small btn-primary"
                   @click="openFullscreenEdit"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1483,7 +1480,7 @@ watch(fullscreenEditVisible, async (visible) => {
                 </button>
                 <button
                   type="button"
-                  class="order-detail-btn-secondary-small"
+                  class="order-detail-layout-btn order-detail-layout-btn--preview btn btn-small btn-secondary"
                   @click="onPreview"
                 >
                   全体プレビュー
@@ -1498,14 +1495,14 @@ watch(fullscreenEditVisible, async (visible) => {
                   </select>
                   <button
                     type="button"
-                    class="order-detail-btn-primary-small"
+                    class="order-detail-layout-btn order-detail-layout-btn--output btn btn-small btn-primary"
                     @click="onOutput"
                   >
                     出力
                   </button>
                   <button
                     type="button"
-                    class="order-detail-btn-secondary-small"
+                    class="order-detail-layout-btn order-detail-layout-btn--output-all btn btn-small btn-secondary"
                     :disabled="!hasBranches"
                     @click="onOutputAllBranches"
                   >
@@ -1913,10 +1910,10 @@ watch(fullscreenEditVisible, async (visible) => {
         </div>
         <form @submit.prevent="confirmBranchAdd" class="form-dialog-form">
           <div class="form-dialog-body form-dialog-body--form">
-            <label for="branchNoInput" class="form-label">枝番</label>
+            <label :for="FORM_IDS.detail.branchNoAdd" class="form-label">枝番</label>
             <input
+              :id="FORM_IDS.detail.branchNoAdd"
               ref="branchNoInputRef"
-              id="branchNoInput"
               v-model="branchAddInput"
               type="text"
               tabindex="1"

@@ -22,34 +22,32 @@
 </template>
 
 <script setup lang="ts">
-/**
- * AppHeader - 共通ヘッダー
- *
- * 【用途】
- * ・全ページ共通で表示されるヘッダー
- * ・メインメニュー（/menu）へのリンク、ログイン名表示、ログアウトボタンを配置
- *
- * 【認証】
- * ・現段階は localStorage から userName を取得し表示（デフォルト: 「ゲスト」）
- * ・ログアウト時は isAuthed を削除し /menu へリダイレクト
- * ・将来 Cognito 導入時に差し替え予定
- */
+//-- AppHeader - 共通ヘッダー
+//--
+//-- 【用途】
+//-- ・全ページ共通で表示されるヘッダー
+//-- ・メインメニュー（/menu）へのリンク、ログイン名表示、ログアウトボタンを配置
+//--
+//-- 【認証】
+//-- ・現段階は localStorage から userName を取得し表示（デフォルト: 「ゲスト」）
+//-- ・ログアウト時は isAuthed を削除し /menu へリダイレクト
+//-- ・将来 Cognito 導入時に差し替え予定
 import { ref, onMounted } from "vue"
 
-// -----------------------------------------------------------------------------
-// 状態・処理
-// -----------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+//-- 状態・処理
+//-------------------------------------------------------------------------------
 
-/** ヘッダーに表示するログイン名。マウント時に localStorage の userName を取得（未設定時は「ゲスト」） */
+//-- ヘッダーに表示するログイン名。マウント時に localStorage の userName を取得（未設定時は「ゲスト」）
 const loginName = ref("ゲスト")
 
-/** ログアウト処理。localStorage の認証情報を削除し /menu へリダイレクト（将来: Cognito signOut） */
+//-- ログアウト処理。localStorage の認証情報を削除し /menu へリダイレクト（将来: Cognito signOut）
 function handleLogout() {
   localStorage.removeItem("isAuthed")
   window.location.href = "/menu"
 }
 
-/** マウント時に localStorage から userName を取得して表示を更新 */
+//-- マウント時に localStorage から userName を取得して表示を更新
 onMounted(() => {
   const stored = localStorage.getItem("userName")
   if (stored) loginName.value = stored
