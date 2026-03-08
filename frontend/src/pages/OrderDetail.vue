@@ -1241,7 +1241,7 @@ watch(fullscreenEditVisible, async (visible) => {
     <!-- === 注文情報カード（タイトル＋検索・表示エリア） === -->
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-8">
       <!-- -- ヘッダー -- -->
-      <div class="bg-main px-8 py-4">
+      <div class="bg-main px-8 py-2">
         <h2 class="text-base font-normal text-white tracking-tight">看板編集</h2>
       </div>
       <div class="px-6 pt-1 pb-6 md:px-8 md:pt-2 md:pb-7 min-w-0">
@@ -1289,7 +1289,7 @@ watch(fullscreenEditVisible, async (visible) => {
                 <button
                   type="button"
                   title="選択"
-                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                 :disabled="selectSearchDisabled"
                   @click="openOrderNoSelectModal"
                 >
@@ -1300,7 +1300,7 @@ watch(fullscreenEditVisible, async (visible) => {
               <button
                 type="button"
                 title="注文詳細を表示"
-                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                 :disabled="!hasSearched || !lastConfirmedOrderNo"
                 @click="openOrderDetailModal"
               >
@@ -1311,7 +1311,7 @@ watch(fullscreenEditVisible, async (visible) => {
               <button
                 type="button"
                 title="検索"
-                class="flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                class="btn-icon btn-icon--search flex items-center justify-center rounded-xl text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                 @click="confirmSearch"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1587,7 +1587,7 @@ watch(fullscreenEditVisible, async (visible) => {
     <div class="relative flex flex-col sm:flex-row items-center gap-4 pt-2 pb-4">
       <button
         type="button"
-        class="sm:absolute sm:left-0 px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200"
+        class="btn-back sm:absolute sm:left-0 inline-block text-xs font-medium transition-all duration-200"
         @click="handleBackClick"
       >
         戻る
@@ -1673,7 +1673,7 @@ watch(fullscreenEditVisible, async (visible) => {
                   <button
                     type="button"
                     title="選択"
-                    class="flex-shrink-0 flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200"
+                    class="btn-icon btn-icon--select flex-shrink-0 flex items-center justify-center rounded-xl transition-all duration-200"
                     @click="openSelectModalObjectId = obj.htmlObjectId"
                   >
                     <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

@@ -41,7 +41,7 @@ def list_customers(
             "customer_id": r["customer_id"],
             "company_id": r["company_id"],
             "customer_name": r["customer_name"] or "",
-            "address": " ".join(filter(None, [r["customer_post"], r["customer_add"] or ""])).strip(),
+            "address": (r["customer_add"] or "").strip(),
             "contact_name": r["contact_name"] or "",
         }
         for r in rows

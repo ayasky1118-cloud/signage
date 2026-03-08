@@ -90,11 +90,11 @@
   overflow: hidden;
 }
 
-/* 05f007f 準拠: px-8 py-5, text-lg */
+/* 05f007f 準拠: px-8, text-lg */
 .menu-card-header {
   background-color: var(--color-main);
   border-bottom: 1px solid rgb(226 232 240);
-  padding: 1.25rem 2rem;
+  padding: 0.5rem 2rem;
 }
 
 .menu-card-title {
@@ -126,9 +126,11 @@
   color: white;
 }
 
-.menu-item:hover {
+.menu-item:hover,
+.menu-item:focus {
   background-color: var(--color-sub-blue);
   transform: translateY(-2px);
+  outline: none;
 }
 
 .menu-item-icon {
@@ -138,7 +140,8 @@
   transition: background 0.2s;
 }
 
-.menu-item:hover .menu-item-icon {
+.menu-item:hover .menu-item-icon,
+.menu-item:focus .menu-item-icon {
   background: rgb(255 255 255 / 0.2);
 }
 
@@ -165,7 +168,8 @@
   transition: color 0.2s;
 }
 
-.menu-item:hover .menu-item-arrow {
+.menu-item:hover .menu-item-arrow,
+.menu-item:focus .menu-item-arrow {
   color: white;
 }
 </style>

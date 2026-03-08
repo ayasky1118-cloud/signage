@@ -33,13 +33,23 @@
 }
 
 .modal-content {
+  position: relative;
   background: white;
   border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
-  border: 1px solid rgb(226 232 240 / 0.8);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(226 232 240 / 0.8);
   width: 100%;
   max-width: 42rem;
   overflow: hidden;
+}
+
+/* ヘッダー角の隙間を防ぐ: 背景を青で描画し、1px の枠をヘッダー色で隙間を埋める */
+.modal-content:has(.modal-header) {
+  background: linear-gradient(to bottom, var(--color-main) 0, var(--color-main) 4rem, white 4rem);
+  box-shadow:
+    0 0 0 1px var(--color-main),
+    0 4px 6px -1px rgb(0 0 0 / 0.05),
+    0 10px 25px -5px rgb(0 0 0 / 0.08),
+    0 0 0 1px rgb(226 232 240 / 0.8);
 }
 
 .modal-content--wide {
@@ -51,11 +61,14 @@
 }
 
 .modal-header {
+  display: flex;
+  align-items: center;
   padding: 0.75rem 1.5rem;
-  background-color: var(--color-main);
+  background: transparent;
 }
 
 .modal-header-title {
+  margin: 0;
   font-size: 1rem;
   font-weight: 400;
   color: white;
@@ -179,10 +192,15 @@
 }
 
 .btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
   flex-shrink: 0;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
 }
 
 .btn-icon--select {
@@ -198,17 +216,52 @@
 .btn-icon--search {
   background-color: var(--color-main);
   color: white;
-  box-shadow: 0 4px 6px -1px rgb(0 59 130 / 0.2);
+  border: 1px solid transparent;
+  box-sizing: border-box;
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
 }
 
-.btn-icon--search:hover {
+.btn-icon--search:hover,
+.btn-icon--search:focus,
+.btn-icon--search:focus-visible {
   background-color: var(--color-sub-blue);
+  outline: none;
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
+  border-color: transparent;
 }
 
 .btn-icon--search:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.btn-icon--search svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.btn-icon--select svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgb(71 85 105);
+}
+
+/* 戻るボタン：選択ボタンに合わせたスタイル（order/list 準拠） */
+.btn-back {
+  padding: 0.625rem 2rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgb(241 245 249);
+  color: rgb(71 85 105);
+  border: 1px solid rgb(203 213 225);
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background-color: rgb(226 232 240);
 }
 
 /* -----------------------------------------------------------------------------
@@ -223,7 +276,7 @@
 .data-table-header {
   background-color: rgb(248 250 252);
   color: rgb(100 116 139);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -231,7 +284,6 @@
 .data-table-header th {
   padding: 0.5rem 0.75rem;
   font-weight: 400;
-  border-bottom: 1px solid rgb(226 232 240);
 }
 
 .data-table-row {
@@ -256,6 +308,12 @@
   color: rgb(100 116 139);
   font-size: 0.625rem;
   margin-top: 0.125rem;
+}
+
+.data-table-cell-secondary--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* -----------------------------------------------------------------------------
@@ -448,7 +506,7 @@
   background-color: rgb(0 59 130 / 0.05);
 }
 
-/* ソートボタン */
+/* ソートボタン（選択ボタンと同じ影） */
 .sort-btn {
   width: 1.25rem;
   height: 1.5rem;
@@ -461,6 +519,7 @@
   color: rgb(100 116 139);
   font-size: 0.625rem;
   line-height: 1;
+  box-shadow: 0 4px 6px -1px rgb(100 116 139 / 0.6);
   transition: background-color 0.2s, border-color 0.2s;
 }
 
@@ -591,6 +650,7 @@
 .p-4 { padding: 1rem; }
 .px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
 .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
 .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 .py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
 .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }

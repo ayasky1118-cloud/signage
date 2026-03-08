@@ -6,12 +6,275 @@
 #order-list-page.order-list-page {
   min-height: 100vh;
   background-color: #e2e8f0;
+  color: rgb(71 85 105);
 }
 
-/* 検索ボタン（虫眼鏡アイコン） */
-#order-list-page .order-list-btn-search svg {
-  width: 1.25rem;
-  height: 1.25rem;
+/* ページコンテナ */
+.order-list-page-container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+/* 検索条件カード */
+.order-list-search-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.order-list-search-card-header {
+  background-color: var(--color-main);
+  padding: 0.5rem 2rem;
+}
+.order-list-search-card-header h2 {
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  letter-spacing: -0.025em;
+  text-align: left;
+}
+@media (min-width: 768px) {
+  .order-list-search-card-header h2 {
+    font-size: 1.125rem;
+  }
+}
+.order-list-search-card-body {
+  padding: 1rem 1.5rem 1.5rem;
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .order-list-search-card-body {
+    padding: 1.25rem 2rem 1.75rem;
+  }
+}
+
+/* 検索フォーム */
+.order-list-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.order-list-search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .order-list-search-row {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+}
+.order-list-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+}
+.order-list-search-field--narrow {
+  flex: 0 0 auto;
+  width: 9rem;
+}
+@media (min-width: 768px) {
+  .order-list-search-field--narrow {
+    width: 10rem;
+  }
+}
+.order-list-search-field--design {
+  flex: 0 0 auto;
+  width: 10rem;
+}
+@media (min-width: 768px) {
+  .order-list-search-field--design {
+    width: 12rem;
+  }
+}
+.order-list-search-field--order-no {
+  flex: 0 0 auto;
+  width: 11rem;
+}
+.order-list-field-row .form-input.order-list-input--order-no {
+  flex: 0 0 auto;
+  width: 8rem;
+}
+.order-list-search-field--date {
+  flex: 0 0 auto;
+  width: 7rem;
+}
+/* 登録日（開始日～終了日）は2つの入力分の幅が必要 */
+.order-list-search-field--date-range {
+  width: 15.5rem;
+}
+.order-list-search-field--status {
+  flex: 0 0 auto;
+  width: 7rem;
+}
+.order-list-search-field--production {
+  flex: 0 0 auto;
+  width: 8rem;
+}
+.order-list-search-field--hidden-label {
+  flex: none;
+}
+.order-list-search-field--hidden-label .order-list-search-field-label {
+  visibility: hidden;
+  user-select: none;
+}
+.order-list-search-field-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: rgb(100 116 139);
+  display: block;
+}
+.order-list-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-list-field-row > .form-input:only-of-type,
+.order-list-field-row > .form-select {
+  flex: 1;
+  min-width: 0;
+}
+.order-list-field-row .form-input:first-child:not(:only-of-type) {
+  flex: 1;
+  min-width: 0;
+}
+.order-list-date-range {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.order-list-date-range .form-input {
+  flex: 0 0 auto;
+  width: 7rem;
+}
+.order-list-date-input {
+  background-color: white;
+  cursor: pointer;
+}
+.order-list-date-separator {
+  color: rgb(148 163 184);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+.order-list-search-btn--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* 詳細検索エリア */
+.order-list-search-detail {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+.order-list-search-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  min-width: 0;
+}
+/* 1行目（注文番号・住所・登録日・ステータス）は折り返さず1行に */
+.order-list-search-detail-row--single {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0.5rem; /* 選択ボタンの下陰が切れないよう余白を確保 */
+}
+.order-list-search-field--address {
+  flex: 1 1 0;
+  min-width: 8rem;
+  max-width: 14rem;
+}
+
+/* 結果テーブルカード */
+.order-list-result-card {
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(226 232 240 / 0.8);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  overflow: hidden;
+}
+.order-list-result-card-inner {
+  overflow-x: auto;
+}
+
+/* テーブルヘッダー（セマンティック） */
+.order-list-table-header {
+  background-color: rgb(248 250 252);
+  color: rgb(100 116 139);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.order-list-table-header th {
+  padding: 1rem 1.25rem;
+  font-weight: 400;
+  border-bottom: 1px solid rgb(226 232 240);
+  white-space: nowrap;
+}
+.order-list-table-header .order-list-table-header-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* テーブル行（ホバー） */
+.order-list-table-row {
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+.order-list-table-row:hover {
+  background-color: rgb(241 245 249);
+}
+
+/* 戻るボタンエリア */
+.order-list-back-area {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* インフォチップ（ツールチップ用） */
+.order-list-info-tip-icon {
+  position: relative;
+  display: inline-flex;
+  color: rgb(148 163 184);
+  cursor: help;
+  flex-shrink: 0;
+}
+.order-list-info-tip-tooltip {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 0.25rem;
+  z-index: 10;
+  white-space: nowrap;
+  border-radius: 0.25rem;
+  border: 1px solid rgb(226 232 240);
+  background-color: rgb(241 245 249);
+  padding: 0.375rem 0.5rem;
+  font-size: 10px;
+  color: rgb(30 41 59);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  display: none;
+}
+.order-list-info-tip-icon:hover .order-list-info-tip-tooltip {
+  display: block;
 }
 
 /* 詳細トグル（参照画像準拠: 薄いグレーのボタン風、矢印は左） */
@@ -68,9 +331,192 @@
 }
 #order-list-page .card-header-full > div:first-child h2 {
   color: #fff !important;
+  text-align: left;
 }
 
 /* Flatpickr テーマは flatpickr-theme.css で共通読み込み */
+
+/* 確認ダイアログ（該当データなし・APIエラー・日付範囲エラー） */
+.order-list-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.order-list-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgb(0 0 0 / 0.4);
+}
+.order-list-dialog-content {
+  position: relative;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(226 232 240 / 0.8);
+  border: 1px solid rgb(226 232 240 / 0.8);
+  width: 100%;
+  max-width: 28rem;
+  overflow: hidden;
+}
+.order-list-dialog-body {
+  padding: 2rem 2rem 1.5rem;
+  text-align: center;
+}
+.order-list-dialog-body p {
+  font-size: 0.875rem;
+  color: rgb(71 85 105);
+}
+.order-list-dialog-footer {
+  padding: 1.25rem 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* 検索結果ヘッダー（インフォ＋該当件数） */
+.order-list-result-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+.order-list-info-tip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 11px;
+  color: rgb(100 116 139);
+  min-width: 0;
+  flex: 1;
+}
+.order-list-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: rgb(248 250 252 / 0.8);
+  border: 1px solid rgb(226 232 240 / 0.6);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.order-list-count-label {
+  color: rgb(100 116 139);
+  font-weight: 500;
+}
+.order-list-count-value {
+  font-weight: 400;
+  color: var(--color-main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 読み込み中 */
+.order-list-loading {
+  padding: 3rem 0;
+  text-align: center;
+  color: rgb(100 116 139);
+  font-size: 0.875rem;
+}
+
+/* ページネーション */
+.order-list-pagination {
+  background-color: rgb(248 250 252);
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgb(226 232 240);
+}
+.order-list-pagination-nav {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+.order-list-pagination-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+}
+.order-list-pagination-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: white;
+  border: 1px solid rgb(226 232 240);
+  color: rgb(100 116 139);
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.order-list-pagination-btn:hover:not(:disabled) {
+  background-color: rgb(248 250 252);
+  border-color: rgb(203 213 225);
+}
+.order-list-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.order-list-pagination-pages {
+  display: flex;
+  gap: 0.375rem;
+}
+.order-list-pagination-page {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  transition: all 0.2s;
+}
+.order-list-pagination-page--current {
+  background-color: var(--color-main);
+  color: white;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  cursor: default;
+  pointer-events: none;
+}
+.order-list-pagination-page--other {
+  background: white;
+  border: 1px solid rgb(203 213 225);
+  color: rgb(71 85 105);
+}
+.order-list-pagination-page--other:hover {
+  background-color: rgb(241 245 249);
+}
+.order-list-pagination-info {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 0;
+}
+.order-list-pagination-info-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: rgb(255 255 255 / 0.8);
+  border: 1px solid rgb(226 232 240 / 0.6);
+  font-size: 0.75rem;
+  color: rgb(71 85 105);
+  font-variant-numeric: tabular-nums;
+}
+.order-list-pagination-separator {
+  color: rgb(148 163 184);
+}
 
 /* 一覧テーブル */
 #order-list-page .order-list-table {
@@ -81,9 +527,43 @@
   min-width: 0;
   overflow: hidden;
   vertical-align: middle;
+  text-align: left;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 #order-list-page .order-list-table th {
   vertical-align: middle;
+  text-align: left;
+}
+
+/* タイトル下と行間に線を表示 */
+#order-list-page .order-list-table thead th {
+  border-bottom: 1px solid rgb(226 232 240);
+}
+#order-list-page .order-list-table tbody tr {
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+/* タイトルとデータの表示開始位置を揃える：同一の左パディング */
+#order-list-page .order-list-table th,
+#order-list-page .order-list-table td {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+#order-list-page .order-list-table th.col-design,
+#order-list-page .order-list-table td.col-design {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+#order-list-page .order-list-table th.col-date,
+#order-list-page .order-list-table td.col-date {
+  padding-left: 1.5rem;
+  padding-right: 0.5rem;
+}
+#order-list-page .order-list-table th.col-action,
+#order-list-page .order-list-table td.col-action {
+  padding-left: 1.25rem;
+  padding-right: 0.5rem;
 }
 #order-list-page .order-list-table td:first-child {
   display: table-cell;
@@ -92,6 +572,14 @@
   display: block;
   line-height: 1;
   padding: 0.5rem 0;
+  text-decoration: none;
+}
+#order-list-page .order-list-table td:first-child .order-main-link:hover,
+#order-list-page .order-list-table .order-branch-links a:hover {
+  text-decoration: none;
+}
+#order-list-page .order-list-table .order-branch-links a {
+  text-decoration: none;
 }
 #order-list-page .order-list-table {
   table-layout: fixed !important;
@@ -150,4 +638,32 @@
   display: inline-block;
   margin: 0;
   padding: 0;
+}
+
+/* 一覧セル：セマンティッククラス */
+.order-list-cell-order-no {
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--color-main);
+}
+.order-list-cell-primary {
+  font-size: 12px;
+  color: rgb(71 85 105);
+}
+.order-list-cell-secondary {
+  font-size: 11px;
+  color: rgb(148 163 184);
+  margin-top: 0.125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-list-cell-date {
+  font-size: 12px;
+  color: rgb(100 116 139);
+}
+.order-list-branch-link {
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--color-main);
 }

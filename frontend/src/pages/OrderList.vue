@@ -254,8 +254,11 @@ function isDateRangeInvalid(): boolean {
   return fromNorm > toNorm
 }
 
+const searchBtnRef = ref<HTMLButtonElement | null>(null)
+
 /** 検索ボタン押下時。日付範囲チェックののち検索を実行する */
 function performSearch() {
+  if (isLoading.value) return
   if (isDateRangeInvalid()) {
     fpFrom?.close()
     fpTo?.close()
@@ -266,6 +269,13 @@ function performSearch() {
   currentPage.value = 1
   fetchOrders()
 }
+
+/** 検索完了時に検索ボタンのフォーカスを外し、色を元に戻す */
+watch(isLoading, (loading, prev) => {
+  if (prev === true && loading === false) {
+    nextTick(() => searchBtnRef.value?.blur())
+  }
+})
 
 /** 戻るボタン押下。履歴を1つ戻す */
 function goBack() {
@@ -327,6 +337,22 @@ let fpFrom: flatpickr.Instance | null = null
 let fpTo: flatpickr.Instance | null = null
 let fpDeadline: flatpickr.Instance | null = null
 let fpProofreading: flatpickr.Instance | null = null
+
+/** 日付ピッカー（登録日・納期・校正予定日）を初期化。詳細検索展開時に呼ぶ */
+function initDatePickers() {
+  if (fpFrom && fpTo) return /* 既に初期化済み */
+  const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
+  const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
+  const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
+  const inputDeadline = document.getElementById("inputDeadline") as HTMLInputElement
+  const inputProofreading = document.getElementById("inputProofreading") as HTMLInputElement
+  if (inputFrom && inputTo) {
+    fpFrom = flatpickr(inputFrom, opts)
+    fpTo = flatpickr(inputTo, opts)
+  }
+  if (inputDeadline && !fpDeadline) fpDeadline = flatpickr(inputDeadline, opts)
+  if (inputProofreading && !fpProofreading) fpProofreading = flatpickr(inputProofreading, opts)
+}
 
 // -----------------------------------------------------------------------------
 // 顧客選択モーダル・注文番号選択モーダル
@@ -401,17 +427,12 @@ onMounted(async () => {
   }
 
   await nextTick()
-  const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
-  const inputFrom = document.getElementById("inputCreatedDateFrom") as HTMLInputElement
-  const inputTo = document.getElementById("inputCreatedDateTo") as HTMLInputElement
-  const inputDeadline = document.getElementById("inputDeadline") as HTMLInputElement
-  const inputProofreading = document.getElementById("inputProofreading") as HTMLInputElement
-  if (inputFrom && inputTo) {
-    fpFrom = flatpickr(inputFrom, opts)
-    fpTo = flatpickr(inputTo, opts)
-  }
-  if (inputDeadline) fpDeadline = flatpickr(inputDeadline, opts)
-  if (inputProofreading) fpProofreading = flatpickr(inputProofreading, opts)
+  if (detailSearchExpanded.value) initDatePickers()
+})
+
+/* 詳細検索を展開したときに日付ピッカーを初期化（登録日・納期・校正予定日が納期と同様に日付ダイアログを出す） */
+watch(detailSearchExpanded, (expanded) => {
+  if (expanded) nextTick(() => initDatePickers())
 })
 
 onUnmounted(() => {
@@ -425,64 +446,60 @@ onUnmounted(() => {
 
 <template>
   <!-- === 画面：注文一覧 === -->
-  <main id="order-list-page" class="order-list-page text-slate-600 min-h-screen">
-    <div class="max-w-6xl mx-auto py-12 px-8">
+  <main id="order-list-page" class="order-list-page">
+    <div class="order-list-page-container">
       <!-- === 検索条件カード === -->
-      <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden mb-4">
-        <!-- -- ヘッダー -- -->
-        <div class="bg-main px-8 py-4">
-          <h2 class="text-base md:text-lg font-normal text-white tracking-tight">注文一覧</h2>
+      <div class="order-list-search-card card-header-full">
+        <div class="order-list-search-card-header">
+          <h2>注文一覧</h2>
         </div>
-        <div class="px-6 pt-4 pb-6 md:px-8 md:pt-5 md:pb-7 min-w-0">
+        <div class="order-list-search-card-body">
           <!-- -- 主検索（常時表示） -- -->
-          <div class="flex flex-col gap-4 min-w-0">
-            <div class="flex flex-col lg:flex-row lg:items-end lg:gap-4 gap-3 min-w-0">
-              <div class="space-y-1.5 flex-1 min-w-0">
-                <label class="text-xs font-normal text-slate-500 block">顧客</label>
-                <div class="flex items-center gap-2">
+          <div class="order-list-search-form">
+            <div class="order-list-search-row">
+              <div class="order-list-search-field">
+                <label class="order-list-search-field-label">顧客</label>
+                <div class="order-list-field-row">
                   <input
                     v-model="searchCustomerName"
                     type="text"
                     readonly
                     placeholder="顧客を選択してください"
-                    class="flex-1 min-w-0 form-input form-input--readonly"
+                    class="form-input form-input--readonly"
                   />
                   <button
                     type="button"
                     title="選択"
-                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all duration-200 btn-icon btn-icon--select"
+                    class="btn-icon btn-icon--select"
                     @click="openCustomerSelectModal"
                   >
-                    <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
                 </div>
               </div>
-              <div class="space-y-1.5 w-36 md:w-40 shrink-0">
-                <label class="text-xs font-normal text-slate-500 block">担当者名</label>
+              <div class="order-list-search-field order-list-search-field--narrow">
+                <label class="order-list-search-field-label">担当者名</label>
                 <input
                   v-model="searchManager"
                   type="text"
-                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
+                  class="form-input"
                   placeholder="担当者名を入力"
                 />
               </div>
-              <div class="space-y-1.5 flex-1 min-w-0">
-                <label class="text-xs font-normal text-slate-500 block">注文名</label>
+              <div class="order-list-search-field">
+                <label class="order-list-search-field-label">注文名</label>
                 <input
                   v-model="searchOrderName"
                   type="text"
-                  class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
+                  class="form-input"
                   placeholder="注文名を入力"
                 />
               </div>
-              <div class="space-y-1.5 shrink-0">
-                <label class="text-xs font-normal text-slate-500 block">デザイン種別</label>
-                <select
-                  v-model="searchDesignTypeId"
-                  class="w-40 md:w-48 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-select"
-                >
+              <div class="order-list-search-field order-list-search-field--design">
+                <label class="order-list-search-field-label">デザイン種別</label>
+                <select v-model="searchDesignTypeId" class="form-select">
                   <option value="">デザイン種別を選択</option>
                   <option
                     v-for="opt in designTypeOptions"
@@ -493,13 +510,14 @@ onUnmounted(() => {
                   </option>
                 </select>
               </div>
-              <div class="space-y-1.5 flex-none">
-                <label class="text-xs font-normal text-slate-500 block invisible select-none">検索</label>
+              <div class="order-list-search-field order-list-search-field--hidden-label">
+                <label class="order-list-search-field-label">検索</label>
                 <button
+                  ref="searchBtnRef"
                   type="button"
                   title="検索"
-                  class="order-list-btn-search shrink-0 h-[2.25rem] w-[2.25rem] flex items-center justify-center rounded-xl bg-main hover:bg-subBlue text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  :disabled="isLoading"
+                  class="btn-icon btn-icon--search"
+                  :class="{ 'order-list-search-btn--disabled': isLoading }"
                   @click="performSearch"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -524,109 +542,103 @@ onUnmounted(() => {
                 </span>
                 <span>詳細</span>
               </button>
-              <div v-show="detailSearchExpanded" class="mt-4 space-y-4 min-w-0">
-                <!-- 注文番号・住所・登録日・ステータス（同一行、住所のみ横幅最大） -->
-                <div class="flex flex-wrap items-end gap-4 min-w-0">
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">注文番号</label>
-                    <div class="flex items-center gap-2">
+              <div v-show="detailSearchExpanded" class="order-list-search-detail">
+                <!-- 注文番号・住所・登録日・ステータス（同一行） -->
+                <div class="order-list-search-detail-row order-list-search-detail-row--single">
+                  <div class="order-list-search-field order-list-search-field--order-no">
+                    <label class="order-list-search-field-label">注文番号</label>
+                    <div class="order-list-field-row">
                       <input
                         v-model="searchOrderNo"
                         type="text"
                         id="inputOrderNo"
-                        class="w-32 min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs font-mono rounded-lg border border-slate-300 form-input"
+                        class="form-input text-mono order-list-input--order-no"
                         placeholder="注文番号を入力してください"
                       />
                       <button
                         type="button"
                         title="選択"
-                        class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all duration-200 btn-icon btn-icon--select"
+                        class="btn-icon btn-icon--select"
                         @click="openOrderNoSelectModal"
                       >
-                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                         </svg>
                       </button>
                     </div>
                   </div>
-                  <div class="space-y-1.5 flex-1 min-w-0">
-                    <label class="text-xs font-normal text-slate-500 block">住所</label>
+                  <div class="order-list-search-field order-list-search-field--address">
+                    <label class="order-list-search-field-label">住所</label>
                     <input
                       v-model="searchAddress"
                       type="text"
-                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
+                      class="form-input"
                       placeholder="住所を入力してください"
                     />
                   </div>
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">登録日</label>
-                    <div class="flex items-center gap-2">
+                  <div class="order-list-search-field order-list-search-field--date order-list-search-field--date-range">
+                    <label class="order-list-search-field-label">登録日</label>
+                    <div class="order-list-date-range">
                       <input
                         type="text"
                         id="inputCreatedDateFrom"
                         readonly
                         placeholder="開始日"
-                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
+                        class="form-input order-list-date-input"
                       />
-                      <span class="text-slate-400 shrink-0 text-xs">～</span>
+                      <span class="order-list-date-separator">～</span>
                       <input
                         type="text"
                         id="inputCreatedDateTo"
                         readonly
                         placeholder="終了日"
-                        class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
+                        class="form-input order-list-date-input"
                       />
                     </div>
                   </div>
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">ステータス</label>
-                    <select
-                      v-model="searchStatus"
-                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-select"
-                    >
+                  <div class="order-list-search-field order-list-search-field--status">
+                    <label class="order-list-search-field-label">ステータス</label>
+                    <select v-model="searchStatus" class="form-select">
                       <option value="">ステータスを選択してください</option>
                       <option v-for="opt in STATUS_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
                   </div>
                 </div>
                 <!-- 制作区分・納期・校正予定日・備考（同一行） -->
-                <div class="flex flex-wrap items-end gap-4 min-w-0">
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">制作区分</label>
-                    <select
-                      v-model="searchProductionType"
-                      class="w-32 min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-select"
-                    >
+                <div class="order-list-search-detail-row">
+                  <div class="order-list-search-field order-list-search-field--production">
+                    <label class="order-list-search-field-label">制作区分</label>
+                    <select v-model="searchProductionType" class="form-select">
                       <option value="">制作区分を選択してください</option>
                       <option v-for="opt in PRODUCTION_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
                     </select>
                   </div>
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">納期</label>
+                  <div class="order-list-search-field order-list-search-field--date">
+                    <label class="order-list-search-field-label">納期</label>
                     <input
                       type="text"
                       id="inputDeadline"
                       readonly
                       placeholder="納期を選択"
-                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
+                      class="form-input order-list-date-input"
                     />
                   </div>
-                  <div class="space-y-1.5 shrink-0">
-                    <label class="text-xs font-normal text-slate-500 block">校正予定日</label>
+                  <div class="order-list-search-field order-list-search-field--date">
+                    <label class="order-list-search-field-label">校正予定日</label>
                     <input
                       type="text"
                       id="inputProofreading"
                       readonly
                       placeholder="校正予定日を選択"
-                      class="w-28 min-w-0 h-[2.25rem] box-border px-3 py-2 text-xs rounded-lg border border-slate-300 form-input bg-white cursor-pointer"
+                      class="form-input order-list-date-input"
                     />
                   </div>
-                  <div class="space-y-1.5 flex-1 min-w-0">
-                    <label class="text-xs font-normal text-slate-500 block">備考</label>
+                  <div class="order-list-search-field">
+                    <label class="order-list-search-field-label">備考</label>
                     <input
                       v-model="searchNote"
                       type="text"
-                      class="w-full min-w-0 h-[2.25rem] box-border px-4 py-2 text-xs rounded-lg border border-slate-300 form-input"
+                      class="form-input"
                       placeholder="備考を入力してください"
                     />
                   </div>
@@ -663,24 +675,18 @@ onUnmounted(() => {
       <!-- 該当データなしダイアログ（05f007f準拠: fixed inset-0 等のモーダル） -->
       <div
         v-show="showNoDataDialog"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="order-list-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="noDataDialogMessage"
       >
-        <div class="fixed inset-0 bg-black/40" @click="showNoDataDialog = false"></div>
-        <div class="relative bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-8 pt-8 pb-6 text-center">
-            <p id="noDataDialogMessage" class="text-sm text-slate-600">該当データがありません</p>
+        <div class="order-list-dialog-overlay" @click="showNoDataDialog = false"></div>
+        <div class="order-list-dialog-content">
+          <div class="order-list-dialog-body">
+            <p id="noDataDialogMessage">該当データがありません</p>
           </div>
-          <div class="px-8 py-5 flex justify-center">
-            <button
-              type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
-              @click="showNoDataDialog = false"
-            >
-              OK
-            </button>
+          <div class="order-list-dialog-footer">
+            <button type="button" class="btn-primary" @click="showNoDataDialog = false">OK</button>
           </div>
         </div>
       </div>
@@ -688,24 +694,18 @@ onUnmounted(() => {
       <!-- APIエラーダイアログ -->
       <div
         v-show="showApiErrorDialog"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="order-list-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="apiErrorDialogMessage"
       >
-        <div class="fixed inset-0 bg-black/40" @click="closeApiErrorDialog"></div>
-        <div class="relative bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-8 pt-8 pb-6 text-center">
-            <p id="apiErrorDialogMessage" class="text-sm text-slate-600">{{ apiError }}</p>
+        <div class="order-list-dialog-overlay" @click="closeApiErrorDialog"></div>
+        <div class="order-list-dialog-content">
+          <div class="order-list-dialog-body">
+            <p id="apiErrorDialogMessage">{{ apiError }}</p>
           </div>
-          <div class="px-8 py-5 flex justify-center">
-            <button
-              type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
-              @click="closeApiErrorDialog"
-            >
-              OK
-            </button>
+          <div class="order-list-dialog-footer">
+            <button type="button" class="btn-primary" @click="closeApiErrorDialog">OK</button>
           </div>
         </div>
       </div>
@@ -713,61 +713,49 @@ onUnmounted(() => {
       <!-- 日付範囲エラーダイアログ（開始＞終了） -->
       <div
         v-show="showDateRangeErrorDialog"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="order-list-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dateRangeErrorDialogMessage"
       >
-        <div class="fixed inset-0 bg-black/40" @click="closeDateRangeErrorDialog"></div>
-        <div class="relative bg-white rounded-2xl card-shadow border border-slate-200/80 w-full max-w-md overflow-hidden">
-          <div class="px-8 pt-8 pb-6 text-center">
-            <p id="dateRangeErrorDialogMessage" class="text-sm text-slate-600">
+        <div class="order-list-dialog-overlay" @click="closeDateRangeErrorDialog"></div>
+        <div class="order-list-dialog-content">
+          <div class="order-list-dialog-body">
+            <p id="dateRangeErrorDialogMessage">
               登録日の開始日が終了日より後になっています。<br />終了日を確認してください。
             </p>
           </div>
-          <div class="px-8 py-5 flex justify-center">
-            <button
-              type="button"
-              class="px-8 py-2.5 rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal transition-all duration-200"
-              @click="closeDateRangeErrorDialog"
-            >
-              OK
-            </button>
+          <div class="order-list-dialog-footer">
+            <button type="button" class="btn-primary" @click="closeDateRangeErrorDialog">OK</button>
           </div>
         </div>
       </div>
 
       <!-- 読み込み中表示 -->
-      <div v-show="hasSearched && isLoading" class="py-12 text-center text-slate-500 text-sm">
-        読み込み中...
-      </div>
+      <div v-show="hasSearched && isLoading" class="order-list-loading">読み込み中...</div>
 
       <!-- === 検索結果一覧（05f007f準拠: 該当件数は白カード外、結果テーブルは別の白カード） === -->
       <div v-show="hasSearched && !isLoading && orderItems.length > 0">
         <!-- -- インフォメーション＋該当件数（同一ブロック。前者は左寄せ、後者は右寄せ） -- -->
-        <div class="flex items-center gap-4 mb-6 pl-3 pr-2 w-full min-w-0">
-          <span class="flex items-center gap-2 text-sm text-slate-500 min-w-0 flex-1">
-            <span class="group relative inline-flex text-slate-400 cursor-help shrink-0">
+        <div class="order-list-result-header">
+          <span class="order-list-info-tip">
+            <span class="order-list-info-tip-icon">
               ⓘ
-              <span
-                class="pointer-events-none absolute left-0 bottom-full z-10 mb-1 hidden whitespace-nowrap rounded border border-slate-200 bg-slate-100 px-2 py-1.5 text-[10px] text-slate-800 shadow-md group-hover:block"
-                role="tooltip"
-              >
-              </span>
+              <span class="order-list-info-tip-tooltip" role="tooltip"></span>
             </span>
             対象行をダブルクリックすると、注文詳細画面が表示されます
           </span>
-          <span class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50/80 border border-slate-200/60 text-xs shrink-0 ml-auto">
-            <span class="text-slate-500 font-medium">該当</span>
-            <span class="font-normal text-main tabular-nums">{{ totalCount }}</span>
-            <span class="text-slate-500 font-medium">件</span>
+          <span class="order-list-count-badge">
+            <span class="order-list-count-label">該当</span>
+            <span class="order-list-count-value">{{ totalCount }}</span>
+            <span class="order-list-count-label">件</span>
           </span>
         </div>
 
         <!-- -- 結果テーブル（別の白カードで囲む） -- -->
-        <div class="bg-white rounded-2xl card-shadow border border-slate-200/80 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="order-list-table w-full text-left">
+        <div class="order-list-result-card">
+          <div class="order-list-result-card-inner">
+            <table class="order-list-table">
               <colgroup>
                 <col id="col-order-no" />
                 <col id="col-name" />
@@ -777,80 +765,80 @@ onUnmounted(() => {
                 <col id="col-action" />
               </colgroup>
               <thead>
-                <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider data-table-header">
-                  <th class="px-5 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1">
+                <tr class="order-list-table-header data-table-header">
+                  <th>
+                    <span class="order-list-table-header-sort">
                       注文番号
                       <button
                         type="button"
                         class="sort-btn"
                         :title="getSortOrder('orderNo') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
                         @click="toggleSortOrder('orderNo')"
-                      >{{ getSortOrder('orderNo') === 'asc' ? '↓' : '↑' }}</button>
+                      >{{ getSortOrder('orderNo') === 'asc' ? '↓' : '↑' }}                      </button>
                     </span>
                   </th>
-                  <th class="px-5 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
+                  <th>
                     <span class="header-2line">注文名<br />住所</span>
                   </th>
-                  <th class="px-5 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
+                  <th>
                     <span class="header-2line">顧客名<br />担当者</span>
                   </th>
-                  <th class="col-design px-4 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
+                  <th class="col-design">
                     <span class="header-2line">デザイン種別<br />テンプレート</span>
                   </th>
-                  <th class="col-date pl-6 pr-2 py-4 font-normal border-b border-slate-200 whitespace-nowrap">
-                    <span class="inline-flex items-center gap-1">
+                  <th class="col-date">
+                    <span class="order-list-table-header-sort">
                       <span class="header-2line">登録日<br />登録者</span>
                       <button
                         type="button"
                         class="sort-btn"
                         :title="getSortOrder('createdDate') === 'asc' ? '降順へ切り替え' : '昇順へ切り替え'"
                         @click="toggleSortOrder('createdDate')"
-                      >{{ getSortOrder('createdDate') === 'asc' ? '↓' : '↑' }}</button>
+                      >{{ getSortOrder('createdDate') === 'asc' ? '↓' : '↑' }}                      </button>
                     </span>
                   </th>
-                  <th class="col-action pl-5 pr-2 py-4 font-normal border-b border-slate-200 whitespace-nowrap">枝番</th>
+                  <th class="col-action">枝番</th>
                 </tr>
               </thead>
               <!-- 行ダブルクリックで注文詳細モーダル表示。注文番号・枝番は各画面へのリンク -->
-              <tbody class="divide-y divide-slate-100">
+              <tbody>
                 <tr
                   v-for="order in orderItems"
                   :key="order.orderNo"
-                  class="hover:bg-slate-100 transition-colors cursor-pointer order-list-table-row"
+                  class="order-list-table-row"
                   @dblclick="openOrderView(order)"
                 >
-                  <td class="px-5 py-2">
+                  <td>
                     <RouterLink
                       :to="orderMainParams(order)"
-                      class="order-main-link font-mono text-[12px] text-main hover:underline"
+                      class="order-main-link order-list-cell-order-no"
                     >
                       {{ order.orderNo }}
                     </RouterLink>
                   </td>
-                  <td class="px-5 py-2">
-                    <div class="text-slate-600 text-[12px]">{{ order.orderName }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.address }}</div>
+                  <td>
+                    <div class="order-list-cell-primary">{{ order.orderName }}</div>
+                    <div class="order-list-cell-secondary">{{ order.address }}</div>
                   </td>
-                  <td class="px-5 py-2">
-                    <div class="text-slate-600 text-[12px]">{{ order.customerName || "—" }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.manager?.trim() || "—" }}</div>
+                  <td>
+                    <div class="order-list-cell-primary">{{ order.customerName || "—" }}</div>
+                    <div class="order-list-cell-secondary">{{ order.manager?.trim() || "—" }}</div>
                   </td>
-                  <td class="col-design px-4 py-2">
-                    <div class="text-slate-600 text-[12px]">{{ designTypeLabel(order.designType) }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.template }}</div>
+                  <td class="col-design">
+                    <div class="order-list-cell-primary">{{ designTypeLabel(order.designType) }}</div>
+                    <div class="order-list-cell-secondary">{{ order.template }}</div>
                   </td>
-                  <td class="col-date pl-6 pr-2 py-2 text-[12px] text-slate-500">
-                    <div>{{ order.createdDate }}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 truncate">{{ order.creator }}</div>
+                  <td class="col-date">
+                    <div class="order-list-cell-date">{{ order.createdDate }}</div>
+                    <div class="order-list-cell-secondary">{{ order.creator }}</div>
                   </td>
-                  <td class="col-action pl-5 pr-2 py-2 font-mono text-[12px] text-slate-600">
+                  <td class="col-action">
                     <span class="order-branch-links">
                       <RouterLink
                         v-for="branch in order.branches"
                         :key="branch"
                         :to="orderDetailParams(order, branch)"
-                        class="font-mono text-[12px] text-main hover:underline"
+                        class="order-list-branch-link"
                       >
                         {{ branch }}
                       </RouterLink>
@@ -862,29 +850,24 @@ onUnmounted(() => {
           </div>
 
           <!-- ページネーション（05f007f準拠） -->
-          <div class="bg-slate-50 px-5 py-4 border-t border-slate-200">
-            <nav class="flex w-full items-center">
-              <div class="flex-1"></div>
-              <div class="flex gap-3 items-center">
+          <div class="order-list-pagination">
+            <nav class="order-list-pagination-nav">
+              <div class="order-list-pagination-buttons">
                 <button
                   type="button"
-                  class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-40"
+                  class="order-list-pagination-btn"
                   :disabled="currentPage <= 1"
                   @click="prevPage"
                 >
                   ＜
                 </button>
-                <div class="flex gap-1.5">
+                <div class="order-list-pagination-pages">
                   <button
                     v-for="p in visiblePageNumbers"
                     :key="p"
                     type="button"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-normal transition-all duration-200"
-                    :class="
-                      p === currentPage
-                        ? 'bg-main text-white shadow-sm cursor-default pointer-events-none'
-                        : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
-                    "
+                    class="order-list-pagination-page"
+                    :class="p === currentPage ? 'order-list-pagination-page--current' : 'order-list-pagination-page--other'"
                     :disabled="p === currentPage"
                     @click="goToPage(p)"
                   >
@@ -893,19 +876,17 @@ onUnmounted(() => {
                 </div>
                 <button
                   type="button"
-                  class="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 text-xs font-medium hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-40"
+                  class="order-list-pagination-btn"
                   :disabled="currentPage >= totalPages"
                   @click="nextPage"
                 >
                   ＞
                 </button>
               </div>
-              <div class="flex-1 flex justify-end items-center min-w-0">
-                <span
-                  class="inline-flex items-center gap-1 px-3 py-2.5 rounded-lg bg-white/80 border border-slate-200/60 text-xs text-slate-600 tabular-nums"
-                >
-                  <span class="text-slate-600">{{ currentPage }}</span>
-                  <span class="text-slate-400">/</span>
+              <div class="order-list-pagination-info">
+                <span class="order-list-pagination-info-badge">
+                  <span>{{ currentPage }}</span>
+                  <span class="order-list-pagination-separator">/</span>
                   <span>{{ totalPages }}</span>
                 </span>
               </div>
@@ -915,14 +896,8 @@ onUnmounted(() => {
       </div>
 
       <!-- -- 戻るボタン（05f007f準拠） -- -->
-      <div class="mt-8 flex justify-start">
-        <button
-          type="button"
-          class="inline-block px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200"
-          @click="goBack"
-        >
-          戻る
-        </button>
+      <div class="order-list-back-area">
+        <button type="button" class="btn-back" @click="goBack">戻る</button>
       </div>
     </div>
   </main>

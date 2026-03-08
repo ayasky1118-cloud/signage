@@ -10,7 +10,7 @@
  *
  * 【注意】
  * ・API レスポンスは snake_case（customer_id, customer_name 等）。マッピングで camelCase に変換
- * ・address は customer_post + customer_add を結合した文字列
+ * ・address は customer_add（住所のみ。郵便番号は含まない）
  */
 function getApiBase(): string {
   const env = import.meta.env.VITE_API_BASE as string | undefined
@@ -20,7 +20,7 @@ function getApiBase(): string {
 }
 const API_PREFIX = getApiBase() ? "" : "/api"
 
-/** 顧客1件。address は郵便番号+住所を結合、contactName は担当者名 */
+/** 顧客1件。address は住所（customer_add）、contactName は担当者名 */
 export interface CustomerItem {
   customerId: number
   companyId: number

@@ -860,7 +860,7 @@ watch(orderNo, () => {
   <main id="order-main-page" class="max-w-5xl mx-auto py-12 px-8">
     <div class="bg-white rounded-2xl card-shadow card-header-full border-b border-slate-200/80 overflow-hidden">
       <!-- -- カードヘッダー -- -->
-      <div class="bg-main px-8 py-4">
+      <div class="bg-main px-8 py-2">
         <h2 class="text-base font-normal text-white tracking-tight">注文（新規・変更）</h2>
       </div>
 
@@ -915,7 +915,7 @@ watch(orderNo, () => {
                   <button
                     type="button"
                     title="選択"
-                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                     :disabled="searchAndListDisabled"
                     @click="openOrderNoSelectModal"
                   >
@@ -928,7 +928,7 @@ watch(orderNo, () => {
                     ref="orderNoSearchBtnRef"
                     type="button"
                     title="検索"
-                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] rounded-xl bg-main hover:bg-subBlue text-white text-xs font-normal shadow-md shadow-main/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
+                    class="btn-icon btn-icon--search flex items-center justify-center rounded-xl text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shrink-0"
                     :disabled="searchAndListDisabled"
                     @click="doSearchByOrderNo"
                   >
@@ -1106,7 +1106,7 @@ watch(orderNo, () => {
                       ref="customerSelectBtnRef"
                       type="button"
                       title="選択"
-                      class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                      class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                       :disabled="customerSelectDisabled"
                       @click="openCustomerSelectModal"
                     >
@@ -1172,7 +1172,7 @@ watch(orderNo, () => {
                   <button
                     type="button"
                     title="選択"
-                    class="flex items-center justify-center h-[2.25rem] w-[2.25rem] shrink-0 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-300 shadow-md shadow-slate-300/60 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                    class="btn-icon btn-icon--select flex items-center justify-center shrink-0 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
                     :disabled="templateDisabled"
                     @click="templateSelectModalOpen = true"
                   >
@@ -1237,7 +1237,7 @@ watch(orderNo, () => {
       <div class="flex-1">
         <button
           type="button"
-          class="inline-block px-8 py-2.5 rounded-xl bg-white border border-neutral text-slate-500 hover:bg-slate-50 text-xs font-medium transition-all duration-200"
+          class="btn-back inline-block text-xs font-medium transition-all duration-200"
           @click="goBack"
         >
           戻る

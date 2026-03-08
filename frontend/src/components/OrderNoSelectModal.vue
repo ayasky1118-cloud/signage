@@ -72,7 +72,7 @@ function onSelect(order: OrderItem) {
       <!-- オーバーレイ（半透明の黒）。クリックでモーダルを閉じる -->
       <div class="modal-overlay" @click="close"></div>
       <div class="modal-dialog">
-        <div class="modal-content modal-content--wide">
+        <div class="modal-content modal-content--wide order-no-select-modal">
           <!-- ヘッダー（メインカラー背景） -->
           <div class="modal-header">
             <h3 id="orderNoSelectModalTitle" class="modal-header-title">注文番号を選択</h3>
@@ -80,14 +80,22 @@ function onSelect(order: OrderItem) {
           <!-- 本文: 注文一覧テーブル（行クリックで select 発火。最大高さ 60vh でスクロール） -->
           <div class="modal-body modal-body--scroll">
             <p v-if="loading" class="text-muted">読み込み中...</p>
-            <table v-else class="data-table">
+            <table v-else class="data-table order-no-select-modal-table">
               <thead>
                 <tr class="data-table-header">
-                  <th class="header-2line">注文番号</th>
-                  <th><span class="header-2line">注文名<br>住所</span></th>
-                  <th><span class="header-2line">顧客名<br>担当者</span></th>
-                  <th><span class="header-2line">デザイン種別<br>テンプレート</span></th>
-                  <th><span class="header-2line">登録日<br>登録者</span></th>
+                  <th class="select-modal-table-th order-no-select-modal-th-order-no">注文番号</th>
+                  <th class="select-modal-table-th">
+                    <span class="header-2line">注文名<br />住所</span>
+                  </th>
+                  <th class="select-modal-table-th">
+                    <span class="header-2line">顧客名<br />担当者</span>
+                  </th>
+                  <th class="select-modal-table-th">
+                    <span class="header-2line">デザイン種別<br />テンプレート</span>
+                  </th>
+                  <th class="select-modal-table-th">
+                    <span class="header-2line">登録日<br />登録者</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -97,22 +105,24 @@ function onSelect(order: OrderItem) {
                   class="data-table-row"
                   @click="onSelect(order)"
                 >
-                  <td><span class="text-mono data-table-cell-primary">{{ order.orderNo }}</span></td>
-                  <td>
+                  <td class="select-modal-table-td order-no-select-modal-td-order-no">
+                    <span class="data-table-cell-primary text-mono">{{ order.orderNo }}</span>
+                  </td>
+                  <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ order.orderName }}</div>
-                    <div class="data-table-cell-secondary">{{ order.address }}</div>
+                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.address }}</div>
                   </td>
-                  <td>
+                  <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ order.customerName || "—" }}</div>
-                    <div class="data-table-cell-secondary">{{ order.manager?.trim() || "—" }}</div>
+                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.manager?.trim() || "—" }}</div>
                   </td>
-                  <td>
+                  <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ designTypeLabel(order.designType) }}</div>
-                    <div class="data-table-cell-secondary">{{ order.template || "—" }}</div>
+                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.template || "—" }}</div>
                   </td>
-                  <td>
+                  <td class="select-modal-table-td">
                     <div class="data-table-cell-primary">{{ order.createdDate }}</div>
-                    <div class="data-table-cell-secondary">{{ order.creator }}</div>
+                    <div class="data-table-cell-secondary data-table-cell-secondary--truncate">{{ order.creator }}</div>
                   </td>
                 </tr>
               </tbody>
@@ -136,25 +146,53 @@ function onSelect(order: OrderItem) {
 </template>
 
 <style scoped>
-.modal-body--scroll {
-  padding: 1.5rem 2rem;
+/* 顧客モーダルと同様：ヘッダー高さ・テーブルスタイル */
+.order-no-select-modal {
+  background: linear-gradient(to bottom, var(--color-main) 0, var(--color-main) 2.75rem, white 2.75rem) !important;
+}
+
+.order-no-select-modal .modal-header {
+  padding: 0.5rem 1.5rem;
+}
+
+.order-no-select-modal .modal-body--scroll {
+  padding: 1rem 2rem 1rem;
   max-height: 60vh;
   overflow: auto;
 }
 
-.data-table th {
-  padding: 0.5rem 0.75rem;
+.order-no-select-modal .modal-footer {
+  border-top: 1px solid rgb(226 232 240);
 }
 
-.data-table td {
-  padding: 0.5rem 0.75rem;
+/* 選択モーダルテーブル（data-table を拡張） */
+.order-no-select-modal .order-no-select-modal-table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
 }
 
-.data-table-cell-primary {
-  font-size: 0.75rem;
+.order-no-select-modal .select-modal-table-th {
+  padding: 0.5rem 1.25rem;
+  font-weight: 400;
+  vertical-align: middle;
+  border-bottom: 1px solid rgb(226 232 240);
+  white-space: nowrap;
 }
 
-.data-table-cell-secondary {
-  margin-top: 0.125rem;
+.order-no-select-modal .select-modal-table-td {
+  min-width: 0;
+  overflow: hidden;
+  vertical-align: middle;
+  padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+
+.order-no-select-modal .order-no-select-modal-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.order-no-select-modal .order-no-select-modal-td-order-no .data-table-cell-primary {
+  font-size: 14px;
 }
 </style>
