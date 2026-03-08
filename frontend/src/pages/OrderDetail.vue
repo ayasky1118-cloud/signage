@@ -24,7 +24,7 @@ import { useMapFeatures } from "../composables/useMapFeatures"
 import { useMapInteraction } from "../composables/useMapInteraction"
 import { useMapHistory } from "../composables/useMapHistory"
 import { useMapData } from "../composables/useMapData"
-import type { FeatureCollection, LineString } from "geojson"
+import type { FeatureCollection, LineString, Point } from "geojson"
 import {
   ensureRoutesAsRouteItems,
   ensureRoutesAsFeatureCollection,
@@ -704,8 +704,13 @@ function confirmBranchAdd() {
     //-- 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
     //-- 全画面編集のルート・画像ドロップダウンを「選択してください」に初期化（新枝番は未選択状態）
+    //-- 方式B: ROUTE_LINE_TYPE / ROUTE_LINE_COLOR / ROUTE_LINE_WIDTH も初期化
     htmlObjects.value.forEach((obj) => {
-      if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
+      if (
+        obj.categoryCode === "ROUTE_DRAWING" ||
+        obj.categoryCode === "IMAGE_PLACEMENT" ||
+        ROUTE_LINE_CATEGORIES.includes(obj.categoryCode)
+      ) {
         selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
       }
     })
@@ -995,6 +1000,23 @@ const ACTION_LABEL_BY_CATEGORY: Record<string, string> = {
 //-- ドロップダウンの「選択してください」プレースホルダー用の値（DB値とは別）
 const SELECT_PLACEHOLDER_VALUE = 0
 
+//-- 方式B: ルート描画の3つのドロップダウン用オブジェクト（ROUTE_LINE_TYPE / ROUTE_LINE_COLOR / ROUTE_LINE_WIDTH）
+const ROUTE_LINE_CATEGORIES = ["ROUTE_LINE_TYPE", "ROUTE_LINE_COLOR", "ROUTE_LINE_WIDTH"] as const
+const routeLineTypeObj = computed(() => htmlObjects.value.find((o) => o.categoryCode === "ROUTE_LINE_TYPE"))
+const routeLineColorObj = computed(() => htmlObjects.value.find((o) => o.categoryCode === "ROUTE_LINE_COLOR"))
+const routeLineWidthObj = computed(() => htmlObjects.value.find((o) => o.categoryCode === "ROUTE_LINE_WIDTH"))
+//-- メインループで表示するオブジェクト（ROUTE_LINE_* は ROUTE_DRAWING 内で表示するため除外）
+const displayableHtmlObjects = computed(() =>
+  htmlObjects.value.filter((o) => !ROUTE_LINE_CATEGORIES.includes(o.categoryCode))
+)
+//-- 方式B: 線の種類・色・太さの3つがすべて選択済みか
+const allRouteOptionsSelected = computed(() => {
+  const typeVal = routeLineTypeObj.value ? getSelectedValue(routeLineTypeObj.value) : undefined
+  const colorVal = routeLineColorObj.value ? getSelectedValue(routeLineColorObj.value) : undefined
+  const widthVal = routeLineWidthObj.value ? getSelectedValue(routeLineWidthObj.value) : undefined
+  return !!(typeVal && colorVal && widthVal)
+})
+
 //-- 全画面編集オーバーレイを表示し、背景のスクロールを無効にする
 function openFullscreenEdit() {
   fullscreenEditVisible.value = true
@@ -1011,39 +1033,54 @@ function closeFullscreenEdit() {
   document.body.style.overflow = ""
 }
 
-//-- 全画面マップの map-loaded 時：復元・クリックハンドラ設定
+//-- 全画面マップの map-loaded 時：復元・リサイズ（sinage_old と同様に map が正しいサイズでクリックを受け付けるようにする）
 function onFullscreenMapLoaded(map: maplibregl.Map) {
+  nextTick(() => {
+    fullscreenMapRef.value?.fitMapToContainer()
+  })
   const bn = normalizeBranchNo(activeBranch.value)
   const data = bn ? (mapDataByBranch.value[bn] ?? {}) : {}
   mapFeatures.restoreFeatures(map, data as unknown as Record<string, unknown>)
+}
 
-  //-- クリックハンドラ：editMode に応じてテキスト・画像・吹き出し・ルートを配置。追加後は mapDataByBranch に同期
-  mapInteraction.setupClickHandler(map, {
-    onText: (lng, lat) => {
+//-- 全画面マップのクリック時：MapPreview から emit される。editMode に応じてテキスト・画像・吹き出し・ルートを配置
+function onFullscreenMapClick(lngLat: { lng: number; lat: number }) {
+  const map = fullscreenMapRef.value?.getMap() ?? null
+  const { lng, lat } = lngLat
+  switch (mapInteraction.editMode.value) {
+    case "text": {
       const obj = htmlObjects.value.find((o) => o.categoryCode === "TEXT_PLACEMENT")
       const text = obj ? (inputTextByObjectId.value[obj.htmlObjectId] ?? "") : ""
       mapFeatures.addText(map, lng, lat, text)
       mapHistory.pushHistory("text")
+      mapInteraction.editMode.value = "route"
       syncMapFeaturesToBranch(activeBranch.value)
-    },
-    onImage: (lng, lat) => {
+      break
+    }
+    case "image": {
       const obj = htmlObjects.value.find((o) => o.categoryCode === "IMAGE_PLACEMENT")
       const imageId = obj ? (getSelectedValue(obj)?.valueCode ?? "") : ""
       if (imageId) {
         mapFeatures.addImage(map, lng, lat, imageId)
         mapHistory.pushHistory("image")
+        mapInteraction.editMode.value = "route"
         syncMapFeaturesToBranch(activeBranch.value)
       }
-    },
-    onBalloon: (lng, lat) => {
+      break
+    }
+    case "balloon": {
       const obj = htmlObjects.value.find((o) => o.categoryCode === "BALLOON_PLACEMENT")
       const text = obj ? (inputTextByObjectId.value[obj.htmlObjectId] ?? "") : ""
       mapFeatures.addBalloon(map, lng, lat, text)
       mapHistory.pushHistory("balloon")
+      mapInteraction.editMode.value = "route"
       syncMapFeaturesToBranch(activeBranch.value)
-    },
-    onRoute: (lng, lat) => mapFeatures.addTempMarker(map, lng, lat),
-  })
+      break
+    }
+    case "route":
+      mapFeatures.addTempMarker(map, lng, lat)
+      break
+  }
 }
 
 //-- useMapFeatures の編集結果を mapDataByBranch に同期する
@@ -1066,11 +1103,21 @@ onBeforeUnmount(() => {
   document.body.style.overflow = ""
 })
 
-//-- アクションボタン押下：editMode を設定し地図クリックで配置可能にする
+//-- ルート描画モードか（地図クリックで一時マーカーを打てる状態）
+const isRouteDrawingMode = () => mapInteraction.editMode.value === "route"
+
+//-- アクションボタン押下：editMode を設定し地図クリックで配置可能にする。ルート描画中に再度クリックでキャンセル
 function onActionButtonClick(obj: HtmlObjectItem) {
   const code = obj.categoryCode
-  if (code === "ROUTE_DRAWING") mapInteraction.editMode.value = "route"
-  else if (code === "TEXT_PLACEMENT") mapInteraction.editMode.value = "text"
+  if (code === "ROUTE_DRAWING") {
+    if (isRouteDrawingMode()) {
+      //-- ルート描画中に再度クリック：一時マーカーをクリアしモード解除（開始の点を打って戻りたい時）
+      mapFeatures.clearTempMarkers(fullscreenMapRef.value?.getMap() ?? null)
+      mapInteraction.editMode.value = "none"
+    } else {
+      mapInteraction.editMode.value = "route"
+    }
+  } else if (code === "TEXT_PLACEMENT") mapInteraction.editMode.value = "text"
   else if (code === "IMAGE_PLACEMENT") mapInteraction.editMode.value = "image"
   else if (code === "BALLOON_PLACEMENT") mapInteraction.editMode.value = "balloon"
 }
@@ -1093,17 +1140,45 @@ function parseRouteValueData(valueData: string | null | undefined): { type?: str
   return {}
 }
 
-//-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映。ドロップダウン選択値（valueCode, valueData）を drawRoute に渡す
+//-- 方式B: 3つのドロップダウン選択値から drawOptions を組み立てる
+function buildRouteDrawOptionsFromThreeDropdowns(): {
+  type: string
+  color: string
+  width: number
+} {
+  const typeVal = routeLineTypeObj.value ? getSelectedValue(routeLineTypeObj.value) : undefined
+  const colorVal = routeLineColorObj.value ? getSelectedValue(routeLineColorObj.value) : undefined
+  const widthVal = routeLineWidthObj.value ? getSelectedValue(routeLineWidthObj.value) : undefined
+  const typeCode = typeVal?.valueCode ?? ""
+  const colorCode = colorVal?.valueCode ?? ""
+  const widthCode = widthVal?.valueCode ?? ""
+  let color = "#FF0000"
+  let width = 4
+  if (colorVal?.valueData) {
+    try {
+      const parsed = JSON.parse(colorVal.valueData) as { color?: string }
+      if (typeof parsed.color === "string") color = parsed.color
+    } catch {
+      /* ignore */
+    }
+  }
+  if (widthVal?.valueData) {
+    try {
+      const parsed = JSON.parse(widthVal.valueData) as { width?: number }
+      if (typeof parsed.width === "number") width = parsed.width
+    } catch {
+      /* ignore */
+    }
+  }
+  //-- type は復元用に複合コード（例: SOLID_RED_W4）
+  const type = `${typeCode}_${colorCode}_${widthCode}`.replace(/^_|_$/g, "") || "LINE"
+  return { type, color, width }
+}
+
+//-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映。方式B: 3つのドロップダウン選択値を組み合わせて drawRoute に渡す
 function onConfirmRouteDraw() {
   const map = fullscreenMapRef.value?.getMap() ?? null
-  const routeObj = htmlObjects.value.find((o) => o.categoryCode === "ROUTE_DRAWING")
-  const selected = routeObj ? getSelectedValue(routeObj) : undefined
-  const valueDataParsed = parseRouteValueData(selected?.valueData ?? null)
-  const drawOptions = {
-    type: selected?.valueCode ?? "",
-    color: valueDataParsed.color,
-    width: valueDataParsed.width,
-  }
+  const drawOptions = buildRouteDrawOptionsFromThreeDropdowns()
   mapFeatures.drawRoute(map, drawOptions)
   mapHistory.pushHistory("route")
   syncMapFeaturesToBranch(activeBranch.value)
@@ -1312,6 +1387,10 @@ function onOrderNoBlur() {
 }
 
 onMounted(() => {
+  //-- ページ表示時に状態をリセット（メニューからの遷移・bfcache 復元時もクリーンな状態で開始）
+  selectedValueIdByObjectId.value = {}
+  inputTextByObjectId.value = {}
+  openSelectModalObjectId.value = null
   if (initialOrderNo.value && cameFromList.value) {
     inputOrderNo.value = initialOrderNo.value
     lastConfirmedOrderNo.value = initialOrderNo.value
@@ -1331,12 +1410,20 @@ watch(orderDetailModalOpen, (open) => {
 watch(fullscreenEditVisible, async (visible) => {
   if (visible) {
     mapHistory.clearHistory()
+    mapInteraction.editMode.value = "none"
+    mapFeatures.tempCoordinates.value = []
+    mapFeatures.tempMarkerFeatures.value = { type: "FeatureCollection", features: [] } as FeatureCollection<Point>
+    //-- 前回選択値が残らないよう、fetch の前に即リセット
+    selectedValueIdByObjectId.value = {}
+    inputTextByObjectId.value = {}
     try {
       htmlObjects.value = await fetchHtmlObjects()
-      selectedValueIdByObjectId.value = {}
-      inputTextByObjectId.value = {}
       htmlObjects.value.forEach((obj) => {
-        if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
+        if (
+          obj.categoryCode === "ROUTE_DRAWING" ||
+          obj.categoryCode === "IMAGE_PLACEMENT" ||
+          ROUTE_LINE_CATEGORIES.includes(obj.categoryCode)
+        ) {
           selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
         } else if (obj.values.length > 0) {
           selectedValueIdByObjectId.value[obj.htmlObjectId] = obj.values[0].htmlObjectValueId
@@ -1731,10 +1818,10 @@ watch(activeBranch, (newBranch, oldBranch) => {
     </div>
   </main>
 
-  <!-- 全画面編集オーバーレイ：左サイドバー（閉じる・ルート描画・テキスト等）＋右側マップエリア -->
+  <!-- 全画面編集オーバーレイ：左サイドバー（閉じる・ルート描画・テキスト等）＋右側マップエリア。v-if でマウント制御し、地図を正しいサイズで初期化 -->
   <Teleport to="body">
     <div
-      v-show="fullscreenEditVisible"
+      v-if="fullscreenEditVisible"
       class="order-detail-fullscreen-overlay"
       aria-hidden="false"
     >
@@ -1755,7 +1842,7 @@ watch(activeBranch, (newBranch, oldBranch) => {
             </div>
             <!-- DB取得のHTMLオブジェクト（ルート描画・テキスト配置・画像配置・吹き出し配置等） -->
             <div
-              v-for="obj in htmlObjects"
+              v-for="obj in displayableHtmlObjects"
               :key="obj.htmlObjectId"
               class="order-detail-html-object-block"
             >
@@ -1774,17 +1861,73 @@ watch(activeBranch, (newBranch, oldBranch) => {
                   </span>
                 </span>
               </div>
-              <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素 -->
-              <template v-if="obj.hasChildTable && obj.values.length > 0">
+              <!-- 方式B: ルート描画セクション（線の種類・色・太さの3つのドロップダウン＋描画・確定ボタン） -->
+              <template v-if="obj.categoryCode === 'ROUTE_DRAWING'">
+                <div class="order-detail-route-drawing-row">
+                  <div
+                    v-for="routeObj in [routeLineTypeObj, routeLineColorObj, routeLineWidthObj]"
+                    :key="routeObj?.htmlObjectId ?? ''"
+                    v-show="routeObj"
+                    class="order-detail-route-dropdown-wrap"
+                  >
+                    <select
+                      :value="selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE"
+                      class="order-detail-object-input"
+                      :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[routeObj!.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE) === SELECT_PLACEHOLDER_VALUE }"
+                      :disabled="isRouteDrawingMode()"
+                      @change="(e) => { selectedValueIdByObjectId[routeObj!.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
+                    >
+                      <option :value="SELECT_PLACEHOLDER_VALUE">選択してください</option>
+                      <option
+                        v-for="v in routeObj!.values"
+                        :key="v.htmlObjectValueId"
+                        :value="v.htmlObjectValueId"
+                      >
+                        {{ v.valueName }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div class="order-detail-object-row">
+                  <button
+                    type="button"
+                    :title="isRouteDrawingMode() ? 'キャンセル（描画をやめる）' : '描画'"
+                    :aria-label="isRouteDrawingMode() ? 'キャンセル' : '描画'"
+                    :aria-pressed="mapInteraction.editMode.value === 'route'"
+                    :class="[
+                      'btn-icon btn-icon--select',
+                      { 'order-detail-draw-btn--active': mapInteraction.editMode.value === 'route' }
+                    ]"
+                    :disabled="!isRouteDrawingMode() && !allRouteOptionsSelected"
+                    @click="onActionButtonClick(obj)"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    title="ルートを確定"
+                    aria-label="ルートを確定"
+                    class="btn btn-small btn-primary"
+                    :disabled="mapFeatures.tempCoordinates.value.length < 2 || !allRouteOptionsSelected"
+                    @click="onConfirmRouteDraw"
+                  >
+                    確定
+                  </button>
+                </div>
+              </template>
+              <!-- 子テーブルあり：ドロップダウン・選択・描画の3要素（画像配置等） -->
+              <template v-else-if="obj.hasChildTable && obj.values.length > 0">
                 <div class="order-detail-object-row">
                   <select
-                    :value="selectedValueIdByObjectId[obj.htmlObjectId] ?? ((obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT') ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)"
+                    :value="selectedValueIdByObjectId[obj.htmlObjectId] ?? (obj.categoryCode === 'IMAGE_PLACEMENT' ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)"
                     class="order-detail-object-input"
-                    :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[obj.htmlObjectId] ?? ((obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT') ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)) === SELECT_PLACEHOLDER_VALUE }"
+                    :class="{ 'order-detail-object-input--placeholder': (selectedValueIdByObjectId[obj.htmlObjectId] ?? (obj.categoryCode === 'IMAGE_PLACEMENT' ? SELECT_PLACEHOLDER_VALUE : obj.values[0]?.htmlObjectValueId)) === SELECT_PLACEHOLDER_VALUE }"
                     @change="(e) => { selectedValueIdByObjectId[obj.htmlObjectId] = Number((e.target as HTMLSelectElement).value) }"
                   >
                     <option
-                      v-if="obj.categoryCode === 'ROUTE_DRAWING' || obj.categoryCode === 'IMAGE_PLACEMENT'"
+                      v-if="obj.categoryCode === 'IMAGE_PLACEMENT'"
                       :value="SELECT_PLACEHOLDER_VALUE"
                     >
                       選択してください
@@ -1809,45 +1952,19 @@ watch(activeBranch, (newBranch, oldBranch) => {
                   </button>
                   <button
                     type="button"
-                    :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    :aria-pressed="obj.categoryCode === 'ROUTE_DRAWING' && mapInteraction.editMode.value === 'route'"
+                    :title="(ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName)"
+                    :aria-label="(ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName)"
+                    :aria-pressed="(obj.categoryCode === 'TEXT_PLACEMENT' && mapInteraction.editMode.value === 'text') || (obj.categoryCode === 'IMAGE_PLACEMENT' && mapInteraction.editMode.value === 'image')"
                     :class="[
-                      'btn btn-icon btn-secondary btn-secondary--slate',
-                      { 'order-detail-draw-btn--active': obj.categoryCode === 'ROUTE_DRAWING' && mapInteraction.editMode.value === 'route' }
+                      'btn-icon btn-icon--select',
+                      { 'order-detail-draw-btn--active': (obj.categoryCode === 'TEXT_PLACEMENT' && mapInteraction.editMode.value === 'text') || (obj.categoryCode === 'IMAGE_PLACEMENT' && mapInteraction.editMode.value === 'image') }
                     ]"
+                    :disabled="obj.categoryCode === 'IMAGE_PLACEMENT' && (selectedValueIdByObjectId[obj.htmlObjectId] ?? SELECT_PLACEHOLDER_VALUE) === SELECT_PLACEHOLDER_VALUE"
                     @click="onActionButtonClick(obj)"
                   >
-                    <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
-                    <svg
-                      v-if="obj.categoryCode === 'ROUTE_DRAWING'"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    <svg
-                      v-else
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
+                    <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
-                  </button>
-                  <!-- ルート描画の確定ボタン：マーカー配置後に押すと線を確定 -->
-                  <button
-                    v-if="obj.categoryCode === 'ROUTE_DRAWING'"
-                    type="button"
-                    title="ルートを確定"
-                    aria-label="ルートを確定"
-                    class="btn btn-small btn-primary"
-                    :disabled="mapFeatures.tempCoordinates.value.length < 2"
-                    @click="onConfirmRouteDraw"
-                  >
-                    確定
                   </button>
                 </div>
                 <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
@@ -1884,7 +2001,11 @@ watch(activeBranch, (newBranch, oldBranch) => {
                     type="button"
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
-                    class="btn btn-icon btn-secondary btn-secondary--slate"
+                    :aria-pressed="(obj.categoryCode === 'TEXT_PLACEMENT' && mapInteraction.editMode.value === 'text') || (obj.categoryCode === 'BALLOON_PLACEMENT' && mapInteraction.editMode.value === 'balloon')"
+                    :class="[
+                      'btn-icon btn-icon--select',
+                      { 'order-detail-draw-btn--active': (obj.categoryCode === 'TEXT_PLACEMENT' && mapInteraction.editMode.value === 'text') || (obj.categoryCode === 'BALLOON_PLACEMENT' && mapInteraction.editMode.value === 'balloon') }
+                    ]"
                     @click="onActionButtonClick(obj)"
                   >
                     <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1937,8 +2058,10 @@ watch(activeBranch, (newBranch, oldBranch) => {
             :api-key="mapTilerApiKey"
             :image-items="imageItemsForMap"
             :design-data="activeBranchDesignData"
+            :emit-map-click="true"
             class="order-detail-map-fullscreen"
             @map-loaded="onFullscreenMapLoaded"
+            @map-click="onFullscreenMapClick"
           />
         </div>
       </div>

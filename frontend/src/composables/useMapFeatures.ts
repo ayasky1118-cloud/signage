@@ -5,7 +5,7 @@
 //-- ・ルート
 //-- ・ルート描画時の一時マーカー
 import { ref } from "vue"
-import type { FeatureCollection, Feature, Point, LineString } from "geojson"
+import type { Feature, Point, LineString } from "geojson"
 import type maplibregl from "maplibre-gl"
 import type { RouteItem } from "../types/map-data"
 import { routeItemsToFeatureCollection } from "../types/map-data"
@@ -14,12 +14,12 @@ const genId = () => crypto.randomUUID()
 
 export type EditMode = "none" | "text" | "image" | "balloon" | "route" | "move"
 
+//-- 空の FeatureCollection（型は as で付与。FeatureCollection を import するとランタイムエラーになる場合があるため）
+const emptyFC = () => ({ type: "FeatureCollection" as const, features: [] as unknown[] })
+
 export function useMapFeatures() {
   //-- テキスト
-  const textFeatures = ref<FeatureCollection<Point>>({
-    type: "FeatureCollection",
-    features: [],
-  })
+  const textFeatures = ref(emptyFC())
 
   //-- 画像
   type ImageFeatureProps = {
@@ -27,28 +27,16 @@ export function useMapFeatures() {
     scale: number
     rotate: number
   }
-  const imageFeatures = ref<FeatureCollection<Point, ImageFeatureProps>>({
-    type: "FeatureCollection",
-    features: [],
-  })
+  const imageFeatures = ref(emptyFC())
 
   //-- 吹き出し（signage の design_data では callouts。useMapLayers のソース id は balloons）
-  const balloonFeatures = ref<FeatureCollection<Point, { iconId: string; scale: number; text: string }>>({
-    type: "FeatureCollection",
-    features: [],
-  })
+  const balloonFeatures = ref(emptyFC())
 
   //-- ルート
-  const routeFeatures = ref<FeatureCollection<LineString, Record<string, unknown>>>({
-    type: "FeatureCollection",
-    features: [],
-  })
+  const routeFeatures = ref(emptyFC())
 
   //-- 一時マーカー
-  const tempMarkerFeatures = ref<FeatureCollection<Point, Record<string, unknown>>({
-    type: "FeatureCollection",
-    features: [],
-  })
+  const tempMarkerFeatures = ref(emptyFC())
 
   const tempCoordinates = ref<[number, number][]>([])
 
@@ -121,6 +109,14 @@ export function useMapFeatures() {
     return "route"
   }
 
+  //-- 一時マーカーをクリア（ルート描画キャンセル時）
+  const clearTempMarkers = (map: maplibregl.Map | null): void => {
+    tempCoordinates.value = []
+    tempMarkerFeatures.value.features = []
+    const tempSource = map?.getSource("temp-markers") as maplibregl.GeoJSONSource | undefined
+    tempSource?.setData(tempMarkerFeatures.value)
+  }
+
   //-- 一時マーカー追加
   const addTempMarker = (map: maplibregl.Map | null, lng: number, lat: number): void => {
     if (!map) return
@@ -145,18 +141,19 @@ export function useMapFeatures() {
   //-- データ復元。data のキーは design_data 形式（routes, texts, images, callouts）。balloons は callouts の互換で受け付ける
   const restoreFeatures = (map: maplibregl.Map | null, data: Record<string, unknown>): void => {
     if (!map) return
-    textFeatures.value = (data.texts as FeatureCollection<Point>) || { type: "FeatureCollection", features: [] }
-    imageFeatures.value = (data.images as FeatureCollection<Point, ImageFeatureProps>) || { type: "FeatureCollection", features: [] }
+    const empty = emptyFC()
+    textFeatures.value = (data.texts as { type: string; features: unknown[] }) || empty
+    imageFeatures.value = (data.images as { type: string; features: unknown[] }) || empty
     balloonFeatures.value =
-      (data.callouts as FeatureCollection<Point, { iconId: string; scale: number; text: string }>) ||
-      (data.balloons as FeatureCollection<Point, { iconId: string; scale: number; text: string }>) ||
-      { type: "FeatureCollection", features: [] }
+      (data.callouts as { type: string; features: unknown[] }) ||
+      (data.balloons as { type: string; features: unknown[] }) ||
+      empty
     //-- routes: RouteItem[] の場合は FeatureCollection に変換
     const rawRoutes = data.routes
     if (isRouteItemArray(rawRoutes)) {
       routeFeatures.value = routeItemsToFeatureCollection(rawRoutes)
     } else {
-      routeFeatures.value = (rawRoutes as FeatureCollection<LineString>) || { type: "FeatureCollection", features: [] }
+      routeFeatures.value = (rawRoutes as { type: string; features: unknown[] }) || empty
     }
     ;(map.getSource("texts") as maplibregl.GeoJSONSource)?.setData(textFeatures.value)
     ;(map.getSource("images") as maplibregl.GeoJSONSource)?.setData(imageFeatures.value)
@@ -176,6 +173,7 @@ export function useMapFeatures() {
     addBalloon,
     drawRoute,
     addTempMarker,
+    clearTempMarkers,
     restoreFeatures,
   }
 }

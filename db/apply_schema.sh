@@ -20,9 +20,14 @@ for f in db/00_schema/001_company.sql \
          db/00_schema/007_design_type.sql \
          db/00_schema/008_order_main.sql \
          db/00_schema/009_order_item.sql \
-         db/00_schema/010_order_detail.sql; do
+         db/00_schema/010_order_detail.sql \
+         db/00_schema/011_html_object.sql \
+         db/00_schema/012_html_object_value.sql; do
   echo "適用: $f"
   docker exec -i signage-db mysql -uroot -ppassword --default-character-set=utf8mb4 signage_dev < "$f"
 done
 
-echo "完了: テーブルを作成しました。"
+echo "適用: db/01_seed/010_html_object_seed.sql"
+docker exec -i signage-db mysql -uroot -ppassword --default-character-set=utf8mb4 signage_dev < db/01_seed/010_html_object_seed.sql
+
+echo "完了: テーブルを作成し、テストデータを投入しました。"

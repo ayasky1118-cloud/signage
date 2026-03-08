@@ -31,6 +31,8 @@ const props = withDefaults(
     zoom?: number  //-- 初期ズームレベル（1〜22。15 が市街地の標準的な表示）
     apiKey?: string | null  //-- MapTiler API キー。未設定または空文字の場合は地図を表示せず「設定してください」メッセージを表示
     interactive?: boolean  //-- true: パン・ズーム・ナビゲーション有効。false: 表示のみ（クリック・ドラッグ無効）
+    /** true のとき地図クリックで map-click を emit（全画面編集用） */
+    emitMapClick?: boolean
     //-- html_object_value の IMAGE_PLACEMENT から取得した画像。getImageItemsFromHtmlObjects(htmlObjects) で生成
     imageItems?: { id: string; url: string }[]
     //-- 地図に表示するルート・テキスト・画像・吹き出し。mapDataByBranch 等から渡す
@@ -41,11 +43,12 @@ const props = withDefaults(
       callouts?: FeatureCollection<Point> | unknown
     } | null
   }>(),
-  { center: null, zoom: 15, apiKey: null, interactive: true, imageItems: () => [], designData: null }
+  { center: null, zoom: 15, apiKey: null, interactive: true, emitMapClick: false, imageItems: () => [], designData: null }
 )
 
 const emit = defineEmits<{
   (e: "map-loaded", map: maplibregl.Map): void
+  (e: "map-click", lngLat: { lng: number; lat: number }): void
 }>()
 
 //-------------------------------------------------------------------------------
@@ -83,6 +86,16 @@ function initMap() {
     interactive: props.interactive,
   })
 
+  //-- styleimagemissing: MapTiler スタイルが参照する POI アイコン等が未ロードの場合に発火。空画像を追加して Console 警告を抑制
+  //-- MapTiler の POI は SDF 形式のため、sdf: true を指定して「SBF and non-SBF icons in one buffer」警告を回避
+  map.on("styleimagemissing", (e) => {
+    const id = e.id
+    if (map?.hasImage(id)) return
+    const size = 32
+    const data = new Uint8ClampedArray(size * size * 4)
+    map.addImage(id, { width: size, height: size, data, sdf: true })
+  })
+
   //-- 操作可能モードの場合のみ、ズーム・コンパスボタンを右上に追加
   if (props.interactive) {
     map.addControl(new maplibregl.NavigationControl(), "top-right")
@@ -117,6 +130,9 @@ function initMap() {
     )
     //-- レイヤー初期化後に designData の最新値を反映（非同期で designData が変わった場合）
     applyDesignDataToMap()
+    if (props.emitMapClick) {
+      map.on("click", (e) => emit("map-click", { lng: e.lngLat.lng, lat: e.lngLat.lat }))
+    }
     emit("map-loaded", map)
   })
 }

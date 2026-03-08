@@ -5,7 +5,7 @@
     <AppHeader />
     <!-- -- メイン（ルートに応じたページ） -- -->
     <div class="page-content">
-      <router-view />
+      <RouterView :key="route.fullPath" />
     </div>
   </div>
 </template>
@@ -16,7 +16,10 @@
 //-- 【役割】
 //-- ・ヘッダー（AppHeader: メインメニューリンク・ログイン表示・ログアウト）とページコンテンツ領域を提供
 //-- ・ルートに応じたページ（RouterView）を page-content 内に表示
+import { useRoute } from "vue-router"
 import AppHeader from "../components/AppHeader.vue"
+
+const route = useRoute()
 </script>
 
 <style scoped>
@@ -34,5 +37,6 @@ import AppHeader from "../components/AppHeader.vue"
   flex: 1;
   width: 100%;
   min-width: 0;
+  min-height: 0; /* flex 子が縮小できるようにする */
 }
 </style>
