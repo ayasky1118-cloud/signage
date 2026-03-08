@@ -73,12 +73,7 @@
 }
 .order-list-search-field--design {
   flex: 0 0 auto;
-  width: 10rem;
-}
-@media (min-width: 768px) {
-  .order-list-search-field--design {
-    width: 12rem;
-  }
+  width: var(--design-type-width);
 }
 .order-list-search-field--order-no {
   flex: 0 0 auto;
@@ -86,23 +81,23 @@
 }
 .order-list-field-row .form-input.order-list-input--order-no {
   flex: 0 0 auto;
-  width: 8rem;
+  width: var(--order-no-width);
 }
 .order-list-search-field--date {
   flex: 0 0 auto;
-  width: 7rem;
+  width: var(--date-width);
 }
 /* 登録日（開始日～終了日）は2つの入力分の幅が必要 */
 .order-list-search-field--date-range {
-  width: 15.5rem;
+  width: calc(var(--date-width) * 2 + 0.5rem + 0.5rem);
 }
 .order-list-search-field--status {
   flex: 0 0 auto;
-  width: 7rem;
+  width: var(--status-width);
 }
 .order-list-search-field--production {
   flex: 0 0 auto;
-  width: 8rem;
+  width: var(--production-type-width);
 }
 .order-list-search-field--hidden-label {
   flex: none;
@@ -132,9 +127,11 @@
 }
 .order-list-date-range .form-input {
   flex: 0 0 auto;
-  width: 7rem;
+  width: var(--date-width);
 }
 .order-list-date-input {
+  width: var(--date-width);
+  min-width: var(--date-width);
   background-color: white;
   cursor: pointer;
 }
@@ -170,6 +167,9 @@
   overflow-x: auto;
   overflow-y: visible;
   padding-bottom: 0.5rem; /* 選択ボタンの下陰が切れないよう余白を確保 */
+}
+.order-list-search-detail-row--single .order-list-search-field--date-range + .order-list-search-field--status {
+  margin-left: 1.5rem;
 }
 .order-list-search-field--address {
   flex: 1 1 0;
@@ -492,8 +492,8 @@
   width: 100% !important;
 }
 #order-list-page .order-list-table #col-order-no {
-  width: calc(10ch + 2.5rem) !important;
-  min-width: calc(10ch + 2.5rem) !important;
+  width: calc(var(--order-no-width) + 2.5rem) !important;
+  min-width: calc(var(--order-no-width) + 2.5rem) !important;
 }
 #order-list-page .order-list-table #col-name,
 #order-list-page .order-list-table #col-customer {
@@ -511,7 +511,7 @@
   max-width: 180px !important;
 }
 #order-list-page .order-list-table #col-date {
-  width: 132px !important;
+  width: var(--date-width) !important;
 }
 #order-list-page .order-list-table #col-action {
   width: 155px !important;
@@ -519,9 +519,9 @@
 }
 #order-list-page .order-list-table th.col-date,
 #order-list-page .order-list-table td.col-date {
-  width: 132px !important;
-  min-width: 132px !important;
-  max-width: 132px !important;
+  width: var(--date-width) !important;
+  min-width: var(--date-width) !important;
+  max-width: var(--date-width) !important;
 }
 #order-list-page .order-list-table th.col-action,
 #order-list-page .order-list-table td.col-action {

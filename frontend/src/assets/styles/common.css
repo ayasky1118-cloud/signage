@@ -23,6 +23,16 @@ body {
     --color-light-blue: #8ed1fc;
     --color-cream: #fff5cb;
     --color-neutral: #abb8c3;
+    /* 注文番号表示幅（注文一覧を正とする） */
+    --order-no-width: 8rem;
+    /* 日付入力・表示幅 */
+    --date-width: 8rem;
+    /* デザイン種別ドロップダウン幅（注文一覧を正とする） */
+    --design-type-width: 12rem;
+    /* 制作区分ドロップダウン幅 */
+    --production-type-width: 8rem;
+    /* ステータスドロップダウン幅（注文新規・変更を正とする） */
+    --status-width: 12rem;
 }
 
 .bg-main { background-color: var(--color-main) !important; }

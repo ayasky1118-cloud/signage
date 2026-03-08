@@ -146,6 +146,11 @@ function onSelect(order: OrderItem) {
 </template>
 
 <style scoped>
+.order-no-select-modal .order-no-select-modal-th-order-no,
+.order-no-select-modal .order-no-select-modal-td-order-no {
+  width: var(--order-no-width);
+  min-width: var(--order-no-width);
+}
 .order-no-select-modal .order-no-select-modal-td-order-no .data-table-cell-primary {
   font-size: 0.875rem;
 }

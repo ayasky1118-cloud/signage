@@ -1266,8 +1266,9 @@ watch(fullscreenEditVisible, async (visible) => {
             <span>{{ orderInfoExpanded ? "閉じる" : "開く" }}</span>
           </button>
           <div v-show="orderInfoExpanded" class="order-detail-order-info-expanded">
-            <!-- 注文番号・検索／選択ボタン・検索実行 -->
-            <div class="order-detail-form-field">
+            <!-- 注文番号＋顧客名/担当者（同一行）・検索／選択ボタン・検索実行 -->
+            <div class="order-detail-order-no-row">
+              <div class="order-detail-form-field order-detail-form-field--order-no">
               <label class="form-label form-label--with-badge">
                 <span class="form-required-badge">必須</span>
                 注文番号
@@ -1280,7 +1281,7 @@ watch(fullscreenEditVisible, async (visible) => {
                   placeholder="注文番号を入力してください"
                   maxlength="20"
                   :readonly="orderNoReadOnly"
-                  class="order-detail-order-no-input"
+                  class="order-detail-order-no-input text-mono"
                   @blur="onOrderNoBlur"
                 />
                 <button
@@ -1317,13 +1318,14 @@ watch(fullscreenEditVisible, async (visible) => {
                 </button>
               </div>
             </div>
-            <!-- 顧客名・更新日・デザイン種別・注文名など（検索後に表示） -->
-            <div class="order-detail-order-info-grid">
-              <div class="order-detail-order-info-cell">
+              <div class="order-detail-order-info-cell order-detail-order-info-cell--customer">
                 <div class="form-label">顧客名 / 担当者</div>
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.customerName) }}</div>
                 <div class="order-detail-order-info-cell-sub">{{ fieldDisplay(orderDisplay.manager) }}</div>
               </div>
+            </div>
+            <!-- 更新日・デザイン種別・注文名など（検索後に表示） -->
+            <div class="order-detail-order-info-grid">
               <div class="order-detail-order-info-cell">
                 <div class="form-label">更新日 / 更新者</div>
                 <div class="order-detail-order-info-cell-value">{{ fieldDisplay(orderDisplay.updateDate) }}</div>

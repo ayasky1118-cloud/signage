@@ -75,9 +75,9 @@ function close() {
                 <h3 class="section-title-text">基本情報</h3>
               </div>
               <dl class="modal-dl modal-dl--2col">
-                <div class="modal-dl-item">
+                <div class="modal-dl-item modal-dl-item--order-no">
                   <dt class="modal-dt">注文番号</dt>
-                  <dd class="modal-dd text-mono">{{ order.orderNo }}</dd>
+                  <dd class="modal-dd modal-dd--order-no text-mono">{{ order.orderNo }}</dd>
                 </div>
                 <div class="modal-dl-item">
                   <dt class="modal-dt">注文名</dt>
@@ -266,6 +266,11 @@ function close() {
 
 .modal-dd--muted {
   color: rgb(71 85 105);
+}
+
+.modal-dl-item--order-no .modal-dd--order-no {
+  width: var(--order-no-width);
+  min-width: var(--order-no-width);
 }
 
 .modal-note-box {

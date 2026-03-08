@@ -3,9 +3,9 @@
    セマンティッククラス（OrderList と共用できるものは shared.css）
    ======================================== */
 
-/* ページコンテナ（OrderList の order-list-page-container と同様） */
+/* ページコンテナ（注文番号〜ステータス1行表示のため OrderList と同幅） */
 .order-main-page-container {
-  max-width: 64rem;
+  max-width: 72rem;
   margin: 0 auto;
   padding: 3rem 2rem;
 }
@@ -85,6 +85,19 @@
   align-items: flex-end;
   gap: 1rem 1.5rem;
 }
+/* ブロック1（注文番号〜ステータス）: 1行で表示、折り返しなし、上揃え */
+.order-main-form-row--block1 {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 1rem 1rem;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0.75rem; /* 選択ボタンの下陰が切れないよう余白を確保 */
+}
+.order-main-form-row--block1 .order-main-form-field {
+  flex-shrink: 0;
+}
 .order-main-form-row--sm {
   gap: 1rem 1.5rem;
 }
@@ -105,22 +118,31 @@
   min-width: 0;
 }
 .order-main-form-field--w7 {
-  width: 7rem;
-  min-width: 7rem;
+  width: 11rem;
+  min-width: 11rem;
   max-width: 100%;
 }
 .order-main-form-field--w8 {
-  width: 8rem;
-  min-width: 8rem;
+  width: var(--status-width);
+  min-width: var(--status-width);
   max-width: 100%;
 }
 .order-main-form-field--w24 {
-  width: 6rem;
-  min-width: 0;
+  width: var(--production-type-width);
+  min-width: var(--production-type-width);
+}
+.order-main-form-field--design-type {
+  flex: 0 0 auto;
+  width: var(--design-type-width);
+  min-width: var(--design-type-width);
 }
 .order-main-form-field--order-no {
-  width: 12rem;
-  min-width: 12rem;
+  width: calc(var(--order-no-width) + 2.25rem + 2.25rem + 0.5rem * 2);
+  min-width: calc(var(--order-no-width) + 2.25rem + 2.25rem + 0.5rem * 2);
+}
+.order-main-field-row .form-input.order-main-input--order-no {
+  flex: 0 0 auto;
+  width: var(--order-no-width);
 }
 
 /* 入力行（入力+ボタン） */
@@ -130,6 +152,9 @@
   align-items: center;
   gap: 0.5rem;
 }
+.order-main-form-field--order-no .order-main-field-row {
+  flex-wrap: nowrap;
+}
 .order-main-field-row .form-input,
 .order-main-field-row .form-select {
   flex: 1;
@@ -138,6 +163,8 @@
 
 /* 日付入力（Flatpickr） */
 .order-main-date-input {
+  width: var(--date-width);
+  min-width: var(--date-width);
   background: white;
   cursor: pointer;
 }

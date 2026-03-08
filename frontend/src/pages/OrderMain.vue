@@ -927,9 +927,9 @@ watch(orderNo, () => {
               </div>
             </div>
 
-          <!-- -- 入力ブロック1：注文番号・社内CD・事業所CD・現場CD・ステータス -- -->
+          <!-- -- 入力ブロック1：注文番号・社内CD・事業所CD・現場CD・ステータス（1行表示） -- -->
           <section class="order-main-form-section">
-            <div class="order-main-form-row">
+            <div class="order-main-form-row order-main-form-row--block1">
               <div class="order-main-form-field order-main-form-field--order-no">
                 <label class="form-label form-label--with-badge">
                   <span class="form-required-badge">必須</span>
@@ -942,7 +942,7 @@ watch(orderNo, () => {
                     type="text"
                     :readonly="orderNoReadOnly"
                     :placeholder="orderNoPlaceholder"
-                    class="form-input"
+                    class="form-input text-mono order-main-input--order-no"
                     :class="{ 'form-input--readonly': orderNoReadOnly }"
                   />
                   <button
@@ -1149,7 +1149,7 @@ watch(orderNo, () => {
               </div>
             </div>
             <div class="order-main-form-block-row">
-              <div class="order-main-form-field order-main-form-field--flex1">
+              <div class="order-main-form-field order-main-form-field--design-type">
                 <label class="form-label form-label--with-badge">
                   <span class="form-required-badge">必須</span>
                   デザイン種別
