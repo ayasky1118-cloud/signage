@@ -305,7 +305,7 @@ async function applyOrderBySearch(orderNo: string, preferBranchNo?: string) {
     setOriginalBranchValues("", "")
     hasSearched.value = true
   } catch {
-    //-- 3) どちらも失敗：該当なしモーダルを表示
+    //-- 3) getOrderByNo も失敗（404等）：該当なしモーダルを表示し、入力値は注文番号のみ残す
     lastAddedBranchNo.value = null
     orderDisplay.value = {
       orderName: "",
@@ -690,7 +690,7 @@ function confirmBranchAdd() {
   if (!exists) {
     //-- 新規追加：枝番一覧に追加し、その枝番に切り替え
     allBranches.value = [...allBranches.value, branchNo].sort()
-    //-- ルート・画像のドロップダウンを「選択してください」に初期化
+    //-- 全画面編集のルート・画像ドロップダウンを「選択してください」に初期化（新枝番は未選択状態）
     htmlObjects.value.forEach((obj) => {
       if (obj.categoryCode === "ROUTE_DRAWING" || obj.categoryCode === "IMAGE_PLACEMENT") {
         selectedValueIdByObjectId.value[obj.htmlObjectId] = SELECT_PLACEHOLDER_VALUE
@@ -779,6 +779,7 @@ function confirmBranchSwitchDiscard() {
   //-- 枝番追加：直前追加分を破棄してから追加モーダルを開く
   if (pa.type === "addBranch") {
     if (lastAddedBranchNo.value) {
+      //-- 直前追加した枝番を一覧から削除し、アクティブを先頭または空に切り替え
       const idx = allBranches.value.indexOf(lastAddedBranchNo.value)
       if (idx >= 0) {
         allBranches.value = allBranches.value.filter((_, i) => i !== idx)
@@ -854,9 +855,8 @@ function executeBranchDelete() {
     allBranches.value = allBranches.value.filter((_, i) => i !== idx)
     if (target === lastAddedBranchNo.value) lastAddedBranchNo.value = null
   }
-  //-- 削除後のアクティブ枝番を決定（削除した枝番がアクティブだった場合は隣へ）
+  //-- 削除後のアクティブ枝番を決定（削除した枝番がアクティブだった場合は隣へ。nextIdx で削除位置以降の先頭、または末尾を指定）
   if (allBranches.value.length > 0) {
-    const wasActive = normalizeBranchNo(activeBranch.value) === target
     const nextIdx = Math.min(idx, allBranches.value.length - 1)
     const nextBranch = allBranches.value[nextIdx] ?? allBranches.value[0]
     activeBranch.value = nextBranch
@@ -1066,7 +1066,7 @@ const activeBranchDesignData = computed(() => {
 const canExportMap = computed(() => hasMapContent(mapDataByBranch.value[normalizeBranchNo(activeBranch.value)]))
 
 
-//-- API の design_data を MapDataJson 形式に正規化する
+//-- API の design_data を MapDataJson 形式に正規化する（枝番・注文番号を補完、配列を安全に取得）
 function normalizeDesignDataToMapData(
   raw: unknown,
   branchNo: string,
@@ -1084,6 +1084,7 @@ function normalizeDesignDataToMapData(
       callouts: Array.isArray(r.callouts) ? r.callouts : [],
     }
   }
+  //-- raw が無効な場合：空の構造を返す
   return {
     version: 1,
     branchNo,
@@ -1099,6 +1100,7 @@ function normalizeDesignDataToMapData(
 function onMapOutput() {
   const branchNo = normalizeBranchNo(activeBranch.value)
   if (!branchNo) return
+  //-- 枝番のデータを取得（未設定時は空の構造で初期化）
   const data: MapDataJson = mapDataByBranch.value[branchNo] ?? {
     version: 1,
     branchNo,
@@ -1115,7 +1117,7 @@ function onMapOutput() {
   a.href = url
   a.download = `map_${lastConfirmedOrderNo.value || "unknown"}_${branchNo}.json`
   a.click()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(url)  //-- メモリ解放
 }
 
 //-- JSONファイルを選択したとき。別枝番で保存した design_data を読込み、現在の枝番に適用する（読込後に編集可能）
@@ -1126,11 +1128,13 @@ function onMapLoad(e: Event) {
   const reader = new FileReader()
   reader.onload = () => {
     try {
+      //-- 1) ファイル内容をテキストとして取得し、JSON パース
       const text = reader.result as string
       const data = JSON.parse(text) as MapDataJson
       if (typeof data !== "object" || data === null) return
       const branchNo = normalizeBranchNo(activeBranch.value)
       if (!branchNo) return
+      //-- 2) 現在の枝番用に正規化（version/branchNo/orderNo を補完、配列を安全に取得）
       const normalized: MapDataJson = {
         version: data.version ?? 1,
         branchNo,
@@ -1140,6 +1144,7 @@ function onMapLoad(e: Event) {
         images: Array.isArray(data.images) ? data.images : [],
         callouts: Array.isArray(data.callouts) ? data.callouts : [],
       }
+      //-- 3) mapDataByBranch にマージして反映（他枝番のデータは維持）
       mapDataByBranch.value = { ...mapDataByBranch.value, [branchNo]: normalized }
       //-- TODO: 地図編集コンポーネントに反映（MapLibre等実装時に連携）
     } catch {
@@ -1147,7 +1152,7 @@ function onMapLoad(e: Event) {
     }
   }
   reader.readAsText(file)
-  input.value = ""
+  input.value = ""  //-- 同一ファイル再選択を可能にするためクリア
 }
 
 //-- 注文番号フォーカス移動時: 検索値の「誤編集」と思われるときだけ画面初期化の確認を表示。
