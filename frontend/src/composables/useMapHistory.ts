@@ -15,6 +15,10 @@ export function useMapHistory() {
     undoStack.value.push({ type })
   }
 
+  const clearHistory = (): void => {
+    undoStack.value = []
+  }
+
   //-- callouts は useMapFeatures の balloonFeatures に相当。MapLibre のソース id は balloons
   const undoLastAction = (
     map: maplibregl.Map | null,
@@ -51,6 +55,7 @@ export function useMapHistory() {
   return {
     undoStack,
     pushHistory,
+    clearHistory,
     undoLastAction,
   }
 }

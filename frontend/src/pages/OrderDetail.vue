@@ -20,6 +20,11 @@ import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
 import { getImageItemsFromHtmlObjects } from "../composables/useMapLayers"
+import { useMapFeatures } from "../composables/useMapFeatures"
+import { useMapInteraction } from "../composables/useMapInteraction"
+import { useMapHistory } from "../composables/useMapHistory"
+import { useMapData } from "../composables/useMapData"
+import type maplibregl from "maplibre-gl"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import MapPreview from "../components/MapPreview.vue"
@@ -958,6 +963,12 @@ const inputTextByObjectId = ref<Record<number, string>>({})
 //-- 選択モーダルを開いている html_object_id（null のとき閉じている）
 const openSelectModalObjectId = ref<number | null>(null)
 
+//-- 地図描画用 composables（Phase 8 で mapDataByBranch と連携・クリックハンドラ接続予定）
+const mapFeatures = useMapFeatures()
+const mapInteraction = useMapInteraction()
+const mapHistory = useMapHistory()
+const mapData = useMapData()
+
 //-- 区分コード別のツールチップ文言
 const TOOLTIP_BY_CATEGORY: Record<string, string> = {
   ROUTE_DRAWING: "地図上に経路を描画します",
@@ -993,10 +1004,89 @@ function closeFullscreenEdit() {
   document.body.style.overflow = ""
 }
 
+//-- 全画面マップの map-loaded 時：復元・クリックハンドラ設定
+function onFullscreenMapLoaded(map: maplibregl.Map) {
+  const bn = normalizeBranchNo(activeBranch.value)
+  const data = bn ? (mapDataByBranch.value[bn] ?? {}) : {}
+  mapFeatures.restoreFeatures(map, data as unknown as Record<string, unknown>)
+
+  //-- クリックハンドラ：editMode に応じてテキスト・画像・吹き出し・ルートを配置。追加後は mapDataByBranch に同期
+  mapInteraction.setupClickHandler(map, {
+    onText: (lng, lat) => {
+      const obj = htmlObjects.value.find((o) => o.categoryCode === "TEXT_PLACEMENT")
+      const text = obj ? (inputTextByObjectId.value[obj.htmlObjectId] ?? "") : ""
+      mapFeatures.addText(map, lng, lat, text)
+      mapHistory.pushHistory("text")
+      syncMapFeaturesToBranch(activeBranch.value)
+    },
+    onImage: (lng, lat) => {
+      const obj = htmlObjects.value.find((o) => o.categoryCode === "IMAGE_PLACEMENT")
+      const imageId = obj ? (getSelectedValue(obj)?.valueCode ?? "") : ""
+      if (imageId) {
+        mapFeatures.addImage(map, lng, lat, imageId)
+        mapHistory.pushHistory("image")
+        syncMapFeaturesToBranch(activeBranch.value)
+      }
+    },
+    onBalloon: (lng, lat) => {
+      const obj = htmlObjects.value.find((o) => o.categoryCode === "BALLOON_PLACEMENT")
+      const text = obj ? (inputTextByObjectId.value[obj.htmlObjectId] ?? "") : ""
+      mapFeatures.addBalloon(map, lng, lat, text)
+      mapHistory.pushHistory("balloon")
+      syncMapFeaturesToBranch(activeBranch.value)
+    },
+    onRoute: (lng, lat) => mapFeatures.addTempMarker(map, lng, lat),
+  })
+}
+
+//-- useMapFeatures の編集結果を mapDataByBranch に同期する
+function syncMapFeaturesToBranch(branchNo: string) {
+  const bn = normalizeBranchNo(branchNo)
+  if (!bn) return
+  const existing = mapDataByBranch.value[bn] ?? {}
+  const built = mapData.buildMapData(null, {
+    routeFeatures: mapFeatures.routeFeatures.value,
+    textFeatures: mapFeatures.textFeatures.value,
+    imageFeatures: mapFeatures.imageFeatures.value,
+    balloonFeatures: mapFeatures.balloonFeatures.value,
+  }, { branchNo: bn, orderNo: existing.orderNo ?? lastConfirmedOrderNo.value })
+  const merged = { ...existing, ...built } as MapDataJson
+  mapDataByBranch.value = { ...mapDataByBranch.value, [bn]: merged }
+}
+
 //-- コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元）
 onBeforeUnmount(() => {
   document.body.style.overflow = ""
 })
+
+//-- アクションボタン押下：editMode を設定し地図クリックで配置可能にする
+function onActionButtonClick(obj: HtmlObjectItem) {
+  const code = obj.categoryCode
+  if (code === "ROUTE_DRAWING") mapInteraction.editMode.value = "route"
+  else if (code === "TEXT_PLACEMENT") mapInteraction.editMode.value = "text"
+  else if (code === "IMAGE_PLACEMENT") mapInteraction.editMode.value = "image"
+  else if (code === "BALLOON_PLACEMENT") mapInteraction.editMode.value = "balloon"
+}
+
+//-- ルート描画確定：一時マーカーを線に変換し mapDataByBranch に反映
+function onConfirmRouteDraw() {
+  const map = fullscreenMapRef.value?.getMap() ?? null
+  mapFeatures.drawRoute(map)
+  mapHistory.pushHistory("route")
+  syncMapFeaturesToBranch(activeBranch.value)
+}
+
+//-- 直前の操作を元に戻す（テキスト・画像・吹き出し・ルートの追加を取り消し）。取り消し後に mapDataByBranch に同期
+function onUndoLastAction() {
+  const map = fullscreenMapRef.value?.getMap() ?? null
+  mapHistory.undoLastAction(map, {
+    routeFeatures: mapFeatures.routeFeatures.value,
+    textFeatures: mapFeatures.textFeatures.value,
+    imageFeatures: mapFeatures.imageFeatures.value,
+    callouts: mapFeatures.balloonFeatures.value,
+  })
+  syncMapFeaturesToBranch(activeBranch.value)
+}
 
 //-- オブジェクトで選択中の値（ドロップダウン・選択モーダルで選択したもの）
 function getSelectedValue(obj: HtmlObjectItem): HtmlObjectValueItem | undefined {
@@ -1067,6 +1157,8 @@ const activeBranchDesignData = computed(() => {
 
 //-- 現在の枝番に地図情報が設定されているか（地図出力ボタンの有効/無効に使用）
 const canExportMap = computed(() => hasMapContent(mapDataByBranch.value[normalizeBranchNo(activeBranch.value)]))
+//-- 元に戻すボタンの有効/無効（履歴が空でないとき有効）
+const canUndo = computed(() => mapHistory.undoStack.value.length > 0)
 
 
 //-- API の design_data を MapDataJson 形式に正規化する（枝番・注文番号を補完、配列を安全に取得）
@@ -1195,6 +1287,7 @@ watch(orderDetailModalOpen, (open) => {
 
 watch(fullscreenEditVisible, async (visible) => {
   if (visible) {
+    mapHistory.clearHistory()
     try {
       htmlObjects.value = await fetchHtmlObjects()
       selectedValueIdByObjectId.value = {}
@@ -1215,6 +1308,24 @@ watch(fullscreenEditVisible, async (visible) => {
         mapPreviewRef.value?.fitMapToContainer()
       }, 150)
     })
+  } else {
+    //-- 全画面を閉じる際に useMapFeatures の編集結果を mapDataByBranch に同期
+    syncMapFeaturesToBranch(activeBranch.value)
+  }
+})
+
+//-- 全画面編集中に枝番を切り替えた場合：旧枝番を mapDataByBranch に同期し、新枝番を restoreFeatures で復元
+watch(activeBranch, (newBranch, oldBranch) => {
+  if (!fullscreenEditVisible.value) return
+  const map = fullscreenMapRef.value?.getMap()
+  if (!map) return
+  if (oldBranch) {
+    syncMapFeaturesToBranch(oldBranch)
+  }
+  mapHistory.clearHistory()
+  const bn = normalizeBranchNo(newBranch)
+  if (bn) {
+    mapFeatures.restoreFeatures(map, (mapDataByBranch.value[bn] ?? {}) as unknown as Record<string, unknown>)
   }
 })
 </script>
@@ -1658,6 +1769,7 @@ watch(fullscreenEditVisible, async (visible) => {
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     class="btn btn-icon btn-secondary btn-secondary--slate"
+                    @click="onActionButtonClick(obj)"
                   >
                     <!-- ルート描画: 鉛筆アイコン、画像配置: マップピンアイコン -->
                     <svg
@@ -1677,6 +1789,18 @@ watch(fullscreenEditVisible, async (visible) => {
                     >
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                     </svg>
+                  </button>
+                  <!-- ルート描画の確定ボタン：マーカー配置後に押すと線を確定 -->
+                  <button
+                    v-if="obj.categoryCode === 'ROUTE_DRAWING'"
+                    type="button"
+                    title="ルートを確定"
+                    aria-label="ルートを確定"
+                    class="btn btn-small btn-primary"
+                    :disabled="mapFeatures.tempCoordinates.value.length < 2"
+                    @click="onConfirmRouteDraw"
+                  >
+                    確定
                   </button>
                 </div>
                 <!-- 選択中の画像を表示（sampleImagePath がある場合） -->
@@ -1714,6 +1838,7 @@ watch(fullscreenEditVisible, async (visible) => {
                     :title="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     :aria-label="ACTION_LABEL_BY_CATEGORY[obj.categoryCode] ?? obj.categoryName"
                     class="btn btn-icon btn-secondary btn-secondary--slate"
+                    @click="onActionButtonClick(obj)"
                   >
                     <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
@@ -1740,11 +1865,23 @@ watch(fullscreenEditVisible, async (visible) => {
                   </svg>
                   削除
                 </button>
+                <button
+                  type="button"
+                  class="btn btn-small btn-secondary"
+                  title="直前の操作を元に戻す"
+                  :disabled="!canUndo"
+                  @click="onUndoLastAction"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                  元に戻す
+                </button>
               </div>
             </div>
           </div>
         </aside>
-        <!-- 全画面編集用マップ：パン・ズーム・編集操作可能（interactive はデフォルト true） -->
+        <!-- 全画面編集用マップ：パン・ズーム・編集操作可能。designData で現在枝番のルート・テキスト・画像・吹き出しを表示 -->
         <div class="order-detail-fullscreen-map">
           <MapPreview
             ref="fullscreenMapRef"
@@ -1752,7 +1889,9 @@ watch(fullscreenEditVisible, async (visible) => {
             :zoom="15"
             :api-key="mapTilerApiKey"
             :image-items="imageItemsForMap"
+            :design-data="activeBranchDesignData"
             class="order-detail-map-fullscreen"
+            @map-loaded="onFullscreenMapLoaded"
           />
         </div>
       </div>

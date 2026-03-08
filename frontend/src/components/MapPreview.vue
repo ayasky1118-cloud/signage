@@ -35,14 +35,18 @@ const props = withDefaults(
     imageItems?: { id: string; url: string }[]
     //-- 地図に表示するルート・テキスト・画像・吹き出し。mapDataByBranch 等から渡す
     designData?: {
-      routes?: RouteItem[] | FeatureCollection<LineString>
-      texts?: FeatureCollection<Point>
-      images?: FeatureCollection<Point>
-      callouts?: FeatureCollection<Point>
+      routes?: RouteItem[] | FeatureCollection<LineString> | unknown
+      texts?: FeatureCollection<Point> | unknown
+      images?: FeatureCollection<Point> | unknown
+      callouts?: FeatureCollection<Point> | unknown
     } | null
   }>(),
   { center: null, zoom: 15, apiKey: null, interactive: true, imageItems: () => [], designData: null }
 )
+
+const emit = defineEmits<{
+  (e: "map-loaded", map: maplibregl.Map): void
+}>()
 
 //-------------------------------------------------------------------------------
 //-- 地図インスタンス管理
@@ -113,6 +117,7 @@ function initMap() {
     )
     //-- レイヤー初期化後に designData の最新値を反映（非同期で designData が変わった場合）
     applyDesignDataToMap()
+    emit("map-loaded", map)
   })
 }
 
