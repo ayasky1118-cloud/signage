@@ -114,7 +114,7 @@ export function useMapLayers() {
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
         "line-width": lineWidthZoomExpr,
-        "line-dasharray": [2, 2],
+        "line-dasharray": [8, 8],
       },
     })
     //-- 点線のみ: 縞線は route-line-stripe の line-pattern で描画。stripe を明示的に除外し余計な選択色線を防止
