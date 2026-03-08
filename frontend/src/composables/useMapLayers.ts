@@ -8,6 +8,22 @@
 import type maplibregl from "maplibre-gl"
 import type { FeatureCollection } from "geojson"
 
+//-- ズームに応じて線幅を補間し、地図上の見た目を一定に保つ式
+//-- zoom は interpolate の最上位で使用する必要あり（MapLibre の制約）
+//-- zoom 10→20 で 1→3 倍にスケール（拡大時に線が太くなり、地図上の相対サイズを維持）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const lineWidthZoomExpr: any = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  10,
+  ["*", ["coalesce", ["get", "width"], 4], 1],
+  15,
+  ["*", ["coalesce", ["get", "width"], 4], 1.5],
+  20,
+  ["*", ["coalesce", ["get", "width"], 4], 3],
+]
+
 //-- 縞線用: ensureStripePatterns は不要（2レイヤー方式のためパターン画像不要）
 //-- 互換のため export は残す（他から呼ばれている可能性）
 export function ensureStripePatterns(
@@ -72,7 +88,7 @@ export function useMapLayers() {
       layout: { "line-join": "round", "line-cap": "round" },
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
-        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-width": lineWidthZoomExpr,
       },
     })
     ensureStripePatterns(map, features.routeFeatures)
@@ -86,7 +102,7 @@ export function useMapLayers() {
       layout: { "line-join": "miter", "line-cap": "butt" },
       paint: {
         "line-color": "#FFFFFF",
-        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-width": lineWidthZoomExpr,
       },
     })
     map.addLayer({
@@ -97,7 +113,7 @@ export function useMapLayers() {
       layout: { "line-join": "miter", "line-cap": "butt" },
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
-        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-width": lineWidthZoomExpr,
         "line-dasharray": [2, 2],
       },
     })
@@ -110,7 +126,7 @@ export function useMapLayers() {
       layout: { "line-join": "miter", "line-cap": "butt" },
       paint: {
         "line-color": ["coalesce", ["get", "color"], "#FF0000"],
-        "line-width": ["coalesce", ["get", "width"], 4],
+        "line-width": lineWidthZoomExpr,
         "line-dasharray": [1, 1],
       },
     })
