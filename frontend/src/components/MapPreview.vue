@@ -12,11 +12,14 @@
 //-- 【依存】
 //-- ・MapTiler API キー（VITE_MAPTILER_API_KEY）が必須。未設定時はプレースホルダーを表示
 import { ref, onMounted, onBeforeUnmount, watch } from "vue"
+import type { FeatureCollection, LineString, Point } from "geojson"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import { useMapLayers } from "../composables/useMapLayers"
+import type { RouteItem } from "../types/map-data"
+import { routeItemsToFeatureCollection } from "../types/map-data"
 
-const { loadMapImage } = useMapLayers()
+const { loadMapImage, initLayers } = useMapLayers()
 
 //-------------------------------------------------------------------------------
 //-- Props 定義
@@ -30,8 +33,15 @@ const props = withDefaults(
     interactive?: boolean  //-- true: パン・ズーム・ナビゲーション有効。false: 表示のみ（クリック・ドラッグ無効）
     //-- html_object_value の IMAGE_PLACEMENT から取得した画像。getImageItemsFromHtmlObjects(htmlObjects) で生成
     imageItems?: { id: string; url: string }[]
+    //-- 地図に表示するルート・テキスト・画像・吹き出し。mapDataByBranch 等から渡す
+    designData?: {
+      routes?: RouteItem[] | FeatureCollection<LineString>
+      texts?: FeatureCollection<Point>
+      images?: FeatureCollection<Point>
+      callouts?: FeatureCollection<Point>
+    } | null
   }>(),
-  { center: null, zoom: 15, apiKey: null, interactive: true, imageItems: () => [] }
+  { center: null, zoom: 15, apiKey: null, interactive: true, imageItems: () => [], designData: null }
 )
 
 //-------------------------------------------------------------------------------
@@ -73,6 +83,37 @@ function initMap() {
   if (props.interactive) {
     map.addControl(new maplibregl.NavigationControl(), "top-right")
   }
+
+  //-- 地図読み込み完了後にレイヤーを初期化。designData を GeoJSON 形式に変換して渡す
+  map.once("load", async () => {
+    const emptyRoute: FeatureCollection<LineString> = { type: "FeatureCollection", features: [] }
+    const emptyPoint: FeatureCollection<Point> = { type: "FeatureCollection", features: [] }
+    const data = props.designData
+    let routeFeatures = emptyRoute
+    if (data?.routes !== undefined) {
+      const routes = data.routes
+      routeFeatures =
+        Array.isArray(routes) && routes.length > 0 && "coordinates" in (routes[0] as RouteItem)
+          ? routeItemsToFeatureCollection(routes as RouteItem[])
+          : (routes as FeatureCollection<LineString>) ?? emptyRoute
+    }
+    const textFeatures = (data?.texts as FeatureCollection<Point>) ?? emptyPoint
+    const imageFeatures = (data?.images as FeatureCollection<Point>) ?? emptyPoint
+    const balloonFeatures = (data?.callouts as FeatureCollection<Point>) ?? emptyPoint
+    await initLayers(
+      map,
+      {
+        routeFeatures,
+        textFeatures,
+        imageFeatures,
+        balloonFeatures,
+        tempMarkerFeatures: emptyPoint,
+      },
+      props.imageItems
+    )
+    //-- レイヤー初期化後に designData の最新値を反映（非同期で designData が変わった場合）
+    applyDesignDataToMap()
+  })
 }
 
 //-- 地図の表示領域をコンテナのサイズに合わせてリサイズする。親要素のサイズが動的に変わった場合（例: モーダル表示、タブ切替）に呼び出す。defineExpose で親コンポーネントから呼び出し可能。
@@ -139,8 +180,49 @@ watch(
   { immediate: true }
 )
 
-//-- 親コンポーネントから fitMapToContainer を呼び出せるように公開
-defineExpose({ fitMapToContainer })
+//-- designData の変更を監視し、map のソースに setData する。initLayers 完了後のソースのみ更新
+function applyDesignDataToMap() {
+  if (!map) return
+  const data = props.designData
+  if (!data) return
+  const routeSource = map.getSource("route") as maplibregl.GeoJSONSource | undefined
+  const textsSource = map.getSource("texts") as maplibregl.GeoJSONSource | undefined
+  const imagesSource = map.getSource("images") as maplibregl.GeoJSONSource | undefined
+  const balloonsSource = map.getSource("balloons") as maplibregl.GeoJSONSource | undefined
+  const emptyRoute: FeatureCollection<LineString> = { type: "FeatureCollection", features: [] }
+  const emptyPoint: FeatureCollection<Point> = { type: "FeatureCollection", features: [] }
+  if (routeSource && data.routes !== undefined) {
+    const routes = data.routes
+    const fc: FeatureCollection<LineString> =
+      Array.isArray(routes) && routes.length > 0 && "coordinates" in (routes[0] as RouteItem)
+        ? routeItemsToFeatureCollection(routes as RouteItem[])
+        : (routes as FeatureCollection<LineString>) ?? emptyRoute
+    routeSource.setData(fc)
+  }
+  if (textsSource && data.texts !== undefined) textsSource.setData(data.texts ?? emptyPoint)
+  if (imagesSource && data.images !== undefined) imagesSource.setData(data.images ?? emptyPoint)
+  if (balloonsSource && data.callouts !== undefined) balloonsSource.setData(data.callouts ?? emptyPoint)
+}
+
+watch(
+  () => props.designData,
+  () => {
+    if (!map) return
+    if (map.isStyleLoaded()) {
+      applyDesignDataToMap()
+    } else {
+      map.once("load", () => applyDesignDataToMap())
+    }
+  },
+  { immediate: true, deep: true }
+)
+
+//-- 親コンポーネントから fitMapToContainer と map を呼び出せるように公開
+//-- getMap: 地図インスタンスを取得。initMap 完了後に有効。OrderDetail でクリックハンドラ等を設定する際に使用
+defineExpose({
+  fitMapToContainer,
+  getMap: () => map,
+})
 </script>
 
 <template>
