@@ -1,0 +1,4 @@
+/* Tailwind CSS v4 エントリーポイント
+ * @tailwindcss/vite によりビルド時に展開される
+ */
+@import "tailwindcss";
