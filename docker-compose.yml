@@ -11,3 +11,15 @@ services:
       - "3307:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
+
+  # バックエンド（Dockerfile 動作確認用。db と同一ネットワークで db:3306 に接続）
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: mysql+pymysql://root:password@db:3306/signage_dev?charset=utf8mb4
+    depends_on:
+      - db
