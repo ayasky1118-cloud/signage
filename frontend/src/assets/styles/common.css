@@ -92,6 +92,11 @@ body {
     min-width: 0;
 }
 
+/* ヘッダーとメインコンテンツの間に余白を確保（上詰まりを緩和） */
+.page-content {
+    padding-top: 1.5rem;
+}
+
 /* ベースフォント。Noto Sans JP で日本語表示を統一 */
 body {
     font-family: 'Noto Sans JP', sans-serif;
@@ -169,5 +174,87 @@ p, div, span, h1, h2, h3, h4, h5, h6, label, td, th {
 .card-header-full > .page-card-header h2 {
   color: var(--color-main) !important;
   text-align: left;
+}
+
+/* -----------------------------------------------------------------------------
+   Cognito（Amplify Authenticator）ログイン画面
+   -----------------------------------------------------------------------------
+   AWS Amplify Authenticator のスタイルをアプリのブランドカラー・フォントに合わせる。
+   [data-amplify-authenticator] 内で --amplify-* 変数を上書き。
+   ----------------------------------------------------------------------------- */
+
+[data-amplify-authenticator] {
+  /* フォント：アプリ全体と統一 */
+  font-family: 'Noto Sans JP', sans-serif !important;
+  /* 上方向の余白（ログインカードの詰まりを緩和） */
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  box-sizing: border-box;
+}
+
+/* プライマリカラーをブランドカラーに合わせる（ボタン・リンク・フォーカス等） */
+[data-amplify-authenticator] {
+  --amplify-colors-primary-10: #e6edf5;
+  --amplify-colors-primary-20: #ccdceb;
+  --amplify-colors-primary-40: #6696c3;
+  --amplify-colors-primary-60: #3369a5;
+  --amplify-colors-primary-80: var(--color-main);
+  --amplify-colors-primary-90: #002d5f;
+  --amplify-colors-primary-100: #001f42;
+}
+
+/* ログインボタン等のプライマリボタン */
+[data-amplify-authenticator] {
+  --amplify-components-button-primary-background-color: var(--color-main);
+  --amplify-components-button-primary-hover-background-color: var(--color-sub-blue);
+  --amplify-components-button-primary-focus-background-color: var(--color-sub-blue);
+  --amplify-components-button-primary-active-background-color: var(--amplify-colors-primary-90);
+  --amplify-components-button-primary-focus-box-shadow: var(--focus-ring);
+}
+
+/* リンク（パスワード忘れ・新規登録等）の色 */
+[data-amplify-authenticator] {
+  --amplify-colors-font-interactive: var(--color-main);
+  --amplify-colors-font-hover: var(--color-sub-blue);
+  --amplify-colors-font-focus: var(--color-main);
+  --amplify-colors-border-focus: var(--color-main);
+}
+
+/* タブ（ログイン・アカウント作成）と入力欄ラベルを他画面の .form-label と同様に青に */
+[data-amplify-authenticator] {
+  --amplify-components-tabs-item-color: var(--color-main);
+  --amplify-components-tabs-item-active-color: var(--color-main);
+  --amplify-components-tabs-item-hover-color: var(--color-sub-blue);
+  --amplify-components-tabs-item-focus-color: var(--color-main);
+  --amplify-components-field-label-color: var(--color-main);
+  --amplify-components-heading-color: var(--color-main);
+}
+
+/* タブ：カレントは白、全体は画面タイトル背景色 */
+[data-amplify-authenticator] {
+  --amplify-components-tabs-background-color: rgb(241 245 249);
+  --amplify-components-tabs-item-background-color: rgb(241 245 249);
+  --amplify-components-tabs-item-active-background-color: white;
+  --amplify-components-tabs-item-hover-background-color: white;
+  /* カレントタブ上のアクティブインジケーターラインを非表示 */
+  --amplify-components-tabs-item-active-border-color: transparent;
+  --amplify-components-tabs-item-active-border-width: 0;
+}
+
+/* カレントタブ上のラインを確実に消す（Amplify の .amplify-tabs__item--active） */
+[data-amplify-authenticator] .amplify-tabs__item--active {
+  border-block-start: none !important;
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+/* ログインカードの影（他ページの .card-shadow と統一感） */
+[data-amplify-authenticator] {
+  --amplify-components-authenticator-router-box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.03);
+}
+
+/* オーバーレイ背景（ログイン画面の背面）をページ背景色に合わせる */
+[data-amplify-authenticator] {
+  --amplify-components-authenticator-modal-background-color: var(--page-bg-color);
 }
 

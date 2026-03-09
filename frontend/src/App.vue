@@ -2,15 +2,18 @@
 //-- App.vue
 //--
 //-- アプリケーションのルートコンポーネント。main.ts でマウントされ、ルーティングされたページを表示する枠となる。
-//-- AWS Cognito Authenticator でラップし、未ログイン時はログイン画面、ログイン後は DefaultLayout を表示。
-//-- DefaultLayout 内で RouterView を配置し、/menu, /order/list 等のページを切り替える。
+//-- AWS Cognito Authenticator でラップし、未ログイン時はログイン画面、ログイン後は AuthGuard で user マスタ突合。
+//-- マスタに存在すれば DefaultLayout（RouterView）を表示、存在しなければ「ログインできません」。
 import { watch } from "vue"
 import { useRoute } from "vue-router"
 import { Authenticator } from "@aws-amplify/ui-vue"
 import "@aws-amplify/ui-vue/styles.css"
-import DefaultLayout from "./layouts/DefaultLayout.vue"
+import AuthGuard from "./components/AuthGuard.vue"
 
 const route = useRoute()
+
+//-- アカウント作成タブの表示制御。true で非表示、false で表示
+const hideSignUp = true  // true に変更すると「アカウント作成」タブを非表示
 
 //-------------------------------------------------------------------------------
 //-- ルート遷移時の副作用
@@ -29,10 +32,10 @@ watch(
 </script>
 
 <template>
-  <!-- Authenticator: 未ログイン時は Cognito ログイン画面、ログイン後は DefaultLayout を表示。サインアップ（新規登録）も有効 -->
-  <Authenticator>
-    <template #default="{ user }">
-      <DefaultLayout v-if="user" />
+  <!-- Authenticator: 未ログイン時は Cognito ログイン画面、ログイン後は AuthGuard で user マスタ突合。マスタに無ければ「ログインできません」 -->
+  <Authenticator :hide-sign-up="hideSignUp">
+    <template #default="{ user, signOut }">
+      <AuthGuard v-if="user" :sign-out="signOut" />
     </template>
   </Authenticator>
 </template>

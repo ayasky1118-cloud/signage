@@ -1,10 +1,12 @@
 """
-ユーザー一覧API。
+ユーザー一覧API・認証突合用API。
 
-company_id（ログイン会社）に紐づく user 一覧を返す（担当者選択用）。
+・list_users: company_id に紐づく user 一覧（担当者選択用）
+・get_user_by_auth_uid: auth_uid（Cognito sub）で user マスタ検索。ログイン可否の突合用。
 """
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -12,6 +14,40 @@ from app.db.session import get_db
 
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+@router.get("/by-auth-uid")
+def get_user_by_auth_uid(
+    db: Session = Depends(get_db),
+    auth_uid: str = Query(..., description="Cognito sub（認証UID）。user マスタの auth_uid と突合"),
+):
+    """
+    auth_uid（Cognito sub）で user マスタを検索する。
+    存在すればユーザー情報を返し、存在しなければ 404 を返す。
+    ログイン時にフロントから呼び出し、マスタに存在しない場合は「ログインできません」とする。
+    """
+    row = (
+        db.execute(
+            text("""
+                SELECT user_id, company_id, auth_uid, email, user_name, role
+                FROM `user`
+                WHERE auth_uid = :auth_uid AND is_deleted = 0
+            """),
+            {"auth_uid": auth_uid},
+        )
+        .mappings()
+        .first()
+    )
+    if not row:
+        return JSONResponse(status_code=404, content={"detail": "User not found in master"})
+    return {
+        "userId": row["user_id"],
+        "companyId": row["company_id"],
+        "authUid": row["auth_uid"] or "",
+        "email": row["email"] or "",
+        "userName": row["user_name"] or "",
+        "role": row["role"] or "",
+    }
 
 
 @router.get("")

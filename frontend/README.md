@@ -2,6 +2,12 @@
 
 注文・看板管理システムのフロントエンド。Vue 3 + TypeScript + Vite で構築。
 
+## 認証
+
+- **Cognito（Amplify Authenticator）**: 未ログイン時はログイン画面を表示。
+- **user マスタ突合**: ログイン成功後、auth_uid（Cognito sub）で user マスタを検索。マスタに存在しない場合は「ログインできません」を表示し、signOut する。
+- **AuthGuard**: ログイン後の突合処理を行うコンポーネント（`App.vue` → `Authenticator` → `AuthGuard` → `DefaultLayout`）。
+
 ## 主な機能
 
 - **メニュー**: 注文一覧・注文登録・看板編集への導線
@@ -12,6 +18,7 @@
 ## 技術スタック
 
 - Vue 3, Vue Router
+- AWS Amplify（Cognito 認証）
 - TypeScript
 - Vite
 - MapLibre GL（地図）
@@ -37,8 +44,10 @@ cp .env.example .env
 | `VITE_MAPTILER_API_KEY` | MapTiler API キー（地図表示用） | ○ |
 | `VITE_API_BASE` | API のベース URL。未設定時は `/api` をプロキシ経由で使用 | - |
 | `VITE_LOGIN_COMPANY_ID` | ログイン会社 ID。未設定時は 1 | - |
+| `VITE_COGNITO_USER_POOL_ID` | Cognito User Pool ID（認証用。main.ts で Amplify に渡す） | - |
+| `VITE_COGNITO_USER_POOL_CLIENT_ID` | Cognito App Client ID（認証用） | - |
 
-`.env.example` をコピーして `.env` を作成し、`VITE_MAPTILER_API_KEY` を設定してください。
+`.env.example` をコピーして `.env` を作成し、`VITE_MAPTILER_API_KEY` を設定してください。Cognito 認証を使う場合は `VITE_COGNITO_USER_POOL_ID` と `VITE_COGNITO_USER_POOL_CLIENT_ID` も設定してください。
 
 ## 開発
 
