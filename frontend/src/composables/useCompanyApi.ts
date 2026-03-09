@@ -12,17 +12,9 @@
 //-- ・本 composable 内で camelCase にマッピングして返却
 //--
 //-- 【API ベースURL】
-//-- ・VITE_API_BASE が設定されていればその値（末尾スラッシュ除去）
-//-- ・未設定かつブラウザ実行時: 空文字（同一オリジン。Vite プロキシ /api を使用）
-//-- ・未設定かつ SSR 時: http://localhost:8000
-function getApiBase(): string {
-  const env = import.meta.env.VITE_API_BASE as string | undefined
-  if (env?.trim()) return env.trim().replace(/\/$/, "")
-  if (typeof window !== "undefined") return ""
-  return "http://localhost:8000"
-}
-//-- 同一オリジン（getApiBase が空）のとき /api を付与。Vite の proxy で /api → バックエンドに転送
-const API_PREFIX = getApiBase() ? "" : "/api"
+//-- ・src/config/api の getApiBase / getApiPrefix を使用（環境別 .env で切り替え）
+import { getApiBase, getApiPrefix } from "../config/api"
+const API_PREFIX = getApiPrefix()
 
 //-- 会社1件。address は company_post + company_add を結合した文字列
 export interface CompanyItem {

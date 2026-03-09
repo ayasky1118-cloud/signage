@@ -9,23 +9,10 @@
 //-- ・GET /address/geocode: ジオコーディング。座標を返す（404: 該当なし、503: API キー未設定）
 //--
 //-- 【環境】
-//-- ・VITE_API_BASE 未設定時: 同一オリジン → Vite プロキシ /api を使用
-//-- ・VITE_API_BASE 設定時: 指定 URL をベースに（末尾スラッシュは除去）
+//-- ・src/config/api の getApiBase / getApiPrefix を使用（環境別 .env で切り替え）
 
-//-------------------------------------------------------------------------------
-//-- API ベースURL 取得
-//-------------------------------------------------------------------------------
-
-//-- VITE_API_BASE またはデフォルトから API のベース URL を取得。末尾スラッシュは除去
-function getApiBase(): string {
-  const env = import.meta.env.VITE_API_BASE as string | undefined
-  if (env?.trim()) return env.trim().replace(/\/$/, "")
-  if (typeof window !== "undefined") return ""
-  return "http://localhost:8000"
-}
-
-//-- getApiBase が空（同一オリジン）のとき /api をプレフィックスに付与（Vite プロキシ用）
-const API_PREFIX = getApiBase() ? "" : "/api"
+import { getApiBase, getApiPrefix } from "../config/api"
+const API_PREFIX = getApiPrefix()
 
 //-------------------------------------------------------------------------------
 //-- 型定義

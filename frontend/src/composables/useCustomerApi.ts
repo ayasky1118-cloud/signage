@@ -13,15 +13,9 @@
 //-- ・本 composable 内で camelCase にマッピングして返却
 //--
 //-- 【API ベースURL】
-//-- ・getApiBase: VITE_API_BASE 優先。未設定時は同一オリジンなら空（Vite プロキシ /api 使用）
-function getApiBase(): string {
-  const env = import.meta.env.VITE_API_BASE as string | undefined
-  if (env?.trim()) return env.trim().replace(/\/$/, "")
-  if (typeof window !== "undefined") return ""
-  return "http://localhost:8000"
-}
-//-- 同一オリジン時は /api を付与（Vite プロキシ用）
-const API_PREFIX = getApiBase() ? "" : "/api"
+//-- ・src/config/api の getApiBase / getApiPrefix を使用（環境別 .env で切り替え）
+import { getApiBase, getApiPrefix } from "../config/api"
+const API_PREFIX = getApiPrefix()
 
 //-- 顧客1件。address は住所（customer_add）、contactName は担当者名
 export interface CustomerItem {

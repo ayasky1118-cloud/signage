@@ -18,10 +18,15 @@ cd "$PROJECT_ROOT"
 
 echo "=== 1. フロントエンドをビルド ==="
 cd "$FRONTEND_DIR"
-# VITE_API_BASE 未設定時は本番 API URL を使用（GitLab CI 変数と同様）
-export VITE_API_BASE="${VITE_API_BASE:-https://tpdeco04lg.execute-api.ap-northeast-1.amazonaws.com/prod}"
+# 環境変数 DEPLOY_ENV で切り替え（未指定時は staging = 現在構築済みの AWS）
+# staging / production のいずれか。.env.staging / .env.production を読み込む
+DEPLOY_ENV="${DEPLOY_ENV:-staging}"
+if [[ "$DEPLOY_ENV" != "staging" && "$DEPLOY_ENV" != "production" ]]; then
+  echo "Error: DEPLOY_ENV must be 'staging' or 'production' (got: $DEPLOY_ENV)"
+  exit 1
+fi
 npm ci
-npm run build
+npm run build:${DEPLOY_ENV}
 
 echo ""
 echo "=== 2. デプロイ用 ZIP を作成 ==="
