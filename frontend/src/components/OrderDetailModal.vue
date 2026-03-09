@@ -114,6 +114,7 @@ function close() {
                 </div>
               </dl>
             </section>
+            <div class="modal-section-spacer" aria-hidden="true"></div>
 
             <!-- 社内情報。modal-dl--4col で4列グリッド。attribute_01〜05 を表示 -->
             <section class="modal-section">
@@ -153,6 +154,7 @@ function close() {
                 </div>
               </dl>
             </section>
+            <div class="modal-section-spacer" aria-hidden="true"></div>
 
             <!-- 備考。order.note が空でない場合のみ表示。pre-wrap で改行を保持 -->
             <section v-if="order.note?.trim()" class="modal-section">
@@ -210,7 +212,21 @@ function close() {
 }
 
 .modal-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
+}
+
+/* ブロック間の隙間を明示的に指定（基本情報・社内情報・備考の間） */
+.modal-section-spacer {
+  margin-top: 1.75rem;
+}
+
+/* ブロックタイトルとデータの間の余白を狭く */
+.modal-section .section-title {
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+.modal-section .section-title .section-title-text {
+  margin: 0;
 }
 
 .modal-section:last-child {
@@ -218,7 +234,7 @@ function close() {
 }
 
 .modal-section--border {
-  padding-top: 1rem;
+  padding-top: 0.75rem;
   border-top: 1px solid rgb(226 232 240);
 }
 
@@ -265,9 +281,9 @@ function close() {
 
 .modal-dt {
   margin: 0;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 400;
-  color: rgb(100 116 139);
+  color: var(--color-main);
 }
 
 .modal-dd {

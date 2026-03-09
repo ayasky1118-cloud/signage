@@ -103,16 +103,17 @@
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 /* メニュー項目1件。RouterLink で遷移。ホバーで軽く浮き上がる（translateY -2px） */
 .menu-item {
   display: flex;
   align-items: center;
-  width: 100%;
+  width: 70%;
   background-color: white;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 0.75rem;
   border: 1px solid rgb(0 59 130 / 0.25);
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(226 232 240 / 0.8);
@@ -132,7 +133,7 @@
 
 .menu-item-icon {
   background: rgb(0 59 130 / 0.08);
-  padding: 0.75rem;
+  padding: 0.5rem;
   border-radius: 0.5rem;
   transition: background 0.2s;
 }
@@ -143,22 +144,22 @@
 }
 
 .menu-item-icon svg {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   color: var(--color-main);
 }
 
 .menu-item-label {
   flex: 1;
   text-align: center;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--color-main);
 }
 
 .menu-item-arrow {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   color: rgb(0 59 130 / 0.5);
   margin-left: auto;
   transition: color 0.2s;

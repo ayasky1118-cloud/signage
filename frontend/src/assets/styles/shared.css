@@ -539,7 +539,7 @@ a.btn-back {
 
 .data-table-header {
   background-color: rgb(248 250 252);
-  color: rgb(71 85 105);
+  color: var(--color-main);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -711,11 +711,11 @@ a.btn-back {
   gap: 0.375rem;
 }
 
-/* フォームラベル（注文一覧・注文入力・看板編集等で共通） */
+/* フォームラベル（注文一覧・注文入力・看板編集等で共通）。色はメニューボタンに合わせる */
 .form-label {
   font-size: 0.75rem;
   font-weight: 400;
-  color: rgb(100 116 139);
+  color: var(--color-main);
   display: block;
 }
 /* 必須バッジ（.form-required-badge）等をラベルと横並びにする */
