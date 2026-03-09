@@ -2,14 +2,67 @@
 //--
 //-- 【役割】
 //-- ・Vue アプリの生成・マウント
+//-- ・AWS Amplify（Cognito 認証）の設定
 //-- ・ルーター（Vue Router）の登録
 //-- ・グローバル CSS の読み込み（shared → common。画面別は各ページで import）
 //--
 //-- 【起動フロー】
-//-- 1. createApp(App) でルートコンポーネントを指定してアプリを生成
-//-- 2. use(router) で Vue Router を有効化（/menu, /order/list 等のルート定義）
-//-- 3. mount('#app') で index.html の #app 要素にマウント
+//-- 1. Amplify.configure で Cognito を設定
+//-- 2. createApp(App) でルートコンポーネントを指定してアプリを生成
+//-- 3. use(router) で Vue Router を有効化（/menu, /order/list 等のルート定義）
+//-- 4. mount('#app') で index.html の #app 要素にマウント
 import { createApp } from "vue"
+import { Amplify } from "aws-amplify"
+import { I18n } from "aws-amplify/utils"
+
+//-- AWS Cognito 認証の設定（sinage_old と同じ User Pool）
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: "ap-northeast-1_YCSDgFpIR",
+      userPoolClientId: "6oq9mimrhkujmgp42kcdbvggkb",
+    },
+  },
+})
+
+//-- 認証 UI の日本語化
+I18n.putVocabularies({
+  ja: {
+    "Sign In": "ログイン",
+    "Sign in": "ログイン",
+    "Signing in": "ログイン中...",
+    Username: "ユーザーID",
+    Password: "パスワード",
+    "Incorrect username or password.": "ユーザーID・パスワードが一致していません。",
+    "Forgot your password?": "パスワードをお忘れの方",
+    "Enter your Username": "ユーザーIDを入力してください",
+    "Enter your username": "ユーザーID（メールアドレス）を入力してください",
+    "Enter your Password": "パスワードを入力してください",
+    "Change Password": "パスワード変更",
+    "Please confirm your Password": "パスワードを入力してください",
+    "Reset Password": "パスワード再設定",
+    "Send code": "コードを送信する",
+    "Code *": "再設定コード",
+    Code: "再設定コード",
+    "New Password": "新しいパスワード",
+    "Confirm Password": "新しいパスワード（確認用）",
+    "Back to Sign In": "ログインに戻る",
+    "Create Account": "アカウント作成",
+    "Create account": "アカウント作成",
+    "Sign Up": "新規登録",
+    "Sign up": "新規登録",
+    "Signing up": "登録中...",
+    "Confirm Sign Up": "登録確認",
+    "Have an account? Sign in": "アカウントをお持ちの方",
+    "Enter your Email": "メールアドレスを入力してください",
+    "Enter your email": "メールアドレスを入力してください",
+    "Enter your Phone Number": "電話番号を入力してください",
+    "Enter your phone number": "電話番号を入力してください",
+    "Enter your confirmation code": "確認コードを入力してください",
+    "Resend Code": "コードを再送信",
+  },
+})
+I18n.setLanguage("ja")
 
 //-- MapLibre の「Cannot mix SDF and non-SDF icons」等のスタイル警告を抑制
 //-- MapTiler（SDF）と吹き出し/ユーザー画像（non-SDF）の混在は既知の制約で、表示には影響しない

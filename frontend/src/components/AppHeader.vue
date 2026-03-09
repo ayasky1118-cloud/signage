@@ -34,29 +34,27 @@
 //-- ・メインメニュー（/menu）へのリンク、ログイン名表示、ログアウトボタンを配置
 //--
 //-- 【認証】
-//-- ・現段階は localStorage から userName を取得し表示（デフォルト: 「ゲスト」）
-//-- ・ログアウト時は isAuthed を削除し /menu へリダイレクト
-//-- ・将来 Cognito 導入時に差し替え予定
-import { ref, onMounted } from "vue"
+//-- ・AWS Cognito（Amplify Authenticator）の useAuthenticator でユーザー情報と signOut を取得
+//-- ・ログアウト時は signOut を実行し、Authenticator がログイン画面を表示
+import { computed } from "vue"
+import { useRouter } from "vue-router"
+import { useAuthenticator } from "@aws-amplify/ui-vue"
 
 //-------------------------------------------------------------------------------
 //-- 状態・処理
 //-------------------------------------------------------------------------------
 
-//-- ヘッダーに表示するログイン名。マウント時に localStorage の userName を取得（未設定時は「ゲスト」）
-const loginName = ref("ゲスト")
+const router = useRouter()
+const { user, signOut } = useAuthenticator()
 
-//-- ログアウト処理。localStorage の認証情報を削除し /menu へリダイレクト（将来: Cognito signOut）
-function handleLogout() {
-  localStorage.removeItem("isAuthed")
-  window.location.href = "/menu"
+//-- ヘッダーに表示するログイン名。Cognito の loginId（ユーザーID/メールアドレス）を表示
+const loginName = computed(() => user.value?.signInDetails?.loginId ?? "ゲスト")
+
+//-- ログアウト処理。Cognito signOut を実行し、ルートへリダイレクト（Authenticator がログイン画面を表示）
+async function handleLogout() {
+  await signOut()
+  router.replace("/")
 }
-
-//-- マウント時に localStorage から userName を取得して表示を更新
-onMounted(() => {
-  const stored = localStorage.getItem("userName")
-  if (stored) loginName.value = stored
-})
 </script>
 
 <style scoped>

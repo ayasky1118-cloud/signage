@@ -2,24 +2,25 @@
 //--
 //-- ルーティング定義ファイル。
 //--
-//-- ■ 現在の方針
-//-- - 将来的に AWS Cognito によるログインを導入する
-//-- - ただし現段階ではログイン画面は実装しない
-//-- - 設計だけ「認証前提」にしておく
-//--
-//-- ■ 将来の差し替えポイント
-//-- - isAuthed() を Cognito セッション判定に置換
-//-- - beforeEach 内で未ログイン時に /login へリダイレクト
+//-- ■ 認証
+//-- - AWS Cognito（Amplify Authenticator）でログイン画面を表示
+//-- - requiresAuth のルートへアクセス時、Cognito セッションを確認し未ログインなら / へリダイレクト
+//-- - Authenticator が / でログイン画面を表示するため、実質的にログイン必須となる
 import { createRouter, createWebHistory } from "vue-router"
+import { getCurrentUser } from "aws-amplify/auth"
 
 //-------------------------------------------------------------------------------
 //-- 認証判定
 //-------------------------------------------------------------------------------
 
-//-- 仮の認証判定関数。localStorage の "isAuthed" が "1" ならログイン済みとみなす。
-//-- 将来 Cognito 導入時は、この関数を Cognito セッション判定ロジックへ差し替える。
-function isAuthed(): boolean {
-  return localStorage.getItem("isAuthed") === "1"
+//-- Cognito セッション判定。getCurrentUser が成功すればログイン済み
+async function isAuthed(): Promise<boolean> {
+  try {
+    await getCurrentUser()
+    return true
+  } catch {
+    return false
+  }
 }
 
 //-------------------------------------------------------------------------------
@@ -32,10 +33,12 @@ const router = createRouter({
   history: createWebHistory(),
 
   routes: [
-    //-- ルート（/）。トップは /menu へリダイレクト。将来 /login を設ける場合、ここを /login に変更するだけで対応可能
+    //-- ルート（/）。認証不要（未ログイン時は Authenticator がログイン画面を表示）。認証済みなら Menu を表示
     {
       path: "/",
-      redirect: "/menu",
+      name: "root",
+      component: () => import("../pages/Menu.vue"),
+      meta: { requiresAuth: false },
     },
 
     //-- メニュー画面。ログイン後トップ。3つの操作（注文一覧・注文登録・看板編集）への導線
@@ -70,10 +73,10 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
-    //-- 404 相当。存在しないパスはすべて /menu へリダイレクト。将来 /login 導入時はここも変更の可能性あり
+    //-- 404 相当。存在しないパスはすべて / へリダイレクト（未認証時は Authenticator がログイン画面を表示）
     {
       path: "/:pathMatch(.*)*",
-      redirect: "/menu",
+      redirect: "/",
     },
   ],
 })
@@ -83,15 +86,13 @@ const router = createRouter({
 //-------------------------------------------------------------------------------
 
 //-- 全ルート遷移前に実行。認証が必要なページ（meta.requiresAuth）へのアクセスを制御する。
-//-- ■ 現在: requiresAuth が true でもブロックしない（開発・デモ優先）
-//-- ■ 将来: 未ログイン時は /login へリダイレクト
-router.beforeEach((to) => {
+//-- 未ログイン時は / へリダイレクト（Authenticator がログイン画面を表示）
+router.beforeEach(async (to) => {
   if (to.meta.requiresAuth) {
-    //-- 将来の認証ガード。isAuthed() が false なら /login へ
-    // if (!isAuthed()) {
-    //   return { path: "/login" }
-    // }
-    return true
+    const authed = await isAuthed()
+    if (!authed) {
+      return { path: "/" }
+    }
   }
   return true
 })

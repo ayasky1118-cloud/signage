@@ -2,9 +2,12 @@
 //-- App.vue
 //--
 //-- アプリケーションのルートコンポーネント。main.ts でマウントされ、ルーティングされたページを表示する枠となる。
+//-- AWS Cognito Authenticator でラップし、未ログイン時はログイン画面、ログイン後は DefaultLayout を表示。
 //-- DefaultLayout 内で RouterView を配置し、/menu, /order/list 等のページを切り替える。
 import { watch } from "vue"
 import { useRoute } from "vue-router"
+import { Authenticator } from "@aws-amplify/ui-vue"
+import "@aws-amplify/ui-vue/styles.css"
 import DefaultLayout from "./layouts/DefaultLayout.vue"
 
 const route = useRoute()
@@ -26,6 +29,10 @@ watch(
 </script>
 
 <template>
-  <!-- DefaultLayout: AppHeader + RouterView。全ページ共通のヘッダーとコンテンツ領域 -->
-  <DefaultLayout />
+  <!-- Authenticator: 未ログイン時は Cognito ログイン画面、ログイン後は DefaultLayout を表示。サインアップ（新規登録）も有効 -->
+  <Authenticator>
+    <template #default="{ user }">
+      <DefaultLayout v-if="user" />
+    </template>
+  </Authenticator>
 </template>
