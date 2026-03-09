@@ -13,8 +13,8 @@ build_site:
     - npm ci
     - npm run build
   only:
-    changes:
-      - frontend/**
+    refs:
+      - main
   artifacts:
     paths:
       - frontend/dist
@@ -40,5 +40,3 @@ deploy_to_amplify:
   only:
     refs:
       - main
-    changes:
-      - frontend/**
