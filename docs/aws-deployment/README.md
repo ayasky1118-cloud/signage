@@ -12,8 +12,9 @@
 | 01 | [01.Dockerfile作成手順.md](01.Dockerfile作成手順.md) | Dockerfile 作成（ローカル動作確認用） |
 | 02 | [02.Lambdaバックエンド構築.md](02.Lambdaバックエンド構築.md) | Lambda バックエンド構築（API Gateway, Lambda, RDS Proxy, Secrets Manager） |
 | 02-RDS | [02.RDS作成手順（コンソール）.md](02.RDS作成手順（コンソール）.md) | RDS 作成のコンソール詳細手順（やり取り含む） |
-| 03 | （今後） | GitLab Auto DevOps 設定 |
-| 04 | （今後） | 客先 AWS デプロイ手順 |
+| 03 | [03.Amplify手動デプロイ.md](03.Amplify手動デプロイ.md) | Runner 未稼働時のローカルからの手動デプロイ |
+| 04 | [04.GitLab Runner設定.md](04.GitLab Runner設定.md) | CI/CD Runner のタグ設定とジョブ実行の関係 |
+| 05 | （今後） | 客先 AWS デプロイ手順 |
 
 ---
 

@@ -8,6 +8,8 @@ before_script:
 
 build_site:
   stage: build
+  tags:
+    - signage_dev_runner
   script:
     - cd frontend
     - npm ci
@@ -22,6 +24,8 @@ build_site:
 
 deploy_to_amplify:
   stage: deploy
+  tags:
+    - signage_dev_runner
   dependencies:
     - build_site
   script:
