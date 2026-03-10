@@ -11,6 +11,12 @@ services:
       - "3307:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # バックエンド（Dockerfile 動作確認用。db と同一ネットワークで db:3306 に接続）
   backend:
@@ -19,7 +25,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: mysql+pymysql://root:password@db:3306/signage_dev?charset=utf8mb4
     depends_on:
-      - db
+      db:
+        condition: service_healthy

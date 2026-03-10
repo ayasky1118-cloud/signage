@@ -19,4 +19,3 @@ CREATE TABLE IF NOT EXISTS user
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 COMMENT='ユーザー情報'
 ;
-image.png
