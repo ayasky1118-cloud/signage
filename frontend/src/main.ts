@@ -15,12 +15,18 @@ import { createApp } from "vue"
 import { Amplify } from "aws-amplify"
 import { I18n } from "aws-amplify/utils"
 
-//-- AWS Cognito 認証の設定（sinage_old と同じ User Pool）
+//-- AWS Cognito 認証の設定
+//-- 環境変数 VITE_COGNITO_* で切り替え。未設定時は従来のテスト環境（sinage_old）の User Pool をフォールバック
+const userPoolId =
+  import.meta.env.VITE_COGNITO_USER_POOL_ID ?? "ap-northeast-1_YCSDgFpIR"
+const userPoolClientId =
+  import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_ID ?? "6oq9mimrhkujmgp42kcdbvggkb"
+
 Amplify.configure({
   Auth: {
     Cognito: {
-      userPoolId: "ap-northeast-1_YCSDgFpIR",
-      userPoolClientId: "6oq9mimrhkujmgp42kcdbvggkb",
+      userPoolId,
+      userPoolClientId,
     },
   },
 })
