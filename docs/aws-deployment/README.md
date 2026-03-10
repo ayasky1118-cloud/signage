@@ -1,25 +1,47 @@
-# AWS デプロイ関連ドキュメント
+# AWS デプロイ手順書
 
-開発用インフラ構築から客先 AWS へのデプロイまで、AWS 移行に関する手順書をまとめる。
+現行の AWS 構成（2026-03 時点）を正として、構築手順をまとめたドキュメント。
 
 ---
 
-## 手順一覧（実施順）
+## ドキュメント一覧
 
 | No | ドキュメント | 内容 |
 |----|--------------|------|
-| 00 | [00.環境準備手順.md](00.環境準備手順.md) | 別 PC 用の環境構築（AWS CLI、Docker、Git） |
-| 01 | [01.Dockerfile作成手順.md](01.Dockerfile作成手順.md) | Dockerfile 作成（ローカル動作確認用） |
-| 02 | [02.Lambdaバックエンド構築.md](02.Lambdaバックエンド構築.md) | Lambda バックエンド構築（API Gateway, Lambda, RDS Proxy, Secrets Manager） |
-| 02-RDS | [02.RDS作成手順（コンソール）.md](02.RDS作成手順（コンソール）.md) | RDS 作成のコンソール詳細手順（やり取り含む） |
-| 03 | [03.Amplify手動デプロイ.md](03.Amplify手動デプロイ.md) | Runner 未稼働時のローカルからの手動デプロイ |
-| 04 | [04.GitLab Runner設定.md](04.GitLab Runner設定.md) | CI/CD Runner のタグ設定とジョブ実行の関係 |
-| 05 | （今後） | 客先 AWS デプロイ手順 |
+| 00 | [00.環境準備手順.md](00.環境準備手順.md) | AWS CLI、Docker、Git のインストール |
+| 01 | [01.現行構成リファレンス.md](01.現行構成リファレンス.md) | **現行 AWS リソース一覧**（ID・エンドポイント等） |
+| 02 | [02.VPC・ネットワーク構築手順.md](02.VPC・ネットワーク構築手順.md) | VPC、サブネット、ルートテーブル、NAT ゲートウェイ |
+| 03 | [03.RDS作成手順.md](03.RDS作成手順.md) | RDS for MySQL、セキュリティグループ |
+| 04 | [04.Secrets Manager・RDS Proxy手順.md](04.Secrets%20Manager・RDS%20Proxy手順.md) | DB 認証情報、RDS Proxy |
+| 05 | [05.Lambda・API Gateway構築手順.md](05.Lambda・API%20Gateway構築手順.md) | Lambda、API Gateway、環境変数 |
+| 06 | [06.Amplifyデプロイ手順.md](06.Amplifyデプロイ手順.md) | フロントエンドのデプロイ |
+| 06b | [06b.Cognito作成手順.md](06b.Cognito作成手順.md) | **CGS 環境用** Cognito User Pool の新規作成 |
+| 07 | [07.データ移行手順.md](07.データ移行手順.md) | ローカル ↔ RDS のデータ移行・復元 |
+| 08 | [08.ローカル開発の環境切り替え.md](08.ローカル開発の環境切り替え.md) | ローカル・検証・本番の切り替え |
+| 09 | [09.トラブルシューティング.md](09.トラブルシューティング.md) | 接続エラー、地図表示、よくある事象 |
+| 10 | [10.クイックリファレンス.md](10.クイックリファレンス.md) | よく使うコマンド・チェックリスト |
 
 ---
 
-## 前提
+## アーキテクチャ概要
 
-- **フロントエンド**: Amplify でホスト（設定済み）
-- **バックエンド**: API Gateway + Lambda + RDS Proxy + RDS
-- 開発環境で動作確認後、客先 AWS に適用する流れ
+```
+[Amplify フロント] ──→ [API Gateway] ──→ [Lambda]
+                                              │
+                                              ↓
+                                        [RDS Proxy]
+                                              │
+                                              ↓
+                                        [RDS MySQL]
+```
+
+- **フロントエンド**: Amplify（main ブランチ）
+- **バックエンド**: API Gateway + Lambda（FastAPI + Mangum）
+- **DB**: RDS for MySQL + RDS Proxy
+- **認証**: Cognito
+
+---
+
+## バックアップ
+
+現行手順書のバックアップは `docs/aws-deployment-backup-20260310/` に保存済み。

@@ -27,7 +27,11 @@ for f in db/00_schema/001_company.sql \
   docker exec -i signage-db mysql -uroot -ppassword --default-character-set=utf8mb4 signage_dev < "$f"
 done
 
+echo "適用: db/01_seed/000_local_dev_seed.sql"
+docker exec -i signage-db mysql -uroot -ppassword --default-character-set=utf8mb4 signage_dev < db/01_seed/000_local_dev_seed.sql
+
 echo "適用: db/01_seed/010_html_object_seed.sql"
 docker exec -i signage-db mysql -uroot -ppassword --default-character-set=utf8mb4 signage_dev < db/01_seed/010_html_object_seed.sql
 
 echo "完了: テーブルを作成し、テストデータを投入しました。"
+echo "ログインするには: user の auth_uid を Cognito sub に更新してください（09.ローカル開発の環境切り替え.md 参照）"

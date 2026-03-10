@@ -14,14 +14,9 @@
 //--
 //-- 【共通】
 //-- ・全リクエスト 15 秒タイムアウト。AbortController 使用
-//-- ・VITE_API_BASE 未設定時: 同一オリジン → Vite プロキシ /api を使用
-function getApiBase(): string {
-  const env = import.meta.env.VITE_API_BASE as string | undefined
-  if (env?.trim()) return env.trim().replace(/\/$/, "")
-  if (typeof window !== "undefined") return ""
-  return "http://localhost:8000"
-}
-const API_PREFIX = getApiBase() ? "" : "/api"
+//-- ・src/config/api の getApiBase / getApiPrefix を使用（環境別 .env で切り替え）
+import { getApiBase, getApiPrefix } from "../config/api"
+const API_PREFIX = getApiPrefix()
 
 //-------------------------------------------------------------------------------
 //-- 型定義（検索・一覧）
