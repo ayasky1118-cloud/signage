@@ -17,6 +17,7 @@ import "../assets/styles/order-detail.css"
 import { searchOrders, getOrderByNo, updateOrderDetails, type OrderItem } from "../composables/useOrderApi"
 import { FORM_IDS } from "../constants/form-ids"
 import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
+import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard"
 import { geocodeAddress } from "../composables/useAddressApi"
 import { fetchHtmlObjects, type HtmlObjectItem, type HtmlObjectValueItem } from "../composables/useHtmlObjectApi"
 import { getImageItemsFromHtmlObjects } from "../composables/useMapLayers"
@@ -37,9 +38,11 @@ import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import OrderDetailModal from "../components/OrderDetailModal.vue"
 import MapPreview from "../components/MapPreview.vue"
 import HtmlObjectValueSelectModal from "../components/HtmlObjectValueSelectModal.vue"
+import UnsavedConfirmModal from "../components/UnsavedConfirmModal.vue"
 
 const router = useRouter()
 const route = useRoute()
+const { register: registerUnsavedGuard, unregister: unregisterUnsavedGuard } = useUnsavedChangesGuard()
 
 //-------------------------------------------------------------------------------
 //-- 定数・ユーティリティ
@@ -1110,6 +1113,7 @@ function syncMapFeaturesToBranch(branchNo: string) {
 
 //-- コンポーネント破棄時に body の overflow をリセット（他ページへ遷移した際のスクロール復元）
 onBeforeUnmount(() => {
+  unregisterUnsavedGuard()
   document.body.style.overflow = ""
   uninstallMapWarnSuppress()
 })
@@ -1412,6 +1416,7 @@ function onOrderNoBlur() {
 }
 
 onMounted(() => {
+  registerUnsavedGuard(() => isDirty.value)
   //-- MapLibre の SDF/non-SDF 混在ワーニングを抑制（検索時・全画面時ともに有効）
   installMapWarnSuppress()
   //-- ページ表示時に状態をリセット（メニューからの遷移・bfcache 復元時もクリーンな状態で開始）
@@ -2291,42 +2296,19 @@ watch(activeBranch, (newBranch, oldBranch) => {
     </div>
   </Teleport>
 
-  <!-- 枝番切り替え確認（変更あり） -->
-  <Teleport to="body">
-    <div
-      v-if="showBranchSwitchConfirmModal"
-      class="form-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="branchSwitchConfirmModalTitle"
-    >
-      <div class="form-dialog-overlay" @click="closeBranchSwitchConfirmModal(true)"></div>
-      <div class="form-dialog-content form-dialog-content--wide">
-        <div class="form-dialog-header">
-          <h3 id="branchSwitchConfirmModalTitle">変更の確認</h3>
-        </div>
-        <div class="form-dialog-body">
-          <p>{{ branchSwitchConfirmMessage }}</p>
-        </div>
-        <div class="form-dialog-footer">
-          <button type="button" class="btn btn-secondary" @click="closeBranchSwitchConfirmModal(true)">
-            キャンセル
-          </button>
-          <button type="button" class="btn btn-secondary btn-secondary--slate" @click="confirmBranchSwitchDiscard">
-            {{ branchSwitchConfirmDiscardLabel }}
-          </button>
-          <button
-            v-if="!hideBranchSwitchRegisterButton"
-            type="button"
-            class="btn btn-primary"
-            @click="confirmBranchSwitchRegister"
-          >
-            {{ branchSwitchConfirmRegisterLabel }}
-          </button>
-        </div>
-      </div>
-    </div>
-  </Teleport>
+  <!-- 枝番切り替え確認（変更あり）。戻る・枝番切り替え・注文番号変更・枝番追加等で共通モーダルを使用 -->
+  <UnsavedConfirmModal
+    v-model="showBranchSwitchConfirmModal"
+    :message="branchSwitchConfirmMessage"
+    :discard-label="branchSwitchConfirmDiscardLabel"
+    :register-label="branchSwitchConfirmRegisterLabel"
+    :show-register-button="!hideBranchSwitchRegisterButton"
+    cancel-label="キャンセル"
+    title-id="orderDetailBranchSwitchConfirmTitle"
+    @cancel="closeBranchSwitchConfirmModal(true)"
+    @discard="confirmBranchSwitchDiscard"
+    @register="confirmBranchSwitchRegister"
+  />
 
   <!-- 既存枝番 -->
   <Teleport to="body">

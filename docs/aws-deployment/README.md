@@ -14,7 +14,7 @@
 | 03 | [03.RDS作成手順.md](03.RDS作成手順.md) | RDS for MySQL、セキュリティグループ |
 | 04 | [04.Secrets Manager・RDS Proxy手順.md](04.Secrets%20Manager・RDS%20Proxy手順.md) | DB 認証情報、RDS Proxy |
 | 05 | [05.Lambda・API Gateway構築手順.md](05.Lambda・API%20Gateway構築手順.md) | Lambda、API Gateway、環境変数 |
-| 06 | [06.Amplifyデプロイ手順.md](06.Amplifyデプロイ手順.md) | フロントエンドのデプロイ |
+| 06 | [06.Amplifyデプロイ手順.md](06.Amplifyデプロイ手順.md) | フロントエンドのデプロイ（GitLab CI 変数含む） |
 | 06b | [06b.Cognito作成手順.md](06b.Cognito作成手順.md) | **CGS 環境用** Cognito User Pool の新規作成 |
 | 07 | [07.データ移行手順.md](07.データ移行手順.md) | ローカル ↔ RDS のデータ移行・復元 |
 | 08 | [08.ローカル開発の環境切り替え.md](08.ローカル開発の環境切り替え.md) | ローカル・検証・本番の切り替え |

@@ -24,6 +24,7 @@ import "../assets/styles/order-main.css"
 import { validateAddress } from "../composables/useAddressApi"
 import { createOrder, getOrderByNo, updateOrderMain, updateOrderItems, type OrderItem, type OrderDetail, type OrderDetailItem } from "../composables/useOrderApi"
 import { useOrderNoSelectModal } from "../composables/useOrderNoSelectModal"
+import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard"
 import { fetchCustomers, type CustomerItem } from "../composables/useCustomerApi"
 import { fetchDesignTypes, type DesignTypeItem } from "../composables/useDesignTypeApi"
 import { fetchTemplates, fetchTemplateItems, type TemplateOption, type TemplateItemItem } from "../composables/useTemplateApi"
@@ -32,9 +33,11 @@ import { FORM_IDS } from "../constants/form-ids"
 import OrderNoSelectModal from "../components/OrderNoSelectModal.vue"
 import CustomerSelectModal from "../components/CustomerSelectModal.vue"
 import TemplateSelectModal from "../components/TemplateSelectModal.vue"
+import UnsavedConfirmModal from "../components/UnsavedConfirmModal.vue"
 
 const router = useRouter()
 const route = useRoute()
+const { register: registerUnsavedGuard, unregister: unregisterUnsavedGuard } = useUnsavedChangesGuard()
 
 //-------------------------------------------------------------------------------
 //-- モード・遷移元フラグ
@@ -931,6 +934,8 @@ onMounted(async () => {
   initialNewState.value = getFormState()
   initialChangeState.value = getFormState()
 
+  registerUnsavedGuard(() => hasUnsavedChanges.value)
+
   nextTick(() => {
     const opts = { locale: Japanese, dateFormat: "Y/m/d", allowInput: false }
     if (inputDeadlineRef.value) {
@@ -954,6 +959,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  unregisterUnsavedGuard()
   fpDeadline?.destroy()
   fpProofreading?.destroy()
 })
@@ -1375,35 +1381,16 @@ watch(orderNo, () => {
     </div>
     </div>
 
-    <!-- 未保存変更確認。戻る・看板編集・モード切替時に hasUnsavedChanges で表示。pendingUnsavedAction で実行するアクションを保持 -->
-    <Teleport to="body">
-      <div
-        v-show="unsavedConfirmOpen"
-        class="form-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="unsavedConfirmModalTitle"
-        aria-hidden="false"
-      >
-        <div class="form-dialog-overlay" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false"></div>
-        <div class="form-dialog-content form-dialog-content--wide">
-          <div class="form-dialog-header">
-            <h3 id="unsavedConfirmModalTitle">変更の確認</h3>
-          </div>
-          <div class="form-dialog-body">
-            <p>{{ unsavedConfirmMessage }}</p>
-          </div>
-          <div class="form-dialog-footer">
-            <button type="button" class="btn btn-secondary" @click="pendingUnsavedAction = null; unsavedConfirmOpen = false">
-              キャンセル
-            </button>
-            <button type="button" class="btn btn-primary" @click="executePendingUnsaved">
-              {{ unsavedConfirmOkText }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 未保存変更確認（共通）。戻る・看板編集・モード切替・注文番号変更時に表示 -->
+    <UnsavedConfirmModal
+      v-model="unsavedConfirmOpen"
+      :message="unsavedConfirmMessage"
+      :discard-label="unsavedConfirmOkText"
+      cancel-label="キャンセル"
+      title-id="orderMainUnsavedConfirmTitle"
+      @cancel="() => { pendingUnsavedAction = null; unsavedConfirmOpen = false }"
+      @discard="executePendingUnsaved"
+    />
 
     <!-- 注文番号選択モーダル（共通コンポーネント） -->
     <OrderNoSelectModal
@@ -1431,32 +1418,18 @@ watch(orderNo, () => {
       @clear="clearCustomer"
     />
 
-    <!-- 新規→変更で入力変更あり案内 -->
-    <Teleport to="body">
-      <div
-        v-show="changeNoticeModalOpen"
-        class="form-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="changeNoticeModalTitle"
-        aria-hidden="false"
-      >
-        <div class="form-dialog-overlay" @click="changeNoticeModalOpen = false"></div>
-        <div class="form-dialog-content form-dialog-content--wide">
-          <div class="form-dialog-header">
-            <h3 id="changeNoticeModalTitle">変更の確認</h3>
-          </div>
-          <div class="form-dialog-body">
-            <p>入力内容に変更があります。登録してから変更に切り替えますか？</p>
-          </div>
-          <div class="form-dialog-footer">
-            <button type="button" class="btn btn-secondary" @click="changeNoticeModalOpen = false">キャンセル</button>
-            <button type="button" class="btn btn-secondary btn-secondary--slate" @click="changeNoticeDiscard">破棄して切り替え</button>
-            <button type="button" class="btn btn-primary" @click="changeNoticeRegister">登録して切り替え</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <!-- 新規→変更で入力変更あり案内（共通モーダル） -->
+    <UnsavedConfirmModal
+      v-model="changeNoticeModalOpen"
+      message="入力内容に変更があります。登録してから変更に切り替えますか？"
+      discard-label="破棄して切り替え"
+      register-label="登録して切り替え"
+      :show-register-button="true"
+      cancel-label="キャンセル"
+      title-id="orderMainChangeNoticeTitle"
+      @discard="changeNoticeDiscard"
+      @register="changeNoticeRegister"
+    />
 
     <!-- 必須項目未入力 -->
     <Teleport to="body">
